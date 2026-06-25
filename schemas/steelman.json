@@ -1,0 +1,37 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "steelmanned_positions", "cruxes_surfaced"],
+  "properties": {
+    "ok": { "const": true },
+    "steelmanned_positions": {
+      "type": "array",
+      "description": "Rescue the strongest defensible version of each live position in the debate — including the one you find least convincing. Make each as strong as its best advocate would.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["position", "strongest_form", "rests_on"],
+        "properties": {
+          "position": { "type": "string", "description": "The position, named." },
+          "strongest_form": { "type": "string", "description": "Its most defensible articulation, granting it every fair benefit of the doubt." },
+          "rests_on": { "type": "string", "description": "The key assumption this strongest form depends on — a candidate crux." }
+        }
+      }
+    },
+    "cruxes_surfaced": {
+      "type": "array",
+      "description": "The load-bearing assumptions separating the positions — the ones that, if resolved, would settle which position wins.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["assumption", "if_false_then", "verified", "how_to_verify"],
+        "properties": {
+          "assumption": { "type": "string" },
+          "if_false_then": { "type": "string" },
+          "verified": { "type": "boolean", "description": "true only if a grounded (re-openable) ledger entry establishes it." },
+          "how_to_verify": { "type": "string" }
+        }
+      }
+    }
+  }
+}

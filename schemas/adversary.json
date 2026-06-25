@@ -1,0 +1,25 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "objections", "strongest_objection_id"],
+  "properties": {
+    "ok": { "const": true },
+    "objections": {
+      "type": "array",
+      "description": "At most ONE objection per axis: the single strongest reason the synthesis is wrong on that axis. Bounded at 3 total. Substantive, not a nitpick list. Skip an axis rather than pad it.",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "axis", "objection"],
+        "properties": {
+          "id": { "type": "string", "description": "Short stable id, e.g. 'evidence', 'framing', 'logic'." },
+          "axis": { "type": "string", "enum": ["evidence", "framing", "recommendation_logic"] },
+          "objection": { "type": "string", "description": "The strongest reason the synthesis is wrong on this axis, and what it smoothed over." },
+          "mis_ranked_crux": { "type": "string", "description": "A crux the synthesis mis-ranked, left unstated, or wrongly marked verified. Empty string if none on this axis." }
+        }
+      }
+    },
+    "strongest_objection_id": { "type": "string", "description": "The id of the single most decision-relevant objection." }
+  }
+}

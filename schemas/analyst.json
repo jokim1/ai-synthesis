@@ -1,0 +1,70 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "frame", "evidence_gathered", "assumptions", "risks", "reframe", "capability_gaps_hit"],
+  "properties": {
+    "ok": { "const": true },
+    "frame": {
+      "type": "string",
+      "description": "How you frame the problem: the decomposition, the variables that actually move the decision, the lens you are reasoning through. 2-5 sentences."
+    },
+    "evidence_gathered": {
+      "type": "array",
+      "description": "Facts you gathered with your own tools. An entry is GROUNDED only with re-openable provenance. Asserting you found something is NOT evidence.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["claim", "source_type", "locator", "retrieval_query", "grounded"],
+        "properties": {
+          "claim": { "type": "string", "description": "The fact, stated plainly." },
+          "source_type": { "type": "string", "enum": ["code", "context_file", "web", "theory", "prior_knowledge"] },
+          "locator": { "type": "string", "description": "Re-openable provenance: file path + line range (e.g. src/x.ts:40-58), a full URL, or a verbatim quoted excerpt. Empty string if you have none." },
+          "retrieval_query": { "type": "string", "description": "The exact search query or how it was located. Empty string if N/A (e.g. theory)." },
+          "grounded": { "type": "boolean", "description": "true ONLY if locator is a real, re-openable path/URL/quote. theory and prior_knowledge are never grounded." }
+        }
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "description": "The assumptions your framing rests on — candidate cruxes.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["statement", "load_bearing_because"],
+        "properties": {
+          "statement": { "type": "string" },
+          "load_bearing_because": { "type": "string", "description": "Why the recommendation would change if this were false." }
+        }
+      }
+    },
+    "risks": {
+      "type": "array",
+      "description": "R1-Critic beat: the strongest challenges to the problem/proposal AS POSED, and its real risks. Genuine, not performative.",
+      "items": { "type": "string" }
+    },
+    "reframe": {
+      "type": ["object", "null"],
+      "description": "null unless there is a MATERIALLY stronger framing backed by a concrete crux. High bar — default to null for a well-posed question. Never second-guess for its own sake.",
+      "additionalProperties": false,
+      "required": ["proposed_question", "crux"],
+      "properties": {
+        "proposed_question": { "type": "string", "description": "The question that may be the real decision." },
+        "crux": { "type": "string", "description": "Why Y may be the real question: the shaky assumption Z behind X, and how to tell which frame is right." }
+      }
+    },
+    "capability_gaps_hit": {
+      "type": "array",
+      "description": "Facts or tools you needed but could not get. Material only — do not pad. Each becomes an unverified crux or a remedy note.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["want", "type", "remedy"],
+        "properties": {
+          "want": { "type": "string", "description": "The fact/tool you needed but lacked." },
+          "type": { "type": "string", "enum": ["missing_tool", "missing_user_info"] },
+          "remedy": { "type": "string", "description": "e.g. 'add a web-search model' (missing_tool) or 'provide your real p99 latency' (missing_user_info)." }
+        }
+      }
+    }
+  }
+}

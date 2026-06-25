@@ -1,0 +1,51 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "claim_challenges", "pool_vetting", "cruxes_surfaced"],
+  "properties": {
+    "ok": { "const": true },
+    "claim_challenges": {
+      "type": "array",
+      "description": "Attacks on the specific claims and framings in the two R1 frames and the shared ledger. Substantive — go after the decision logic, not nitpicks.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["target_claim", "objection", "severity"],
+        "properties": {
+          "target_claim": { "type": "string", "description": "The exact claim or framing you are challenging." },
+          "objection": { "type": "string", "description": "Why it is wrong, weak, or unsupported." },
+          "severity": { "type": "string", "enum": ["high", "medium", "low"] }
+        }
+      }
+    },
+    "pool_vetting": {
+      "type": "array",
+      "description": "Vet the SHARED EVIDENCE LEDGER itself, not just the arguments. Is each entry representative? From a reliable source? Is its provenance real and re-openable, or asserted?",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ledger_entry", "verdict", "reason"],
+        "properties": {
+          "ledger_entry": { "type": "string", "description": "Which ledger claim you are vetting (quote or paraphrase)." },
+          "verdict": { "type": "string", "enum": ["solid", "weak", "unrepresentative", "unreliable_source", "provenance_missing"] },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "cruxes_surfaced": {
+      "type": "array",
+      "description": "The load-bearing assumptions the recommendation will rest on — the ones that, if false, flip the answer.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["assumption", "if_false_then", "verified", "how_to_verify"],
+        "properties": {
+          "assumption": { "type": "string" },
+          "if_false_then": { "type": "string", "description": "How the recommendation changes if this assumption is false." },
+          "verified": { "type": "boolean", "description": "true only if a grounded (re-openable) ledger entry establishes it." },
+          "how_to_verify": { "type": "string", "description": "Concrete next step to verify it if unverified." }
+        }
+      }
+    }
+  }
+}
