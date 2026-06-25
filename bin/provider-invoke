@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+# provider-invoke — the one auth-agnostic entrypoint the orchestrator calls to
+# run a role on any backend. It normalizes a heterogeneous world (Claude's
+# enforced schema, Codex's prompt-instructed JSON, ...) into ONE envelope on
+# stdout. Invocation *outcomes* (auth/timeout/malformed/budget) are envelopes
+# with exit 0; only a usage error exits non-zero (2).
+#
+#   provider-invoke <provider> [options]
+#
+# Options:
+#   --prompt <text> | --prompt-file <path>     the task prompt (required)
+#   --role <text>   | --role-file <path>       role/persona system prompt
+#   --schema <json> | --schema-file <path>     JSON schema; enforced on Claude,
+#                                              instructed+tolerant-parsed elsewhere
+#   --require-keys <csv>   override required top-level keys (else from schema.required)
+#   --model <id>           backend model (optional; backend default otherwise)
+#   --effort <low|medium|high|xhigh|max>
+#   --timeout <seconds>    wall-clock bound (default 300)
+#   --web                  enable web grounding where supported (codex)
+#   --max-budget-usd <n>   hard cost cap (claude; default 1.00)
+#   --auth <auto|subscription|apikey>   claude auth preference (default auto)
+#
+# Output: the normalized envelope (see bin/lib/common.sh).
+set -uo pipefail
+
+SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=bin/lib/common.sh
+source "$SELF_DIR/lib/common.sh"
+AISYNTH_ADAPTER_DIR="$AISYNTH_BIN_DIR/adapters"
+
+usage() {
+  sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+# --- defaults / arg state ---------------------------------------------------
+A_PROVIDER=""
+A_PROMPT="" ; A_PROMPT_FILE=""
+A_ROLE=""   ; A_ROLE_FILE=""
+A_SCHEMA="" ; A_SCHEMA_FILE=""
+A_REQUIRE_KEYS=""
+A_MODEL=""
+A_EFFORT=""
+A_TIMEOUT="300"
+A_WEB="false"
+A_MAX_BUDGET="1.00"
+A_AUTH="auto"
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --prompt)        A_PROMPT="${2:-}"; shift; shift ;;
+    --prompt-file)   A_PROMPT_FILE="${2:-}"; shift; shift ;;
+    --role)          A_ROLE="${2:-}"; shift; shift ;;
+    --role-file)     A_ROLE_FILE="${2:-}"; shift; shift ;;
+    --schema)        A_SCHEMA="${2:-}"; shift; shift ;;
+    --schema-file)   A_SCHEMA_FILE="${2:-}"; shift; shift ;;
+    --require-keys)  A_REQUIRE_KEYS="${2:-}"; shift; shift ;;
+    --model)         A_MODEL="${2:-}"; shift; shift ;;
+    --effort)        A_EFFORT="${2:-}"; shift; shift ;;
+    --timeout)       A_TIMEOUT="${2:-}"; shift; shift ;;
+    --web)           A_WEB="true"; shift ;;
+    --max-budget-usd) A_MAX_BUDGET="${2:-}"; shift; shift ;;
+    --auth)          A_AUTH="${2:-}"; shift; shift ;;
+    -h|--help)       usage; exit 0 ;;
+    --*)             aisynth_die_usage "unknown option: $1" ;;
+    *)
+      if [ -z "$A_PROVIDER" ]; then A_PROVIDER="$1"; shift
+      else aisynth_die_usage "unexpected argument: $1"; fi
+      ;;
+  esac
+done
+
+[ -n "$A_PROVIDER" ] || aisynth_die_usage "provider is required (claude|codex)"
+
+# A non-integer --timeout must not silently disable the bound (it would coerce to
+# "no timeout" downstream). Reject it at the boundary.
+case "$A_TIMEOUT" in
+  ''|*[!0-9]*) aisynth_die_usage "--timeout must be a non-negative integer (seconds): $A_TIMEOUT" ;;
+esac
+
+# An empty/malformed --max-budget-usd must not silently remove the claude cost cap
+# (the adapter omits the flag when the value is empty, so guard it here).
+if ! printf '%s' "$A_MAX_BUDGET" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
+  aisynth_die_usage "--max-budget-usd must be a non-negative number: '$A_MAX_BUDGET'"
+fi
+
+# Resolve inline-or-file inputs into final strings.
+if ! A_PROMPT="$(aisynth_load_value "$A_PROMPT" "$A_PROMPT_FILE")"; then
+  aisynth_die_usage "--prompt-file not found: $A_PROMPT_FILE"
+fi
+if ! A_ROLE="$(aisynth_load_value "$A_ROLE" "$A_ROLE_FILE")"; then
+  aisynth_die_usage "--role-file not found: $A_ROLE_FILE"
+fi
+if ! A_SCHEMA="$(aisynth_load_value "$A_SCHEMA" "$A_SCHEMA_FILE")"; then
+  aisynth_die_usage "--schema-file not found: $A_SCHEMA_FILE"
+fi
+
+[ -n "$A_PROMPT" ] || aisynth_die_usage "--prompt (or --prompt-file) is required and must be non-empty"
+
+# A named-but-empty --schema-file / --role-file would silently skip schema
+# enforcement / the role persona with no signal. If the caller named a file, it
+# must carry content.
+if [ -n "$A_SCHEMA_FILE" ] && [ -z "$(printf '%s' "$A_SCHEMA" | tr -d '[:space:]')" ]; then
+  aisynth_die_usage "--schema-file is empty: $A_SCHEMA_FILE"
+fi
+if [ -n "$A_ROLE_FILE" ] && [ -z "$(printf '%s' "$A_ROLE" | tr -d '[:space:]')" ]; then
+  aisynth_die_usage "--role-file is empty: $A_ROLE_FILE"
+fi
+
+# Validate schema is JSON and derive required keys for tolerant validation
+# (so the orchestrator just passes a schema; the layer figures out the rest).
+if [ -n "$A_SCHEMA" ]; then
+  if ! printf '%s' "$A_SCHEMA" | jq -e . >/dev/null 2>&1; then
+    aisynth_die_usage "--schema is not valid JSON"
+  fi
+  if [ -z "$A_REQUIRE_KEYS" ]; then
+    A_REQUIRE_KEYS="$(printf '%s' "$A_SCHEMA" | jq -r '(.required // []) | join(",")' 2>/dev/null || true)"
+  fi
+fi
+
+export A_PROVIDER A_PROMPT A_ROLE A_SCHEMA A_REQUIRE_KEYS A_MODEL A_EFFORT \
+       A_TIMEOUT A_WEB A_MAX_BUDGET A_AUTH
+
+case "$A_PROVIDER" in
+  claude)
+    # shellcheck source=bin/adapters/claude.sh
+    source "$AISYNTH_ADAPTER_DIR/claude.sh"
+    adapter_invoke
+    ;;
+  codex)
+    # shellcheck source=bin/adapters/codex.sh
+    source "$AISYNTH_ADAPTER_DIR/codex.sh"
+    adapter_invoke
+    ;;
+  *)
+    aisynth_die_usage "unknown provider: $A_PROVIDER (supported: claude, codex)"
+    ;;
+esac

@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "projectKey": "ai-synthesis",
+  "displayName": "ai-synthesis",
+  "baseBranch": "main",
+  "stateDir": "pipelane-state",
+  "taskWorktreeDirName": "ai-synthesis-worktrees",
+  "branchPrefix": "codex/",
+  "legacyBranchPrefixes": [],
+  "surfaces": [
+    "frontend",
+    "edge",
+    "sql"
+  ],
+  "aliases": {
+    "devmode": "/devmode",
+    "new": "/new",
+    "resume": "/resume",
+    "repo-guard": "/repo-guard",
+    "pr": "/pr",
+    "merge": "/merge",
+    "deploy": "/deploy",
+    "smoke": "/smoke",
+    "clean": "/clean",
+    "status": "/status",
+    "doctor": "/doctor",
+    "rollback": "/rollback"
+  },
+  "prePrChecks": [
+    "npm run test",
+    "npm run typecheck",
+    "npm run build"
+  ],
+  "prPathDenyList": [
+    "CLAUDE.md",
+    ".env",
+    ".env.*",
+    "*.pem",
+    "*.p12",
+    "id_rsa*",
+    "*.key"
+  ],
+  "deployWorkflowName": "Deploy Hosted",
+  "buildMode": {
+    "description": "Fast lane. Production deploy is expected to happen after merge.",
+    "autoDeployOnMerge": true
+  },
+  "releaseMode": {
+    "description": "Protected lane. Promote the same merged SHA through staging before prod.",
+    "requireStagingPromotion": true
+  },
+  "reviewGates": {
+    "planReview": {
+      "gates": [
+        {
+          "id": "plan-eng-review",
+          "phase": "plan",
+          "type": "skill",
+          "blocking": true,
+          "skill": "plan-eng-review"
+        },
+        {
+          "id": "plan-design-review",
+          "phase": "plan",
+          "type": "skill",
+          "blocking": true,
+          "skill": "plan-design-review",
+          "when": "surface:frontend"
+        }
+      ]
+    },
+    "gates": [
+      {
+        "id": "adversarial-review",
+        "phase": "ai-diff",
+        "type": "agent",
+        "blocking": true,
+        "role": "adversarial-code-reviewer",
+        "userCommands": [
+          "/claude review code"
+        ]
+      },
+      {
+        "id": "gstack-review",
+        "phase": "ai-diff",
+        "type": "skill",
+        "blocking": true,
+        "skill": "review",
+        "userCommands": [
+          "/review",
+          "/gstack review",
+          "/gstack-review"
+        ]
+      },
+      {
+        "id": "karpathy-diff",
+        "phase": "ai-diff",
+        "type": "skill",
+        "blocking": true,
+        "skill": "karpathy-diff",
+        "userCommands": [
+          "/karpathy diff",
+          "/karpathy-diff",
+          "/karpathy:diff"
+        ]
+      },
+      {
+        "id": "karpathy-audit",
+        "phase": "instruction",
+        "type": "skill",
+        "blocking": true,
+        "skill": "karpathy-audit",
+        "whenChanged": [
+          "CLAUDE.md",
+          "AGENTS.md",
+          ".cursor/rules/**",
+          ".codex/skills/**"
+        ],
+        "userCommands": [
+          "/karpathy audit",
+          "/karpathy-audit",
+          "/karpathy:audit"
+        ]
+      }
+    ]
+  }
+}

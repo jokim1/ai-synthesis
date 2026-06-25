@@ -1,0 +1,15 @@
+# Planning docs live in /docs and are gitignored.
+# Public docs go in /docs/public/ and ARE tracked.
+/docs/*
+!/docs/public/
+
+# Python bytecode from the provider-layer helpers.
+__pycache__/
+*.pyc
+
+# Runtime output written by the /ai-synthesis skill (project-local sessions + work).
+/.ai-synthesis/
+
+# Claude Code local + runtime artifacts (not shared).
+/.claude/settings.local.json
+/.claude/*.lock

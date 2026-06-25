@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# provider-probe — cheap "can this backend run?" check: binary present + auth
+# resolvable. Does NOT make a model call (no cost). Emits the normalized
+# envelope with structured = {available, authed, ...detail}; ok = available && authed.
+#
+#   provider-probe <provider>
+#
+# Exit 0 always for a probe *result* (the envelope says ok/false); exit 2 on
+# usage error.
+set -uo pipefail
+
+SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=bin/lib/common.sh
+source "$SELF_DIR/lib/common.sh"
+AISYNTH_ADAPTER_DIR="$AISYNTH_BIN_DIR/adapters"
+
+A_PROVIDER="${1:-}"
+A_AUTH="${A_AUTH:-auto}"
+[ -n "$A_PROVIDER" ] || aisynth_die_usage "usage: provider-probe <claude|codex>"
+export A_PROVIDER A_AUTH
+
+case "$A_PROVIDER" in
+  claude)
+    # shellcheck source=bin/adapters/claude.sh
+    source "$AISYNTH_ADAPTER_DIR/claude.sh"
+    adapter_probe
+    ;;
+  codex)
+    # shellcheck source=bin/adapters/codex.sh
+    source "$AISYNTH_ADAPTER_DIR/codex.sh"
+    adapter_probe
+    ;;
+  *)
+    aisynth_die_usage "unknown provider: $A_PROVIDER (supported: claude, codex)"
+    ;;
+esac

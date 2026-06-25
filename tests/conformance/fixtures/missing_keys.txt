@@ -1,0 +1,1 @@
+{"verdict": "rebutted", "reason": "no crux was mis-ranked"}

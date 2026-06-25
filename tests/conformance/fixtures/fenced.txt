@@ -1,0 +1,9 @@
+Here is the JSON:
+
+```json
+{
+  "verdict": "conceded",
+  "ok": true,
+  "cruxes": ["p99 latency under load", "team familiarity with Rust"]
+}
+```

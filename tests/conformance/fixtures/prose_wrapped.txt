@@ -1,0 +1,5 @@
+Sure! Based on my analysis, here is the structured result you asked for:
+
+{"verdict": "rebutted", "ok": true, "reason": "the objection rests on an unverified crux"}
+
+Let me know if you'd like me to expand on any part of this.
