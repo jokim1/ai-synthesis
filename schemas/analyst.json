@@ -44,7 +44,7 @@
     },
     "reframe": {
       "type": ["object", "null"],
-      "description": "null unless there is a MATERIALLY stronger framing backed by a concrete crux. High bar — default to null for a well-posed question. Never second-guess for its own sake.",
+      "description": "null unless the question's presupposed approach is probably the WRONG decision/lever (NOT merely that an alternative exists — a third option or better answer is for the analysis to weigh, not a reframe), backed by a checkable crux the user/later analysis can verify. High bar — default to null for a well-posed question. Never second-guess for its own sake.",
       "additionalProperties": false,
       "required": ["proposed_question", "crux"],
       "properties": {
