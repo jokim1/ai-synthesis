@@ -1,0 +1,91 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "recommendation", "reframe", "cruxes", "shared_assumptions", "self_critique", "unresolved_tensions", "epistemic_grade", "provenance", "evidence_gathered", "capability_gaps"],
+  "properties": {
+    "ok": { "const": true },
+    "recommendation": {
+      "type": "string",
+      "description": "The recommendation, made explicitly conditional on the cruxes. If exploratory, lead with what's missing to decide, then a clearly-marked best guess."
+    },
+    "reframe": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["proposed_question", "crux"],
+      "properties": {
+        "proposed_question": { "type": "string" },
+        "crux": { "type": "string", "description": "The unstated assumption Z behind the question, and the check that tells which frame is right (the user/analysis verifies it later)." }
+      },
+      "description": "null unless the presupposed approach is probably the WRONG decision/lever (not merely that an alternative exists), backed by a checkable crux. High bar — default null for a well-posed question."
+    },
+    "cruxes": {
+      "type": "array",
+      "description": "The assumptions the recommendation rests on, ranked by decision-sensitivity.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["statement", "rank", "load_bearing", "verified", "how_to_verify"],
+        "properties": {
+          "statement": { "type": "string" },
+          "rank": { "type": "integer", "description": "1 = most decision-sensitive." },
+          "load_bearing": { "type": "boolean", "description": "true if flipping this flips the recommendation." },
+          "verified": { "type": "boolean", "description": "true ONLY if a grounded, re-openable evidence entry establishes it." },
+          "how_to_verify": { "type": "string" }
+        }
+      }
+    },
+    "shared_assumptions": { "type": "array", "items": { "type": "string" } },
+    "self_critique": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strongest_reason_wrong", "disposition", "note"],
+      "properties": {
+        "strongest_reason_wrong": { "type": "string" },
+        "disposition": { "type": "string", "enum": ["conceded", "rebutted"] },
+        "note": { "type": "string", "description": "If conceded, how the recommendation changed; if rebutted, why it doesn't hold. Same-model self-critique is weaker than an independent adversary." }
+      }
+    },
+    "unresolved_tensions": { "type": "array", "items": { "type": "string" } },
+    "epistemic_grade": {
+      "type": "string",
+      "enum": ["decision-grade", "exploratory"],
+      "description": "Single-model: default exploratory unless the load-bearing cruxes are verified by grounded evidence."
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["grounded", "total"],
+      "properties": {
+        "grounded": { "type": "integer", "description": "Count of evidence entries with re-openable provenance." },
+        "total": { "type": "integer", "description": "Total evidence entries gathered." }
+      }
+    },
+    "evidence_gathered": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["claim", "source_type", "locator", "grounded"],
+        "properties": {
+          "claim": { "type": "string" },
+          "source_type": { "type": "string", "enum": ["code", "context_file", "web", "theory", "prior_knowledge"] },
+          "locator": { "type": "string", "description": "Re-openable provenance, or empty string if none." },
+          "grounded": { "type": "boolean", "description": "true ONLY if locator is a real, re-openable path/URL/quote. theory/prior_knowledge are never grounded." }
+        }
+      }
+    },
+    "capability_gaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["want", "type", "remedy"],
+        "properties": {
+          "want": { "type": "string" },
+          "type": { "type": "string", "enum": ["missing_tool", "missing_user_info"] },
+          "remedy": { "type": "string" }
+        }
+      }
+    }
+  }
+}

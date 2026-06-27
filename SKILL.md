@@ -35,7 +35,9 @@ Parse the invocation:
 | `expand [round]` | §9 — print full detail from the latest session (`round` ∈ 1·2·3·ledger·adversarial) |
 | `list` | §9 — list sessions from frontmatter |
 | `resume [id]` | §9 — reload a session's headline + context |
-| `--solo` · `--compare` · `focus` · `tensions` · `revisit` · `annotate` · `setup` | **Deferred in MVP.** Print one line saying so + the alternative (e.g. "`--solo` is deferred; a full run auto-degrades to single-model if only one provider is available"). Do not implement. |
+| `--solo <topic>` | §11 — fast single-model **solo-structured** baseline (one host-Claude call) |
+| `rate <1-4> [why]` | §12 — log the usefulness rating onto the latest (or named) session |
+| `--compare` · `focus` · `tensions` · `revisit` · `annotate` · `setup` | **Deferred.** Print one line saying so + the alternative (`--compare`/`revisit` are the next increments; `--solo` already gives the baseline). Do not implement yet. |
 
 **Paths.** `AISYNTH_HOME` = the directory containing this SKILL.md (where `bin/ roles/ schemas/` live);
 resolve it at runtime and use absolute paths for assets. Sessions are **project-local** (current
@@ -376,6 +378,9 @@ drivers:                          # the §6 driver set, verbatim — keep these 
   missing_inputs: [<missing_user_info>, …]   # or []
 reframe: <one line, or null>
 strongest_objection: <one line + conceded|rebutted, or null>
+usefulness: <1-4, or absent until rated>     # §12 end-of-session rating (R5 — perceived value, NOT ground truth)
+usefulness_label: <bad|fine|good|great, or absent>
+why_chip: <"new insight"|"changed my decision"|"too generic"|"felt wrong", or absent>
 ---
 
 # <topic>
@@ -426,6 +431,7 @@ Print, in this order (omit empty sections):
    state plainly that **the adversarial check did not run** — this is why the grade is exploratory).
 8. **Unresolved tensions**.
 9. Footer: `Full debate, ledger & adversarial exchange → /ai-synthesis expand · session: <SESSION>`.
+10. The **rating prompt (§12)**.
 
 Then clean up `$WORK` (`rm -rf "$WORK"`). The session file is the durable record.
 
@@ -460,13 +466,75 @@ Then clean up `$WORK` (`rm -rf "$WORK"`). The session file is the durable record
 
 ---
 
+## 11. `--solo` — solo-structured baseline (one model, one call)
+
+`--solo <topic>` (plus optional `--context`) runs the **honest single-model baseline**: one host-Claude
+pass that plays all four roles inline (Analyst → Critic → Steelman → Synthesizer + a self-critique), no
+ensemble, no Codex. It is both a fast/cheap path and the baseline that `--compare` (the next increment)
+will A/B the ensemble against — so render it in a format **comparable to §8**. Don't make the baseline
+look barer than the ensemble; that would bias a later blind comparison toward the fancier-looking output.
+
+1. **Setup** exactly as §1 (slug · `ID` · `WORK` · `SESSION` · mkdir). No provider probe (host only).
+   Handle `--context` per §1.3 (check readable; pass the paths to the sub-agent).
+2. **One host sub-agent** (Agent tool, `general-purpose`, fresh — never `fork`). Prompt = the contents of
+   `roles/solo.md`, then the decision + the `--context` paths + "Emit ONE JSON object matching
+   `schemas/solo.json`; write it — and nothing else — to `<resolved abs $WORK>/solo.json`; confirm you wrote it."
+3. **Collect & validate per §1a** (`<role> = solo`, `$OUT = $WORK/solo.json` → `solo.norm.json`). Re-spawn
+   once on failure; still failing → stop with a one-line error (solo has no other voice to fall back to).
+4. **Epistemic floor (single-model).** Solo **always** carries the caveat *"single-model, one call — no
+   cross-model check or independent adversary."* `post_evidence` is **n-a**, and the adversary driver is the
+   **self-critique** (weaker — label it). Take the model's `epistemic_grade`, but force **exploratory** if
+   any load-bearing crux is unverified, provenance is weak, or the self-critique conceded a material flaw
+   (mirrors §6 minus the cross-model criteria).
+5. **Write the session** (§7 template, adapted): `mode: solo-structured`, `ensemble: [claude]`; drivers =
+   the subset solo has (`cruxes`, `cruxes_verified`, `provenance_grounded/total`, `self_critique:
+   conceded|rebutted`, `post_evidence: n-a`; omit `adversary_objections`/`adversary_survived`). Body uses
+   `## Self-critique` in place of `## Adversarial review` (and `## Evidence` for what it gathered).
+6. **Render the headline** in §8's order and shape — reframe (if fired) · recommendation, or
+   what's-missing + *Best guess* when exploratory · `[exploratory]`/`[decision-grade]` **+ the single-model
+   caveat** · the drivers line · cruxes · capability-gaps · the self-critique (labeled same-model) ·
+   unresolved tensions · footer — then the **rating prompt (§12)**. Same look as §8; only the content and
+   the honest single-model caveat differ.
+
+---
+
+## 12. Usefulness rating (R5 — perceived value; logged, never optimized)
+
+Every run (ensemble §8 and solo §11) ends by inviting a rating. It measures **perceived usefulness, not
+ground truth** (R5), is **freely skippable** (skip ≠ a neutral score — it means "I won't judge"), and is
+**never an optimization target** — outputs are not tuned to raise it. It is logged so *you* can later see
+patterns ("you rate grounded sessions higher — default grounding on?"). The cheap predictor signals are
+already in `drivers:`, so the rating only adds the label.
+
+**Prompt** (print at the very end of the headline):
+> Useful? **1** bad · **2** fine · **3** good · **4** great — reply with the number/word, optional why
+> (*new insight* / *changed my decision* / *too generic* / *felt wrong*), or skip. (`/ai-synthesis rate <n> [why]`)
+
+**Capture** (the run's turn has ended, so the rating comes in a later message):
+- **`rate <1-4|label> [chip]`** → log onto the **latest** session (or the one matching an `id`/topic arg).
+- **Natural reply** — if, right after a run, the user replies with just a rating ("3" / "good" / "great,
+  changed my decision"), log it for the just-written `$SESSION`. If which session is meant is ambiguous, ask.
+
+**Log** (number↔label: 1 bad · 2 fine · 3 good · 4 great), via the frontmatter helper:
+```bash
+python3 "$AISYNTH_HOME/bin/lib/frontmatter_set.py" "$SESSION" usefulness 3
+python3 "$AISYNTH_HOME/bin/lib/frontmatter_set.py" "$SESSION" usefulness_label good
+[ -n "$chip" ] && python3 "$AISYNTH_HOME/bin/lib/frontmatter_set.py" "$SESSION" why_chip "\"$chip\""
+```
+Confirm in one line ("Logged: good (3). Thanks."). On **skip**, write nothing — an absent field means
+"declined to judge," distinct from a low score. Never auto-steer defaults from ratings; surfacing
+aggregate patterns back to you (your call) is a later increment.
+
+---
+
 ## Asset map
 ```
 SKILL.md                     this orchestrator
 bin/provider-invoke          external-model path → one envelope   (provider layer, done)
 bin/provider-probe           cheap availability/auth probe
 bin/lib/json_extract.py      tolerant parse + validate host-agent JSON output
-roles/{analyst,critic,steelman,synthesizer,adversary}.md   shared role prompts (both paths)
-schemas/{analyst,critic,steelman,adversary}.json           structured-output contracts
+bin/lib/frontmatter_set.py   set a scalar key in a session's YAML frontmatter (rating / outcome logging)
+roles/{analyst,critic,steelman,synthesizer,adversary,solo}.md   shared role prompts (solo = §11 baseline)
+schemas/{analyst,critic,steelman,adversary,solo}.json           structured-output contracts
 .ai-synthesis/sessions/<id>.md   durable session record (project-local)
 ```
