@@ -38,7 +38,8 @@ Parse the invocation:
 | `--solo <topic>` | §11 — fast single-model **solo-structured** baseline (one host-Claude call) |
 | `rate <1-4> [why]` | §12 — log the usefulness rating onto the latest (or named) session |
 | `--compare <topic>` | §13 — **blind** A/B of the full ensemble vs the `--solo` baseline; rate both blind, then unblind + log win by problem type |
-| `focus` · `tensions` · `revisit` · `annotate` · `setup` | **Deferred.** Print one line saying so + the alternative (`revisit` is the next increment — the delayed "did it hold up?" check; `--solo`/`--compare` already cover the baseline + its blind A/B). Do not implement yet. |
+| `revisit [id]` | §14 — record a **delayed outcome** ("did it hold up? were the cruxes what mattered?") + a calibration glance; logged, never optimized |
+| `focus` · `tensions` · `annotate` · `setup` | **Deferred.** Print one line saying so + the alternative (`expand`/`list`/`resume` already inspect detail; the (B) validation instruments — `--solo`/`--compare`/`revisit` — are built). Do not implement yet. |
 
 **Paths.** `AISYNTH_HOME` = the directory containing this SKILL.md (where `bin/ roles/ schemas/` live);
 resolve it at runtime and use absolute paths for assets. Sessions are **project-local** (current
@@ -382,6 +383,10 @@ strongest_objection: <one line + conceded|rebutted, or null>
 usefulness: <1-4, or absent until rated>     # §12 end-of-session rating (R5 — perceived value, NOT ground truth)
 usefulness_label: <bad|fine|good|great, or absent>
 why_chip: <"new insight"|"changed my decision"|"too generic"|"felt wrong", or absent>
+outcome: <held|partial|overturned, or absent until revisited>   # §14 delayed outcome (real value — pairs with usefulness)
+cruxes_mattered: <yes|partly|no, or absent>
+outcome_note: <one line — what actually drove it, or absent>
+revisit_date: <TS when revisited, or absent>
 ---
 
 # <topic>
@@ -431,7 +436,8 @@ Print, in this order (omit empty sections):
 7. **Adversarial review** — the strongest objection + conceded/rebutted (or, if its voice failed,
    state plainly that **the adversarial check did not run** — this is why the grade is exploratory).
 8. **Unresolved tensions**.
-9. Footer: `Full debate, ledger & adversarial exchange → /ai-synthesis expand · session: <SESSION>`.
+9. Footer: `Full debate, ledger & adversarial exchange → /ai-synthesis expand · session: <SESSION>` —
+   and, once the decision plays out, `/ai-synthesis revisit <id>` to record how it held up (§14).
 10. The **rating prompt (§12)**.
 
 Then clean up `$WORK` (`rm -rf "$WORK"`). The session file is the durable record.
@@ -627,6 +633,57 @@ The ratings arrive in a later message (`A:3 B:4`, natural words, or one-sided). 
 
 **Never optimize toward the winner** (R5, §12): this only *surfaces* signal back to you ("ensemble wins on
 `tradeoff`/`architecture`, ties on simple ones — default `--solo` there?"); outputs are never tuned to win.
+
+---
+
+## 14. `revisit [id]` — delayed outcome + calibration (the real-value check)
+
+The §12 rating is *immediate, perceived* value. `revisit` is the **delayed, real** check — recorded once a
+decision has actually played out — that pairs with it to separate "felt useful" from "was right" (#3), and
+is the **calibration** payoff (#7 / #9): over time it shows whether the tool's *stated confidence* (the
+`epistemic_grade` — that's our confidence, since R4 dropped the Low/Mod/High label) and its cruxes actually
+tracked reality. It is **outcome-logging for your view, not agent memory** — the tool never learns across
+sessions and never auto-steers; like the rating it is **never an optimization target** (surface the
+patterns, never tune them away). Purely on-demand — no nagging, no scheduling.
+
+**`revisit <id|topic>` — surface the prediction, then ask.** Find the session (latest matching the
+id/topic; reuse §9's frontmatter read). Re-show its *prediction* so you can judge it against what actually
+happened: the **recommendation**, the **load-bearing cruxes** (each ✅verified / ⚠️unverified + how it was to
+be verified), the **grade + drivers**, and the **usefulness rating** if one was logged. Then ask:
+> **Did it hold up?** `held` · `partial` (held, with adjustments) · `overturned` — or *too early* (skip).
+> **Were the cruxes the ones that mattered?** `yes` · `partly` · `no` — and **what actually drove it**
+> (especially if a crux flipped or an unforeseen factor dominated). Optional: the decision you made + its result.
+
+(A `mode: compare` record isn't an analysis — to revisit a compared decision, revisit its `ensemble_session`
+/ `solo_session` child.)
+
+**Capture (a later turn — the outcome arrives whenever the decision plays out).**
+`revisit <id> <held|partial|overturned> [cruxes:yes|partly|no] [note]`, or a natural reply right after the
+surface step. Log onto **that session's** frontmatter (perceived + real value co-located) via the helper:
+```bash
+python3 "$AISYNTH_HOME/bin/lib/frontmatter_set.py" "$SESSION" outcome held
+python3 "$AISYNTH_HOME/bin/lib/frontmatter_set.py" "$SESSION" cruxes_mattered partly
+[ -n "$note" ] && python3 "$AISYNTH_HOME/bin/lib/frontmatter_set.py" "$SESSION" outcome_note "\"$note\""
+python3 "$AISYNTH_HOME/bin/lib/frontmatter_set.py" "$SESSION" revisit_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+```
+Confirm in one line. **Skip → write nothing** ("too early to tell," distinct from a recorded outcome).
+
+**`revisit` (no arg) — the calibration glance.** List past **analysis** sessions (ensemble/solo; skip
+`mode: compare` records) with `date · grade · rating · outcome`, the un-revisited ones visible. Then read the
+logged outcomes **inline** (the same frontmatter read as §9 `list` — a read-only advisory glance, no new
+machinery) and surface the calibration picture:
+- **held-up by grade** — did `decision-grade` actually hold more than `exploratory`? (#7's "your
+  decision-grade calls held 8/10" — the test of whether the epistemic floor is honest.)
+- **held-up by mode** — `ensemble` vs `solo-structured` (feeds the `--compare` thesis / the findings doc's H1).
+- **⚠️ rated-high-but-overturned** — sessions rated 3–4 that did **not** hold up: the satisfaction≠correctness
+  catch (#3), perceived value diverging from real — the confident-miss worth learning from.
+
+Print **counts, not a score**, and say **"not enough outcomes logged yet"** below a few datapoints (no false
+precision at low n). It informs your judgment; it never tunes the tool. (A deterministic cross-session
+tally helper, and predictor-validation analysis, are later increments — MVP keeps the glance inline.)
+
+**Frontmatter** (in the §7 template, absent until revisited): `outcome` · `cruxes_mattered` · `outcome_note`
+· `revisit_date`.
 
 ---
 
