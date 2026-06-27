@@ -37,7 +37,8 @@ Parse the invocation:
 | `resume [id]` | §9 — reload a session's headline + context |
 | `--solo <topic>` | §11 — fast single-model **solo-structured** baseline (one host-Claude call) |
 | `rate <1-4> [why]` | §12 — log the usefulness rating onto the latest (or named) session |
-| `--compare` · `focus` · `tensions` · `revisit` · `annotate` · `setup` | **Deferred.** Print one line saying so + the alternative (`--compare`/`revisit` are the next increments; `--solo` already gives the baseline). Do not implement yet. |
+| `--compare <topic>` | §13 — **blind** A/B of the full ensemble vs the `--solo` baseline; rate both blind, then unblind + log win by problem type |
+| `focus` · `tensions` · `revisit` · `annotate` · `setup` | **Deferred.** Print one line saying so + the alternative (`revisit` is the next increment — the delayed "did it hold up?" check; `--solo`/`--compare` already cover the baseline + its blind A/B). Do not implement yet. |
 
 **Paths.** `AISYNTH_HOME` = the directory containing this SKILL.md (where `bin/ roles/ schemas/` live);
 resolve it at runtime and use absolute paths for assets. Sessions are **project-local** (current
@@ -470,9 +471,9 @@ Then clean up `$WORK` (`rm -rf "$WORK"`). The session file is the durable record
 
 `--solo <topic>` (plus optional `--context`) runs the **honest single-model baseline**: one host-Claude
 pass that plays all four roles inline (Analyst → Critic → Steelman → Synthesizer + a self-critique), no
-ensemble, no Codex. It is both a fast/cheap path and the baseline that `--compare` (the next increment)
-will A/B the ensemble against — so render it in a format **comparable to §8**. Don't make the baseline
-look barer than the ensemble; that would bias a later blind comparison toward the fancier-looking output.
+ensemble, no Codex. It is both a fast/cheap path and the baseline that `--compare` (§13) A/Bs the
+ensemble against — so render it in a format **comparable to §8**. Don't make the baseline look barer than
+the ensemble; that would bias the blind comparison toward the fancier-looking output.
 
 1. **Setup** exactly as §1 (slug · `ID` · `WORK` · `SESSION` · mkdir). No provider probe (host only).
    Handle `--context` per §1.3 (check readable; pass the paths to the sub-agent).
@@ -524,6 +525,108 @@ python3 "$AISYNTH_HOME/bin/lib/frontmatter_set.py" "$SESSION" usefulness_label g
 Confirm in one line ("Logged: good (3). Thanks."). On **skip**, write nothing — an absent field means
 "declined to judge," distinct from a low score. Never auto-steer defaults from ratings; surfacing
 aggregate patterns back to you (your call) is a later increment.
+
+---
+
+## 13. `--compare <topic>` — blind ensemble-vs-solo (the thesis test)
+
+`--compare <topic>` (plus optional `--context`) runs **both** the full ensemble (§1–§8) **and** the
+`--solo` baseline (§11) on the same decision, then presents them **blind** as **Option A / Option B** for
+you to rate — the honest test of *whether the ensemble earns its cost, and on which problem types* (#4).
+**Blinding is mandatory** (R4 / #4): knowing which output is the "fancy" one triggers an effort-heuristic
+bias, so the blind render shows **only shared, blindable content** and suppresses every mode tell until you
+rate. The rating stays **perceived usefulness, never an optimization target** (R5, §12) — `--compare`
+*surfaces* a pattern; it never steers the output.
+
+**Two genuinely-different arms required.** Probe Codex (§1.2) first. If Codex is unavailable the "ensemble"
+arm degrades to single-model — same family as solo, no real contrast — so don't fake it: print
+"⚠️ Codex unavailable — `--compare` needs two model families to differ; run `--solo` for now, or retry when
+Codex is back." and stop. (Inform, don't gate — `--solo` still works.)
+
+### Turn 1 — run both arms, present blind
+
+1. **Setup once** (§1: slug → one base `ID`; `--context` per §1.3). Derive distinct paths off the single
+   base id so the two same-second child runs can't collide on the timestamp:
+   `ENS_SESSION=…/sessions/$ID.md` · `SOLO_SESSION=…/sessions/$ID-solo.md` ·
+   `CMP_SESSION=…/sessions/$ID-compare.md` · `CMP_WORK=…/.work/$ID-compare` (`mkdir -p "$CMP_WORK"`).
+2. **Run both arms concurrently** (same turn, so they overlap): the **ensemble** (§1b–§7, with Codex calls
+   backgrounded per §2's execution note) **and** the **solo** sub-agent (§11.2–§11.5), each writing to the
+   `*_SESSION` path assigned above (its own transient `$WORK` for intermediates is fine — the compare reads
+   only the written session files). **Skip each arm's render: no §8 headline, no §11.6 headline, no §12
+   rating prompt** — rendering a real headline now would unblind it. If an arm yields no session (ensemble:
+   both R1 voices dead per §1a; solo: re-spawn still fails), stop with a one-line error — you can't compare a
+   missing arm.
+3. **Randomize order without `Math.random`** — clock parity — and save the **private** map (it lives only in
+   `$CMP_WORK`, gitignored/transient, **never** in a session frontmatter, so it can't be peeked mid-rating):
+   ```bash
+   if [ $(( $(date -u +%s) % 2 )) -eq 0 ]; then A=ensemble; B=solo; else A=solo; B=ensemble; fi
+   printf '{"A":"%s","B":"%s","ensemble_session":"%s","solo_session":"%s"}\n' \
+     "$A" "$B" "$ENS_SESSION" "$SOLO_SESSION" > "$CMP_WORK/compare_map.json"
+   ```
+   **Do not clean `$CMP_WORK`** this turn.
+4. **Render A and B with ONE identical template**, read from each arm's **child session file** (the same
+   extraction works live and against saved sessions). Per option, in this fixed order, show only the
+   **shared, blindable** fields — identical headers, order, styling, **and length**:
+   - **Recommendation** at **§8 headline shape** (1–2 sentences; if exploratory, *What's missing to decide*
+     + a clearly-marked *Best guess*) — condense `## Synthesis` so prose volume can't tell them apart.
+   - **Reframe** (if any) — `proposed_question` + crux from frontmatter `reframe:`, **`[…]` source tag stripped**.
+   - **`[exploratory|decision-grade]`** + a **neutral** one-line why from shared facts only (unverified
+     load-bearing cruxes / weak provenance) — **never** the producing mechanism.
+   - **Cruxes** — the load-bearing ones, ✅verified / ⚠️unverified + how-to-verify (from `## Cruxes`).
+   - **Capability-gaps** (if material) + remedy. · **Unresolved tensions** (or "none").
+
+   **Suppress every mode tell** — the blind is only as good as this scrub. Drop entirely: the **drivers line**
+   (adversary vs self_critique, converged vs n-a); the **`## Adversarial review` / `## Self-critique`**
+   section; the reframe **source tag**; solo's **single-model caveat** + its baseline blockquote. Per-crux
+   ✅/⚠️ still conveys verification status, so nothing decision-relevant is lost. Also scrub tells that sit
+   *inside* a kept field — drop the clause, keep the topic residue. Verified against the two p99 sessions:
+   ensemble tensions "None survived the revision — all three objections conceded" → render **"none"**; a gap
+   remedy "…the **ensemble** reasoned from general precedent" → drop "ensemble"; reframe prefixes
+   `[pre-flight + in-flight host & codex]` / `[solo]` → gone. Strip any occurrence of: a `[…]` source tag ·
+   "single-model / one call / no cross-model / independent adversary" · "adversary / objection / revision /
+   conceded↔rebutted" · "self-critique / same-model" · "ensemble / both frames / off-model / Codex / host" ·
+   "converged|diverged post-evidence".
+5. **Ask for both ratings, blind** (reuse §12's scale + chips), then end the turn:
+   > Rate each, blind — **1** bad · **2** fine · **3** good · **4** great, optional why-chip (*new insight* /
+   > *changed my decision* / *too generic* / *felt wrong*), skip either if you won't judge. Reply e.g.
+   > `A:3 B:4` (or `A good, B great`). I'll then reveal which was which.
+
+### Turn 2 — unblind + log (on the rating reply)
+
+The ratings arrive in a later message (`A:3 B:4`, natural words, or one-sided). Locate the pending compare
+(newest `…/.work/*-compare/compare_map.json`; none → say there's no compare to rate):
+1. **Map** A/B → the two ratings → ensemble/solo via `compare_map.json` (a skipped side = absent, not 0).
+2. **Unblind**: state plainly which was the **ensemble** and which the **solo** baseline, with the **process
+   diff** + the now-safe **drivers** for each (ensemble: R1 diverge · cross-model Critic · off-model
+   adversary {A obj, S survived} · post_evidence {converged|diverged}; solo: 4 roles inline + self-critique
+   {conceded|rebutted} · post_evidence n-a).
+3. **Winner** = the higher rating; equal → `tie`; either side unrated → `incomplete`. **Coarse problem-type**
+   from a fixed enum so slices aggregate: `architecture | tradeoff | strategy | postmortem | process | other`.
+4. **Write the `mode: compare` record** to `$CMP_SESSION` — frontmatter then a short body:
+   ```yaml
+   ---
+   id: <ID>-compare
+   mode: compare
+   topic: <topic>
+   date: <TS>
+   status: complete
+   problem_type: <tag>
+   ensemble_session: <ensemble child id>
+   solo_session: <solo child id>
+   ab_mapping: {A: <ensemble|solo>, B: <…>}   # safe to record post-unblind
+   rating_ensemble: <1-4, or absent>
+   rating_solo: <1-4, or absent>
+   why_ensemble: <chip, or absent>
+   why_solo: <chip, or absent>
+   winner: ensemble | solo | tie | incomplete
+   ---
+   ```
+   Body = the blind A/B you showed + the unblind / process-diff + a one-line "logged as a pattern datapoint,
+   not a target." If a rating lands in a still-later message, set it with `frontmatter_set.py`. Then
+   `rm -rf "$CMP_WORK"`. The two child sessions remain (full debate via `expand`); the record points to them.
+
+**Never optimize toward the winner** (R5, §12): this only *surfaces* signal back to you ("ensemble wins on
+`tradeoff`/`architecture`, ties on simple ones — default `--solo` there?"); outputs are never tuned to win.
 
 ---
 
