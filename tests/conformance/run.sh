@@ -19,7 +19,7 @@ source "$TESTDIR/assert.sh"
 source "$TESTDIR/fakes.sh"
 
 which="${1:-all}"
-printf '=== /ai-synthesis provider conformance ===\n'
+printf '=== /synthesis provider conformance ===\n'
 
 case "$which" in
   unit)

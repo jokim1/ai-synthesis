@@ -2,7 +2,7 @@
 
 *A [Claude Code](https://claude.com/claude-code) skill that runs a grounded, multi-model debate on one hard decision — and tells you honestly how much to trust the answer.*
 
-`/ai-synthesis` is for decisions worth deliberating: architecture choices, RFC stress-tests, build-vs-buy, strategy calls, postmortems. It is **not** a quick lookup — a full run takes a few minutes and several model calls, on purpose.
+`/synthesis` is for decisions worth deliberating: architecture choices, RFC stress-tests, build-vs-buy, strategy calls, postmortems. It is **not** a quick lookup — a full run takes a few minutes and several model calls, on purpose.
 
 ## What it is
 
@@ -32,21 +32,21 @@ cd ai-synthesis
 
 # 2. Install as a personal Claude Code skill (symlink the whole folder)
 mkdir -p ~/.claude/skills
-ln -s "$(pwd)" ~/.claude/skills/ai-synthesis
+ln -s "$(pwd)" ~/.claude/skills/synthesis
 
 # 3. (Recommended) enable the second model family
 codex login
 
 # 4. Verify: start a NEW Claude Code session (skills load at startup),
-#    then type "/ai-synthesis" — it should autocomplete.
+#    then type "/synthesis" — it should autocomplete.
 ```
 
 **Alternatives & maintenance**
 
-- *Snapshot instead of live-sync:* `cp -R "$(pwd)" ~/.claude/skills/ai-synthesis` (you'll re-copy after repo updates).
-- *Only inside one project:* symlink into that project instead — `ln -s "$(pwd)" /path/to/project/.claude/skills/ai-synthesis` — and `/ai-synthesis` is available only there.
+- *Snapshot instead of live-sync:* `cp -R "$(pwd)" ~/.claude/skills/synthesis` (you'll re-copy after repo updates).
+- *Only inside one project:* symlink into that project instead — `ln -s "$(pwd)" /path/to/project/.claude/skills/synthesis` — and `/synthesis` is available only there.
 - *Update a symlinked install:* just `git pull` in the repo — the skill is always current.
-- *Remove it:* `rm ~/.claude/skills/ai-synthesis` (it's a symlink — your repo is untouched).
+- *Remove it:* `rm ~/.claude/skills/synthesis` (it's a symlink — your repo is untouched).
 
 ## Using it — an end-to-end walkthrough
 
@@ -54,11 +54,11 @@ codex login
 
 2. **Ask for a synthesis:**
    ```
-   /ai-synthesis Our API's p99 latency is too high — rewrite the hot path in Rust, or add more replicas?
+   /synthesis Our API's p99 latency is too high — rewrite the hot path in Rust, or add more replicas?
    ```
-   Add your own materials as grounding if you have them:
+   Add your own materials as grounding by `@`-mentioning them — interleave the files anywhere in the line:
    ```
-   /ai-synthesis --context rfc.md --context perf-numbers.csv <your decision>
+   /synthesis @rfc.md @perf-numbers.csv <your decision>
    ```
 
 3. **It runs the debate** (a few minutes; progress is shown): the two model families diverge and gather cited evidence independently → the evidence is pooled into a shared ledger → they critique each other over that shared evidence → a recommendation is synthesized, made conditional on the cruxes → the *other* model attacks it → one revision pass.
@@ -69,43 +69,43 @@ codex login
    - The **cruxes** — the assumptions the recommendation hinges on — each marked ✅ verified / ⚠️ unverified, with how to check it.
    - Material **capability-gaps**, the **strongest objection** (conceded or rebutted), and any **unresolved tensions**.
 
-5. **Go deeper if you want:** `/ai-synthesis expand` prints the full debate, evidence ledger, and adversarial exchange. Every run is saved to `./.ai-synthesis/sessions/` in your current project.
+5. **Go deeper if you want:** `/synthesis expand` prints the full debate, evidence ledger, and adversarial exchange. Every run is saved to `./.ai-synthesis/sessions/` in your current project.
 
 6. **Rate it** (your honest, perceived usefulness — logged, never gamed):
    ```
-   /ai-synthesis rate 4 "new insight"
+   /synthesis rate 4 "new insight"
    ```
 
 7. **Sanity-check the value, blind:**
    ```
-   /ai-synthesis --compare <your decision>
+   /synthesis --compare <your decision>
    ```
    This runs the full ensemble *and* a fast single-model baseline, shows them to you as **Option A / Option B with no labels**, asks you to rate both, then reveals which was which — an honest test of whether the heavier process earned its cost on *this kind* of problem.
 
 8. **Need a quick take instead of the full treatment?**
    ```
-   /ai-synthesis --solo <your decision>
+   /synthesis --solo <your decision>
    ```
    One model, one pass — fast and cheap, honestly labeled single-model.
 
 9. **Later, once the decision has played out, close the loop:**
    ```
-   /ai-synthesis revisit <session-id>
+   /synthesis revisit <session-id>
    ```
-   Record whether the recommendation held up and whether the cruxes were the ones that actually mattered. Over time, `/ai-synthesis revisit` (no id) shows a calibration picture — e.g. did the runs it called *decision-grade* actually hold up more than the *exploratory* ones?
+   Record whether the recommendation held up and whether the cruxes were the ones that actually mattered. Over time, `/synthesis revisit` (no id) shows a calibration picture — e.g. did the runs it called *decision-grade* actually hold up more than the *exploratory* ones?
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `/ai-synthesis <decision>` | Full multi-model synthesis |
-| `/ai-synthesis --context <file> … <decision>` | Add your files as grounding |
-| `/ai-synthesis --solo <decision>` | Fast single-model baseline |
-| `/ai-synthesis --compare <decision>` | Blind A/B: full ensemble vs. solo, rate both |
-| `/ai-synthesis rate <1-4> [why]` | Log how useful the last run was |
-| `/ai-synthesis revisit [id]` | Record how a past decision held up + calibration view |
-| `/ai-synthesis expand [round]` | Show the full debate / evidence / adversarial detail |
-| `/ai-synthesis list` · `resume [id]` | Browse / reload past sessions |
+| `/synthesis <decision>` | Full multi-model synthesis |
+| `/synthesis @<file> … <decision>` | Add your files as grounding (`@`-mention them) |
+| `/synthesis --solo <decision>` | Fast single-model baseline |
+| `/synthesis --compare <decision>` | Blind A/B: full ensemble vs. solo, rate both |
+| `/synthesis rate <1-4> [why]` | Log how useful the last run was |
+| `/synthesis revisit [id]` | Record how a past decision held up + calibration view |
+| `/synthesis expand [round]` | Show the full debate / evidence / adversarial detail |
+| `/synthesis list` · `resume [id]` | Browse / reload past sessions |
 
 ## Good to know
 

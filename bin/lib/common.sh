@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared helpers for the /ai-synthesis provider layer.
+# Shared helpers for the /synthesis provider layer.
 #
 # Sourced by bin/provider-invoke, bin/provider-probe, and the adapters. Keep it
 # bash 3.2 compatible (macOS system bash): no associative arrays, no ${v,,}.

@@ -1,6 +1,6 @@
 # Provider layer
 
-The auth-agnostic substrate the `/ai-synthesis` orchestrator calls to run a role
+The auth-agnostic substrate the `/synthesis` orchestrator calls to run a role
 on any model backend. The orchestrator (the skill file) never shells out to
 `claude` / `codex` / `curl` directly — it calls these two entrypoints and reads
 **one normalized envelope**, so the heterogeneous reality (Claude's enforced
