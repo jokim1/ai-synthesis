@@ -179,7 +179,7 @@ bin/council-route-probe --json [--auth-policy subscription-only|default]
 
 The portable CLI path should refuse to run without a roster file because it cannot present Pi's native editable menu.
 The Pi extension should use `ctx.modelRegistry` for Pi routes and should not parse Pi auth files directly.
-The Pi extension should call `complete(model, context, { apiKey, headers, env, signal: runSignal, timeoutMs, maxRetries: 0, reasoningEffort: entry.effort })` for Pi model routes.
+The Pi extension should call `complete(model, context, { apiKey, headers, env, signal: runSignal, timeoutMs, maxRetries: 0, reasoningEffort: entry.effort === "off" ? undefined : entry.effort })` for Pi model routes.
 The Pi executor must use the per-call `reasoningEffort` option shown by the installed Pi examples, not session-global `pi.setThinkingLevel()`, to avoid cross-member effort bleed during concurrent calls.
 If a future installed Pi version renames that option, Phase 1 should update the executor contract and type tests before model execution is implemented.
 The Pi extension should pass no model tools during council MVP.
@@ -409,7 +409,7 @@ For portable Codex CLI routes, supported efforts should be `["minimal", "low", "
 For portable Claude Code subscription routes, supported efforts should be the adapter-supported set, initially `["low", "medium", "high", "max"]`, unless a future no-cost capability probe provides better model-specific metadata.
 Unsupported remembered efforts should remain in config and UI until the user edits them.
 Execution should reject an enabled member whose selected effort is unsupported and should not call `pi.setThinkingLevel()` or `provider-invoke` with a different effort.
-Pi execution should pass the selected supported effort to `complete()` as per-call `reasoningEffort` for each member.
+Pi execution should pass the selected supported effort to `complete()` as per-call `reasoningEffort` for each member, except `off`, which should omit `reasoningEffort` rather than passing the literal string `"off"`.
 Portable execution should pass the selected supported effort to `bin/provider-invoke --effort` for each member.
 Effort propagation should be asserted from captured executor call records before any live model smoke test is allowed.
 Replacement suggestions should pick the nearest effort by the ordered list `off < minimal < low < medium < high < xhigh < max`.
@@ -635,7 +635,7 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Provider failure | `tests/conformance/council.sh` | Failed member is recorded and remaining members continue. |
 | Partial council degradation | `tests/conformance/council.sh` | One surviving voice yields degraded `not_ready`; two surviving voices yield degraded council report. |
 | Hidden-host-vote prevention | `tests/conformance/council.sh` | No model call occurs for `ctx.model` unless it appears in roster. |
-| Per-member Pi effort propagation | TypeScript executor unit test | `pi-complete` passes each roster entry's effort as per-call `reasoningEffort` and never calls `pi.setThinkingLevel()`. |
+| Per-member Pi effort propagation | TypeScript executor unit test | `pi-complete` passes each roster entry's effort as per-call `reasoningEffort`, maps `off` to omitted or `undefined`, and never calls `pi.setThinkingLevel()`. |
 | Concurrent mixed efforts | TypeScript executor unit test | Two concurrent Pi member calls with different efforts preserve their own effort options and do not bleed session-global state. |
 | Phase-role fallback | TypeScript engine unit test | Rosters without explicit critic, steelman, or adversary roles receive deterministic explicit-member phase assignments recorded in diagnostics. |
 | Deterministic report strategy | `tests/conformance/council.sh` | Final synthesis uses no model executor and report says deterministic. |
@@ -705,3 +705,17 @@ Document Claude subscription-only behavior and the absence of Anthropic API fall
 Document provider billing labels and cost estimation limits.
 Document cancellation, reload, and session replacement behavior.
 Document that `/council` never modifies the reviewed plan and never authorizes implementation.
+
+## GSTACK REVIEW REPORT
+
+| Review | Trigger | Why | Runs | Status | Findings |
+|--------|---------|-----|------|--------|----------|
+| CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | not run | Not requested for this phase. |
+| Codex Review | `/codex review` | Independent 2nd opinion | 0 | not run | Separate Claude Opus challenge was run outside this table. |
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | CLEAR | 1 issue found and folded: Pi `off` effort now omits `reasoningEffort` instead of passing `"off"`. |
+| Design Review | `/plan-design-review` | UI/UX gaps | 0 | not run | No design review requested for this phase. |
+| DX Review | `/plan-devex-review` | Developer experience gaps | 0 | not run | No DX review requested for this phase. |
+
+- **VERDICT:** ENG CLEARED for planning; ready for independent re-review before implementation.
+
+NO UNRESOLVED DECISIONS
