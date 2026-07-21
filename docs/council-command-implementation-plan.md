@@ -10,6 +10,9 @@ The design keeps `/council` as personal `ai-synthesis` customization and does no
 `SKILL.md` is the current `/synthesis` orchestrator and intentionally keeps orchestration in the skill file instead of a framework.
 `SKILL.md` resolves `AISYNTH_HOME` from the directory containing the skill and writes durable project-local sessions under `./.ai-synthesis/sessions/`.
 `SKILL.md` supports `/synthesis <decision>`, Pi-style `@file`-like context parsing for `/synthesis`, `--solo`, `--compare`, `rate`, `revisit`, `expand`, `list`, and `resume`.
+`SKILL.md` `expand` selects the latest `./.ai-synthesis/sessions/*.md` file or a matching id/topic and prints expected synthesis sections.
+`SKILL.md` `list` reads every `./.ai-synthesis/sessions/*.md` frontmatter file and does not define a `mode` filter.
+`SKILL.md` `rate` writes to the latest or matching session, and `revisit` explicitly skips only `mode: compare`, so council reports must not share that legacy glob until those commands are changed.
 `SKILL.md` already defines independent initial analysis, shared evidence ledger construction, degradation on failed voices, adversarial review, decision-grade versus exploratory grading, and frontmatter-backed ratings and outcomes.
 `roles/analyst.md`, `roles/critic.md`, `roles/steelman.md`, `roles/synthesizer.md`, `roles/adversary.md`, and `roles/solo.md` provide the strongest reusable prompting concepts for council phases.
 `schemas/analyst.json`, `schemas/critic.json`, `schemas/steelman.json`, `schemas/adversary.json`, and `schemas/solo.json` enforce `ok: true`, provenance discipline, cruxes, capability gaps, and bounded adversarial objections.
@@ -191,15 +194,19 @@ bin/council-route-probe --json [--auth-policy subscription-only|default]
 ```
 
 The portable CLI path should refuse to run without a roster file because it cannot present Pi's native editable menu.
+When `--roster-file` exists but fails JSON parsing, schema validation, route reconciliation, supported-effort validation, two-member minimum validation, or report-strategy validation, `bin/council` should exit nonzero before execution.
+The portable CLI should use exit code `2` for usage/input errors, `3` for roster JSON or schema errors, `4` for roster semantic validation failures, and `5` for runtime failures after execution starts.
+For portable roster validation failures, stdout should contain either human-readable diagnostics or a JSON envelope under `--json`, no roster config should be written, no report should be written, and no deterministic or chair fallback should run silently.
 The Pi extension should use `ctx.modelRegistry` for Pi routes and should not parse Pi auth files directly.
-The Pi extension should call `complete(model, context, { apiKey, headers, env, signal: runSignal, timeoutMs, maxRetries: 0, reasoningEffort: entry.effort === "off" ? undefined : entry.effort })` for Pi model routes.
+The Pi extension should call `complete(model, context, { apiKey, headers, env, signal: memberSignal, timeoutMs, maxRetries: 0, reasoningEffort: entry.effort === "off" ? undefined : entry.effort })` for Pi model routes.
 The Pi executor must use the per-call `reasoningEffort` option shown by the installed Pi examples, not session-global `pi.setThinkingLevel()`, to avoid cross-member effort bleed during concurrent calls.
 If a future installed Pi version renames that option, Phase 1 should update the executor contract and type tests before model execution is implemented.
 The Pi extension should pass no model tools during council MVP.
 The extension itself should read plan files into immutable, line-numbered text and should instruct models to cite `plan.md:Lx-Ly`.
 The engine should accept issue text or immutable plan text, a confirmed roster, a route catalog, and an abort signal.
 The engine should return a structured report object plus markdown.
-The report writer should save markdown under `./.ai-synthesis/sessions/<id>-council.md` to reuse existing session browsing concepts without changing old sessions.
+The report writer should save markdown under `./.ai-synthesis/council-sessions/<id>.md` for MVP.
+Council reports should not be written under `./.ai-synthesis/sessions/` until existing `/synthesis` `list`, `expand`, `resume`, `rate`, and `revisit` commands explicitly filter or tolerate `mode: council`.
 The Pi extension should append a custom Pi session entry named `ai-synthesis-council` with run id, input summary, status, and report path.
 The custom Pi session entry should not be the source of roster persistence.
 
@@ -316,6 +323,20 @@ export interface CouncilConfigLocation {
   source: "pi_user" | "pi_project" | "portable_explicit";
   seededFrom?: "user" | "project" | "recommendations";
 }
+
+export interface CouncilPositionCandidateV1 {
+  id: string;
+  label: string;
+  source: "plan_review_default" | "issue_option" | "issue_default" | "engine_default";
+  extractedText?: string;
+}
+
+export interface CouncilPositionCatalogV1 {
+  version: 1;
+  inputKind: "issue" | "plan";
+  candidates: CouncilPositionCandidateV1[];
+  otherPrefix: "other:";
+}
 ```
 
 `routeId` must be a deterministic stable key with the form `v1:<executor>:<provider>:<model>`.
@@ -346,7 +367,7 @@ The model voice schema in `schemas/council-voice.json` should require:
   "ok": true,
   "member_id": "stable roster entry id",
   "role": "role name",
-  "position_key": "stable lowercase short key for the member's recommendation position",
+  "position_key": "one id from the engine-provided position catalog, or other:<short lowercase ASCII slug>",
   "recommendation": "role-specific recommendation or position",
   "evidence": [
     {
@@ -370,14 +391,20 @@ The model voice schema in `schemas/council-voice.json` should require:
 }
 ```
 
-`position_key` should be generated by the model under instructions to use a short lowercase ASCII slug and should be normalized by the engine to `[a-z0-9-]{1,64}`.
-When the model omits or emits an invalid `position_key`, the engine should derive one from the first 80 characters of `recommendation` and mark it as derived in diagnostics.
+`derive_position_catalog` should build a model-free `CouncilPositionCatalogV1` before `initial_analysis` and include it verbatim in every initial prompt.
+For plan input, the catalog should contain `accept_plan`, `revise_plan`, `reject_plan`, and `needs_more_evidence`.
+For issue input, the catalog should deterministically extract up to four explicit alternatives from separators such as `vs`, `versus`, `or`, numbered lists, and bullet lists, using ids `issue_option_1` through `issue_option_4`.
+Every issue catalog should also include `propose_alternative` and `defer_for_evidence`, even when no explicit alternatives are extracted.
+Models should be instructed to set `position_key` to exactly one catalog id unless none fits, in which case they may emit `other:<slug>`.
+The engine should reject invalid `position_key` values after one JSON-only retry; if the retry still fails, that voice degrades rather than deriving a hidden semantic grouping.
+The engine should assign `canonicalPositionId` by exact catalog id or exact `other:<slug>` match and should not use display labels or prose similarity for grouping.
+This means deterministic grouping is reproducible: two voices group only when they choose the same provided candidate or the same exact `other:<slug>`.
 Each assumption should include `assumption_key`, and the engine should normalize it to `[a-z0-9-]{1,64}` and form the canonical assumption id as `<member_id>:<assumption_key>`.
 When an assumption key is missing or invalid, the engine should derive a stable key from the first 80 characters of the assumption statement and mark it as derived in diagnostics.
-The deterministic synthesis strategy depends on `position_key`, grounded evidence, risks, and assumptions rather than free-form prose ordering.
+The deterministic synthesis strategy depends on `canonicalPositionId`, grounded evidence, risks, and assumptions rather than free-form prose ordering.
 The critique schema should require targeted challenges, steelmans, and an `assumption_reviews` array keyed by canonical assumption id.
 Each critique assumption review should require `status: "verified_by_cited_evidence" | "unverified" | "contradicted" | "not_evaluated"`, a short rationale, and at least one grounded evidence locator when status is `verified_by_cited_evidence` or `contradicted`.
-For deterministic readiness, a load-bearing assumption is verified only when at least one successful critique or evidence-auditor phase marks its canonical id `verified_by_cited_evidence` with grounded evidence and no successful critique marks the same assumption `contradicted` or `unverified`.
+For deterministic readiness, a load-bearing assumption is verified only when at least one successful critique response marks its canonical id `verified_by_cited_evidence` with grounded evidence and no successful critique response marks the same assumption `contradicted` or `unverified`.
 The engine should not infer verification from the initial voice's confidence, from the existence of `how_to_verify`, or from unsupported prose.
 The adversary schema should reuse the existing bounded pattern from `schemas/adversary.json` with axes `evidence`, `framing`, and `recommendation_logic`.
 The final report schema should require:
@@ -479,6 +506,7 @@ The command starts in `idle`.
 `persist_roster` atomically writes the confirmed roster before model execution starts.
 `prepare_prompts` builds immutable prompts and line-numbered plan evidence.
 `prepare_prompts` also creates one per-run `AbortController` that is owned by the engine, not by `ctx.signal`, because Pi command contexts can be idle and may not provide a signal.
+`derive_position_catalog` builds the model-free `CouncilPositionCatalogV1` and freezes it for the run.
 `initial_analysis` runs each executable member independently without seeing other member outputs.
 `pool_evidence` deterministically builds a shared evidence ledger from issue text, plan lines, and member evidence.
 `critique` runs evidence-led critique over the ledger and initial outputs.
@@ -495,8 +523,9 @@ The command starts in `idle`.
 Phase-role semantics should be deterministic and independent of UI ordering except where explicitly stated.
 Every enabled executable roster entry runs `initial_analysis`, including a designated chair.
 Later phases select explicit roster members from the successful initial voices.
-`critique` should run all successful members with role `implementation-critic` or `risk-critic`; if none exist, select the highest-effort non-chair successful member, or the highest-effort successful member if every survivor is a chair, breaking ties by roster order.
-`steelman` should run all successful members with role `steelman`; if none exist, select the successful member whose `position_key` has the fewest supporters, breaking ties by highest effort then roster order.
+`critique` should run all successful members with role `implementation-critic`, `risk-critic`, or `evidence-auditor`; if none exist, select the highest-effort non-chair successful member, or the highest-effort successful member if every survivor is a chair, breaking ties by roster order.
+`evidence-auditor` is not a separate phase in MVP; it is a roster role that participates in the `critique` phase and emits the same `assumption_reviews` contract.
+`steelman` should run all successful members with role `steelman`; if none exist, select the successful member whose `canonicalPositionId` has the fewest supporters, breaking ties by highest effort then roster order.
 `adversary` should run all successful members with role `adversary`; if none exist, select a successful `risk-critic`, otherwise the highest-effort non-chair successful member, or the highest-effort successful member if every survivor is a chair.
 `chair` is a report strategy role only and does not automatically satisfy critique, steelman, or adversary selection unless its roster role also matches that phase.
 Phase fallback selection must be recorded in the report diagnostics so users can see when a member was reused outside its preferred role.
@@ -509,7 +538,7 @@ idle -> parse_input -> validate_input -> discover_routes -> load_roster -> recom
 edit_roster -> validate_roster -> edit_roster
 edit_roster -> canceled
 validate_roster -> confirm_run
-confirm_run -> persist_roster -> prepare_prompts -> initial_analysis -> pool_evidence
+confirm_run -> persist_roster -> prepare_prompts -> derive_position_catalog -> initial_analysis -> pool_evidence
 pool_evidence -> critique -> steelman -> adversary -> synthesize -> validate_report -> write_report -> done
 initial_analysis -> write_terminal_report -> failed
 initial_analysis -> pool_evidence
@@ -527,6 +556,10 @@ The default max concurrent member calls should be `4`.
 The default hard roster cap should be `6` enabled members, with a config override allowed up to `8`.
 The default timeout should be `300000` ms for initial, critique, steelman, and adversary calls.
 The default timeout should be `420000` ms for explicit chair synthesis.
+The default whole-run deadline should be `1200000` ms and should abort the run-level `AbortController`.
+Each member call should receive a `memberSignal` from a per-member `AbortController` that is linked to the run-level signal.
+Run-level aborts from Escape, Pi `session_shutdown`, process signals, or the whole-run deadline should propagate to every active member controller.
+Per-member timeout handlers should abort only that member's controller or rely on the executor's per-call `timeoutMs`; they must never abort the run-level controller.
 The provider retry count should be `0` for transport-level retries so Pi can surface rate limits instead of waiting silently.
 Malformed structured output should get one JSON-only retry per voice.
 Structured validation should use a helper with the concrete signature `validateModelJson(schemaPath: string, rawText: string): Promise<{ ok: true; value: unknown } | { ok: false; exitCode: 3 | 4 | 2; rawText: string; error: string }>` and should delegate to `bin/lib/json_extract.py` for parity with the existing provider layer.
@@ -537,7 +570,7 @@ If at least two initial voices succeed, the report may complete as a council eve
 A designated chair must be a roster entry and must also run an independent initial analysis before the synthesis phase.
 A deterministic strategy must not call any model for synthesis.
 A deterministic strategy should produce a mechanical synthesis with narrower guarantees than a chair model.
-A deterministic strategy should group successful initial voices by normalized `position_key`.
+A deterministic strategy should group successful initial voices by engine-assigned `canonicalPositionId`, not raw model-generated prose or label similarity.
 A deterministic strategy should choose `recommendation` as the majority position when one position has more than half of successful voices.
 A deterministic strategy should choose `recommendation` as the plurality position only when it has at least two voices and at least one more supporter than the runner-up.
 A deterministic strategy should set `recommendation` to `No deterministic recommendation; see structured disagreement` when there is a tie, one surviving voice, no grounded evidence, or no plurality that meets the rule above.
@@ -545,8 +578,11 @@ A deterministic strategy should rank `evidence_summary` by grounded evidence cit
 A deterministic strategy should choose `strongest_dissent` from the largest non-winning position, breaking ties by count of grounded counter-evidence, count of load-bearing assumptions, and roster order.
 A deterministic strategy should treat `initial_analysis`, `pool_evidence`, `critique`, `steelman`, `adversary`, `synthesize`, `validate_report`, and `write_report` as critical phases for readiness.
 For readiness, a phase is degraded when a scheduled member fails, times out, returns invalid structured output after retry, is skipped because no successful voice can be selected, or hits an auth-policy failure; deterministic fallback selection recorded before the phase starts is not degraded if the selected fallback member succeeds.
-A deterministic strategy should set `decision_readiness` to `ready` only when at least two voices support the winning position, every critical phase completed without degradation, every winning-position load-bearing assumption is verified by the critique/evidence-auditor contract, and no material dissent remains unresolved.
-A deterministic strategy should set `decision_readiness` to `conditional` when there is a winning position but unresolved assumptions, partial degradation, or material dissent.
+A deterministic strategy should compute `materialDissent` mechanically before readiness.
+`materialDissent` is true when a non-winning `canonicalPositionId` has at least two successful initial supporters, when a non-winning position has one supporter and its grounded evidence count is greater than or equal to the winning position's grounded evidence count, or when any winning-position load-bearing assumption is marked `contradicted` or `unverified` by a successful critique response.
+Deterministic mode should treat any `materialDissent` as unresolved because no synthesizer model is called to resolve it.
+A deterministic strategy should set `decision_readiness` to `ready` only when at least two voices support the winning position, every critical phase completed without degradation, every winning-position load-bearing assumption is verified by the critique contract, and `materialDissent` is false.
+A deterministic strategy should set `decision_readiness` to `conditional` when there is a winning position but unresolved assumptions, partial degradation, or `materialDissent` is true.
 A deterministic strategy should set `decision_readiness` to `not_ready` when the recommendation is the no-recommendation sentinel, only one initial voice survived, or validation failed.
 A deterministic strategy should set `next_action` to the highest-ranked assumption verification when readiness is conditional or not ready, otherwise to the smallest concrete next step named by the winning position.
 A deterministic strategy should include a report note that the synthesis was generated by auditable aggregation code, not by another model voice.
@@ -554,7 +590,8 @@ A structured disagreement strategy must preserve major positions and dissent wit
 The current Pi host model must never be used for a model call unless its provider/model route is present as an enabled roster entry.
 The engine should create one `runId` per Run using timestamp, input hash, and random suffix.
 The Run button should become inactive after `confirm_run` to prevent duplicate starts.
-Escape, Pi `session_shutdown`, process signals in the portable CLI, and timeout handlers should all abort the per-run `AbortController`.
+Escape, Pi `session_shutdown`, process signals in the portable CLI, and the whole-run deadline should abort the per-run `AbortController`.
+Member timeout handlers should never abort the per-run `AbortController`.
 Report writes should be idempotent by writing only to the `runId` report path.
 If a report path already exists for a `runId`, the writer should fail rather than overwrite.
 
@@ -567,10 +604,13 @@ Oversized plan files should be rejected above a default `512 KiB` limit, with a 
 Binary-looking plan files should be rejected by checking for NUL bytes.
 Corrupt roster config should be quarantined and recommendations should be used.
 Unwritable roster config should warn and allow one current run, but the next invocation should not pretend the roster was remembered.
+Portable CLI roster JSON parse or schema failure should exit `3` before route discovery when possible, write no report, and print the offending path plus schema error summary.
+Portable CLI roster semantic validation failure should exit `4`, write no report, and list every blocking entry or strategy problem, including unsupported efforts, unavailable routes, fewer than two executable members, and invalid chair strategy.
+Portable CLI `--json` validation failures should emit `{ "ok": false, "status": "validation_failed", "exitCode": 3 | 4, "diagnostics": [...] }` and should not include secrets or raw auth headers.
 Unavailable remembered routes should stay visible and should not count toward the two-member minimum.
 Unsupported remembered efforts should stay visible and should block that member from being executable until edited.
 Provider auth failure at execution time should mark that member failed and continue if possible.
-Provider timeout should mark that member timed out and continue if possible.
+Provider timeout should abort only the timed-out member's controller, mark that member timed out, and continue if the run-level signal has not been aborted.
 Provider malformed output after retry should preserve raw text in diagnostics but should not count as a structured voice.
 Provider rate limit should mark that member failed with a retry-after hint when available.
 Partial degradation should lower decision readiness and show which phases lost voices.
@@ -619,11 +659,12 @@ Adding `package.json` intentionally activates a Node/TypeScript contributor tool
 The implementation should add `package-lock.json`, require `npm ci` before pre-PR checks, and keep `npm run test`, `npm run typecheck`, and `npm run build` green on a clean checkout.
 This repo-wide development requirement is separate from runtime installation: existing Claude Code skill users who only symlink the repo should not need Node unless they run the new portable `bin/council` fallback or contributor checks.
 Existing session files in `./.ai-synthesis/sessions/` must remain readable by `expand`, `list`, `resume`, `rate`, and `revisit`.
-Council reports can share the session directory by using `mode: council` frontmatter and should be ignored by older `/synthesis` commands that expect other modes.
+Council reports should use `./.ai-synthesis/council-sessions/` for MVP because existing `/synthesis` `list`, `expand`, `resume`, and `rate` use the legacy `sessions/*.md` namespace broadly, and `revisit` only specifies skipping `mode: compare`.
+Do not rely on `mode: council` being ignored by legacy `/synthesis` commands unless a future implementation adds explicit mode filtering there with tests.
 Existing `--solo` and `--compare` should not depend on the council roster or route catalog.
-Existing `revisit` can later learn to include `mode: council`, but initial council implementation should not require changing revisit.
+Existing `revisit` can later learn to include council reports from `./.ai-synthesis/council-sessions/`, but initial council implementation should not require changing revisit.
 The optional Pi package should not be installed by default and should not change `/synthesis` runtime behavior for users who only symlink the Claude Code skill.
-If users install the package and later remove it with `pi remove`, their `./.ai-synthesis/sessions/*-council.md` reports remain readable markdown.
+If users install the package and later remove it with `pi remove`, their `./.ai-synthesis/council-sessions/*.md` reports remain readable markdown.
 If users have a remembered roster from a future version, version mismatch should warn and start from recommendations rather than partially loading unknown fields.
 If users have a remembered roster from an early council build without `routeId`, migration should derive `routeId` from `(executor, provider, model)` and preserve the original entry id, role, effort, enabled state, and chair flag.
 
@@ -694,20 +735,24 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Untrusted path | `tests/conformance/council.sh` | Symlink escape or path outside allowed roots is rejected. |
 | Empty input | `tests/conformance/council.sh` | TUI opens input flow and non-TUI prints usage. |
 | Provider failure | `tests/conformance/council.sh` | Failed member is recorded and remaining members continue. |
+| Member timeout scope | TypeScript engine/executor unit test | One member timeout aborts only that member controller; other concurrent members continue unless the run-level signal is aborted. |
 | Partial council degradation | `tests/conformance/council.sh` | One surviving voice yields degraded `not_ready`; two surviving voices yield degraded council report. |
 | Hidden-host-vote prevention | `tests/conformance/council.sh` | No model call occurs for `ctx.model` unless it appears in roster. |
 | Per-member Pi effort propagation | TypeScript executor unit test | `pi-complete` passes each roster entry's effort as per-call `reasoningEffort`, maps `off` to omitted or `undefined`, and never calls `pi.setThinkingLevel()`. |
 | Concurrent mixed efforts | TypeScript executor unit test | Two concurrent Pi member calls with different efforts preserve their own effort options and do not bleed session-global state. |
 | Pi API surface contract | `npm run verify:pi-surface` and `tests/council/pi-surface-contract.test-d.ts` | Installed Pi exports and command-context methods used by `/council` exist before route discovery, UI, or executor work is implemented. |
 | Phase-role fallback | TypeScript engine unit test | Rosters without explicit critic, steelman, or adversary roles receive deterministic explicit-member phase assignments recorded in diagnostics. |
+| Evidence-auditor routing | TypeScript engine unit test | A successful `evidence-auditor` roster entry is scheduled in the `critique` phase and emits `assumption_reviews`; no separate evidence-auditor phase is required. |
 | Deterministic report strategy | `tests/conformance/council.sh` | Final synthesis uses no model executor and report says deterministic. |
-| Deterministic synthesis algorithm | TypeScript engine unit test | Majority, plurality, tie, no-grounded-evidence, one-survivor, degraded critical phase, verified assumption, and unverified assumption cases produce the specified readiness and recommendation fields. |
+| Position catalog grouping | TypeScript engine unit test | Plan and issue inputs build deterministic position catalogs, voices can only use catalog ids or exact `other:<slug>`, and majority/plurality grouping uses `canonicalPositionId`. |
+| Deterministic synthesis algorithm | TypeScript engine unit test | Majority, plurality, tie, no-grounded-evidence, one-survivor, degraded critical phase, verified assumption, unverified assumption, and material-dissent cases produce the specified readiness and recommendation fields. |
 | Chair report strategy | `tests/conformance/council.sh` | Chair route is an explicit roster member and has its own call record. |
 | Invalid chair strategy | TypeScript roster validation test | `chair:<member-id>` blocks Run when the member is disabled, unavailable, missing, or has unsupported effort. |
 | Structured disagreement strategy | `tests/conformance/council.sh` | Report preserves disagreement without forcing a recommendation. |
 | Pi reload during menu | `tests/conformance/council.sh` or Pi integration test | Menu closes, no config write occurs, and stale context is not used. |
 | Pi session replacement during run | Pi integration test | Active run aborts and no replacement-session work uses old `ctx`. |
 | Non-Pi fallback | `tests/conformance/council.sh` | Portable skill or `bin/council` reports no native menu and uses JSON roster or clear usage. |
+| Portable invalid roster | `tests/conformance/council.sh` | Parsed but invalid `--roster-file` exits `3` for schema failures or `4` for semantic failures, writes no report, and never falls back silently. |
 | Claude subscription-only | `tests/conformance/council.sh` | API-key-only Claude is unavailable for council but existing `/synthesis` probe default remains auto. |
 | Claude mixed credentials | TypeScript executor unit test plus fake Claude CLI | OAuth/subscription route remains subscription-only when `ANTHROPIC_API_KEY` is also present, and no Claude council call receives Anthropic API-key environment variables. |
 | No paid probe calls | Unit test with fake executors | Route discovery calls only registry/probe methods and never invokes model execution. |
@@ -718,6 +763,7 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Atomic persistence | Unit test | Interrupted temp write does not corrupt last good roster. |
 | Canceled terminal report | TypeScript engine unit test | Cancellation after `persist_roster` writes a minimal `status: canceled` report and cancellation before Run writes no report. |
 | Failed terminal report | TypeScript engine unit test | Failure after execution starts writes `status: failed` with diagnostics and `implementation_authorized: false`. |
+| Council report isolation | Existing suites plus fixture | A council report under `./.ai-synthesis/council-sessions/` does not affect `/synthesis list`, `expand`, `resume`, `rate`, or `revisit`; no `mode: council` file is written under legacy `sessions/`. |
 | Node fallback parity | TypeScript CLI unit test plus `tests/conformance/council.sh` | `bin/council` invokes the shared TypeScript engine and does not contain independent shell synthesis logic. |
 | Missing Node fallback dependency | `tests/conformance/council.sh` | Missing Node or runtime loader prints setup instructions and does not create config or reports. |
 | Package check activation | CI/local script test | On a clean checkout, `npm ci`, `npm run verify:pi-surface`, `npm run test`, `npm run typecheck`, and `npm run build` all pass before `.pipelane.json` relies on them. |
@@ -744,6 +790,10 @@ The reviewed plan file is never modified.
 The final report includes recommendation, evidence, strongest dissent, assumptions, risks, what would change the recommendation, decision readiness, next action, and `implementation_authorized: false`.
 The final report explicitly says council completion does not authorize implementation.
 Existing `/synthesis`, `--solo`, `--compare`, and `revisit` behavior remains compatible.
+Council reports are written only under `./.ai-synthesis/council-sessions/` in the MVP and do not appear in the legacy `/synthesis` session glob.
+Portable CLI invalid roster files fail before execution with the specified exit codes and without writing config or reports.
+Deterministic synthesis groups only by engine-assigned `canonicalPositionId` from a frozen position catalog.
+Deterministic readiness uses the specified `materialDissent` predicate and critique-phase assumption reviews, not an unscheduled phase or model-prose similarity.
 The full fake conformance suite, TypeScript unit suite, Pi surface contract checks, and clean-checkout npm pre-PR commands pass.
 
 ## Rollout And Evaluation
@@ -774,14 +824,17 @@ Document Claude subscription-only behavior and the absence of Anthropic API fall
 Document provider billing labels and cost estimation limits.
 Document cancellation, reload, and session replacement behavior.
 Document that `/council` never modifies the reviewed plan and never authorizes implementation.
-Document `decision_readiness` semantics, including critical phase degradation and load-bearing assumption verification.
+Document council report storage under `./.ai-synthesis/council-sessions/` and explicitly distinguish it from existing `/synthesis` sessions.
+Document portable CLI `--roster-file` validation behavior, exit codes, and `--json` diagnostic envelope.
+Document deterministic position catalogs, `other:<slug>` handling, and exact `canonicalPositionId` grouping.
+Document `decision_readiness` semantics, including critical phase degradation, the mechanical `materialDissent` predicate, and load-bearing assumption verification from critique-phase `assumption_reviews`.
 
 ## GSTACK REVIEW REPORT
 
 | Review | Trigger | Why | Runs | Status | Findings |
 |--------|---------|-----|------|--------|----------|
 | CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | not run | Not requested for this phase. |
-| Claude Challenge Review | `/claude-review challenge plan` | Independent adversarial plan challenge | 2 | ISSUES FOLDED | Latest run found 6 issues; this revision folds the Pi surface spike, readiness semantics, Claude execution guard, Node toolchain decision, roster config precedence, and chair validity fixes into the plan. |
+| Claude Challenge Review | `/claude-review challenge plan` | Independent adversarial plan challenge | 2 | ISSUES FOLDED | Commit `17f07fd` found 6 issues; this revision folds timeout scoping, deterministic position grouping, evidence-auditor routing, material dissent semantics, council report isolation, and portable invalid-roster behavior into the plan. |
 | Codex Review | `/codex review` | Independent 2nd opinion | 0 | not run | Not requested for this phase. |
 | Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | CLEAR | 1 issue found and folded: Pi `off` effort now omits `reasoningEffort` instead of passing `"off"`. |
 | Design Review | `/plan-design-review` | UI/UX gaps | 0 | not run | No design review requested for this phase. |
