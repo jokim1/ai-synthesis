@@ -18,6 +18,8 @@ The design keeps `/council` as personal `ai-synthesis` customization and does no
 `schemas/analyst.json`, `schemas/critic.json`, `schemas/steelman.json`, `schemas/adversary.json`, and `schemas/solo.json` enforce `ok: true`, provenance discipline, cruxes, capability gaps, and bounded adversarial objections.
 `bin/provider-probe` performs a no-cost binary and authentication check for `claude` or `codex` and emits the normalized provider envelope.
 `bin/provider-invoke` runs a role call through `claude` or `codex` and emits the same envelope with `ok`, `status`, `provider`, `model`, `structured`, `text`, `error`, and `meta`.
+`bin/provider-invoke` already parses `--effort`, exports `A_EFFORT`, and rejects unknown top-level flags through `aisynth_die_usage`.
+`bin/provider-invoke` does not validate the semantic effort vocabulary; `bin/adapters/codex.sh` maps `max` to `xhigh` and clamps unknown effort strings to `medium`, so council must validate supported efforts before invoking it.
 `bin/adapters/claude.sh` already supports `--auth auto|subscription|apikey`, but `bin/provider-probe` does not currently expose a CLI flag to set `A_AUTH`.
 `bin/adapters/claude.sh` defaults to subscription-preferred auto mode and can fall back to `ANTHROPIC_API_KEY`, which `/council` must avoid for Claude routes.
 `bin/adapters/codex.sh` maps `max` to `xhigh` for `/synthesis`, but `/council` must not silently clamp remembered effort values.
@@ -27,8 +29,10 @@ The design keeps `/council` as personal `ai-synthesis` customization and does no
 `.gitignore` ignores `/docs/*` except `/docs/public/`, so this plan and later non-public implementation docs must be added with `git add -f`.
 `.pipelane.json` currently declares `prePrChecks` exactly as `npm run test`, `npm run typecheck`, and `npm run build`.
 The current checkout has no `package.json`, so those checks would fail if invoked before package scripts exist.
-Adding `package.json` activates the existing `.pipelane.json` npm checks immediately because `.pipelane.json` already names the scripts; activation is not deferred to a later `.pipelane.json` edit.
+The inspected Pipelane PR command source at `src/operator/commands/pr.ts` runs each `prePrChecks` shell string directly and does not run `npm ci` or another install step before those checks.
+Adding `package.json` without changing `.pipelane.json` would therefore activate npm scripts without dependencies installed, so Phase 1 must make the ai-synthesis `prePrChecks` install-aware in the same commit that introduces package metadata.
 Pi documentation under `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/` supports the required optional package path.
+The installed Pi package surface verified for this plan is `@earendil-works/pi-coding-agent` `0.80.10` under `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/`, with nested `@earendil-works/pi-ai` `0.80.10` and `@earendil-works/pi-tui` `0.80.10`, all requiring Node `>=22.19.0`.
 Pi package resources are declared in `package.json` under a `pi` key or discovered from conventional `extensions/`, `skills/`, `prompts/`, and `themes/` directories.
 Pi extension commands are registered with `pi.registerCommand(name, { description, handler, getArgumentCompletions })`.
 Pi extension commands run before input events, skill commands, and prompt templates, so `/council ...` should be implemented as an extension command for native Pi behavior.
@@ -40,6 +44,8 @@ Pi user-global config locations must be derived with `getAgentDir()` and project
 Pi model discovery is available from `ctx.modelRegistry.getAll()`, `getAvailable()`, `find()`, `hasConfiguredAuth()`, `getProviderAuthStatus()`, `getApiKeyAndHeaders()`, `isUsingOAuth()`, and provider display names.
 Pi model effort support is exposed by `getSupportedThinkingLevels(model)` from `@earendil-works/pi-ai`.
 Pi direct model execution can use `complete(model, context, options)` from `@earendil-works/pi-ai/compat` after resolving auth with `ctx.modelRegistry.getApiKeyAndHeaders(model)`.
+The installed `@earendil-works/pi-ai/compat` `complete()` declaration accepts open `ProviderStreamOptions`, so compiling a call to `complete(..., { reasoningEffort })` alone cannot prove that a provider actually honors that option.
+The installed provider-specific Pi option types in `dist/api/openai-responses.d.ts`, `dist/api/openai-codex-responses.d.ts`, and `dist/api/anthropic-messages.d.ts` expose `reasoningEffort` for OpenAI Responses and OpenAI Codex models, while Anthropic models expose `effort`, so the Pi executor needs an explicit provider/API-specific effort mapper.
 Pi session replacement and reload invalidate old extension contexts, so any council command must abort active work on `session_shutdown` and use only replacement contexts inside `withSession` callbacks.
 
 ## Goals
@@ -170,30 +176,36 @@ tests/conformance/fixtures/council/
 tests/council/
 tests/council/pi-fixtures/
 tests/council/pi-surface-contract.test-d.ts
-tests/council/pi-complete-options-contract.test-d.ts
+tests/council/pi-effort-options-contract.test-d.ts
 ```
 
 `package.json` should include `"keywords": ["pi-package"]` and a `pi` manifest that exposes `extensions/council/index.ts` and `skills/council`.
 `package.json` should list Pi core packages as peer dependencies with `"*"` ranges, matching Pi package documentation.
 `package.json` should not rely on peer dependencies to satisfy clean-checkout typecheck or build because `npm ci` does not install peers by itself.
 Clean-checkout TypeScript checks should resolve Pi imports through repo-local type stubs under `tests/council/pi-fixtures/types/@earendil-works/` and `tsconfig.json` path mappings.
-The repo-local Pi type stubs should be deliberately minimal and should cover only the imports and call signatures used by `/council`; `npm run verify:pi-surface` remains the Pi-present guard against drift in the installed packages.
+The repo-local Pi type stubs should be deliberately minimal and should cover only the imports and call signatures used by `/council`; they pin the council code-to-stub contract but do not prove the installed Pi runtime has not drifted.
+`npm run verify:pi-surface` is the Pi-present guard against drift in the installed packages and must run against the actual package tree under `PI_CODING_AGENT_DIR` or `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/`.
 `npm run verify:pi-surface` and the `pi -e` self-test should be excluded from `.pipelane.json` pre-PR checks and from clean-checkout CI unless `PI_CODING_AGENT_DIR` or the installed Pi package path is explicitly available.
 `package.json` should include runtime dependencies needed by the portable Node wrapper, including `jiti` if the CLI loads TypeScript sources directly.
 `package.json` scripts `test`, `typecheck`, and `build` should be meaningful for the files present in the current implementation phase and should stay green the same commit that `package.json` is introduced.
 Adding `package.json` is a deliberate repository-wide contributor and CI change, not only an optional runtime install detail.
-Phase 1 should require Node `>=20`, commit `package-lock.json`, document `npm ci`, and verify package-local scripts on a clean checkout after `npm ci`.
-Because `.pipelane.json` already declares npm pre-PR checks, Phase 1 must treat `package.json` as repository-wide check activation and must ship green `test`, `typecheck`, and `build` scripts immediately.
+Phase 1 should require Node `>=22.19.0`, commit `package-lock.json`, document `npm ci`, and verify package-local scripts on a clean checkout after `npm ci`.
+Because Pipelane runs `prePrChecks` directly without installing dependencies, Phase 1 must modify `.pipelane.json` in the same commit that introduces `package.json`.
+The Phase 1 `.pipelane.json` `prePrChecks` should be exactly `tests/conformance/run.sh all`, `test ! -f package.json || npm ci`, `test ! -f package.json || npm run test`, `test ! -f package.json || npm run typecheck`, and `test ! -f package.json || npm run build`.
+This install-aware pre-PR shape is intentionally known-good both before and after package metadata exists, and rollback must not restore the current direct npm-only shape.
 Phase 1 should not add `.pipelane.json` references to `verify:pi-surface`; that command is a Pi-present local gate, not a clean-checkout gate.
-If the council effort stalls after `package.json` is added, rollback must remove every Phase 1 through current-phase council artifact and restore `tests/conformance/run.sh all` to green, not only revert package metadata.
+If the council effort stalls after `package.json` is added, rollback must remove every Phase 1 through current-phase council artifact and leave `.pipelane.json` in the install-aware known-good shape above or an equivalent green shell-only shape.
 Users who only symlink the existing Claude Code `/synthesis` skill are unaffected at runtime because `SKILL.md` and the provider shell scripts must not require Node for existing flows.
 The Pi extension should import `ExtensionAPI`, `CONFIG_DIR_NAME`, `getAgentDir`, `DynamicBorder`, `BorderedLoader`, `getSettingsListTheme`, `complete` and `getSupportedThinkingLevels` from the installed Pi packages, and `@earendil-works/pi-tui` controls.
 Phase 1 must include an installed-runtime Pi surface contract before Phase 2 starts.
-`scripts/verify-pi-surface.mjs` should import from the installed `@earendil-works/pi-coding-agent`, `@earendil-works/pi-ai`, `@earendil-works/pi-ai/compat`, and `@earendil-works/pi-tui` packages when Pi is present, and should fail with a clear `PI_NOT_INSTALLED` diagnostic when those packages are unavailable.
+`scripts/verify-pi-surface.mjs` should import from the installed `@earendil-works/pi-coding-agent`, `@earendil-works/pi-ai`, `@earendil-works/pi-ai/compat`, and `@earendil-works/pi-tui` packages when Pi is present, should compile a temporary TypeScript surface check against those installed declaration files, and should fail with a clear `PI_NOT_INSTALLED` diagnostic when those packages are unavailable.
+The installed-runtime surface check should verify `complete`, `getSupportedThinkingLevels`, `hasApi`, `ctx.modelRegistry` methods, `ctx.ui.custom`, command registration, custom entries, session replacement hooks, and the provider-specific effort option types used by `toPiEffortOptions`.
 `tests/council/pi-surface-contract.test-d.ts` should compile the exact imports and call signatures planned for `extensions/council/index.ts`, `ui/roster-editor.ts`, and the later Pi executor without requiring the Phase 4 `pi-complete.ts` file to exist.
-`tests/council/pi-complete-options-contract.test-d.ts` should compile a Phase 1-only type assertion that `complete(model, context, { apiKey, headers, env, signal, timeoutMs, maxRetries, reasoningEffort })` accepts a per-call `reasoningEffort` option and rejects a renamed or session-global thinking-level substitute.
+`tests/council/pi-effort-options-contract.test-d.ts` should compile the council-owned `toPiEffortOptions` mapper against repo-local stubs so clean checkout tests verify council code uses the mapper rather than a session-global thinking setter.
+Installed Pi option rename or shape drift is detected only by `npm run verify:pi-surface`, not by repo-local stubs.
 The first local implementation milestone should be a no-model-call spike run with `pi -e ./extensions/council/index.ts` that registers `/council --self-test`, opens and closes a trivial `ctx.ui.custom()` component in TUI, reads `ctx.modelRegistry.getAll()` and `getAvailable()` after `refresh()`, calls `getSupportedThinkingLevels()` on a fixture or current model when present, appends a harmless `ai-synthesis-council-self-test` entry, and exercises `ctx.sessionManager.getBranch()` without invoking `complete()`.
-No roster editor, route execution, or council engine phase should be built on top of Pi APIs until `npm run verify:pi-surface`, the Pi complete options type contract, and the `pi -e` self-test pass against the installed Pi version.
+No roster editor, route execution, or council engine phase should be built on top of Pi APIs until `npm run verify:pi-surface`, the repo-local Pi contracts, and the `pi -e` self-test pass against the installed Pi version.
+Phase 4 must rerun `npm run verify:pi-surface` before any live Pi model execution code lands, because that is the gate that catches real installed Pi effort-option drift.
 The portable skill should use relative paths from its `SKILL.md` and should not require Pi APIs.
 `extensions/council/cli.ts` should be the non-Pi entrypoint and should call the same input parser, config loader, route catalog, engine, and report writer as the Pi extension.
 The shell `bin/council` should be only a thin launcher that checks for Node, loads the TypeScript CLI through `jiti` or the chosen runtime loader, and exits with clear setup instructions when dependencies are missing.
@@ -216,9 +228,11 @@ The override should not be persisted back to the roster file unless a future por
 The effective report strategy should still pass the same validation as a roster-file strategy, including requiring `chair:<member-id>` to reference an enabled executable member in the reconciled roster.
 The final report diagnostics should record both `report_strategy_source: cli | roster_file | recommendation` and the effective report strategy.
 The Pi extension should use `ctx.modelRegistry` for Pi routes and should not parse Pi auth files directly.
-The Pi extension should call `complete(model, context, { apiKey, headers, env, signal: memberSignal, timeoutMs, maxRetries: 0, reasoningEffort: entry.effort === "off" ? undefined : entry.effort })` for Pi model routes.
-The Pi executor must use the per-call `reasoningEffort` option shown by the installed Pi examples, not session-global `pi.setThinkingLevel()`, to avoid cross-member effort bleed during concurrent calls.
-If a future installed Pi version renames that option, Phase 1 should fail in `tests/council/pi-complete-options-contract.test-d.ts` and update the executor contract before model execution is implemented.
+The Pi extension should call `complete(model, context, { apiKey, headers, env, signal: memberSignal, timeoutMs, maxRetries: 0, ...toPiEffortOptions(model, entry.effort) })` for Pi model routes.
+`toPiEffortOptions(model, effort)` should use `hasApi(model, "anthropic-messages")` to return `{ effort }` only for supported Anthropic efforts `low`, `medium`, `high`, `xhigh`, or `max`, `hasApi(model, "openai-responses")` or `hasApi(model, "azure-openai-responses")` to return `{ reasoningEffort: effort }` for non-`off` efforts, and `hasApi(model, "openai-codex-responses")` to return `{ reasoningEffort: effort === "off" ? "none" : effort }` only when the installed surface check confirms `"none"` support.
+For `off` on providers without an explicit `"none"` option, `toPiEffortOptions` should omit provider-specific thinking options.
+The Pi executor must use provider-specific per-call effort options from `toPiEffortOptions`, not session-global thinking-level state, to avoid cross-member effort bleed during concurrent calls.
+If a future installed Pi version renames a provider-specific effort option, `npm run verify:pi-surface` should fail before Phase 4 model execution lands and the mapper contract should be updated.
 The Pi extension should pass no model tools during council MVP.
 The extension itself should read plan files into immutable, line-numbered text and should instruct models to cite `plan.md:Lx-Ly`.
 The engine should accept issue text or immutable plan text, a confirmed roster, a route catalog, and an abort signal.
@@ -546,8 +560,10 @@ For portable Codex CLI routes, supported efforts should be `["minimal", "low", "
 For portable Claude Code subscription routes, supported efforts should be the adapter-supported set, initially `["low", "medium", "high", "max"]`, unless a future no-cost capability probe provides better model-specific metadata.
 Unsupported remembered efforts should remain in config and UI until the user edits them.
 Execution should reject an enabled member whose selected effort is unsupported and should not call `pi.setThinkingLevel()` or `provider-invoke` with a different effort.
-Pi execution should pass the selected supported effort to `complete()` as per-call `reasoningEffort` for each member, except `off`, which should omit `reasoningEffort` rather than passing the literal string `"off"`.
-Portable execution should pass the selected supported effort to `bin/provider-invoke --effort` for each member.
+Pi execution should pass the selected supported effort through `toPiEffortOptions` and should never pass a universal `reasoningEffort` option without checking the model API.
+Portable execution should pass the selected supported effort to the existing `bin/provider-invoke --effort` flag for each member.
+Portable execution should never pass `off`, `minimal`, or any other remembered effort to `bin/provider-invoke` unless route reconciliation has confirmed that exact value is supported by the target provider adapter.
+If an implementation or future refactor cannot prove `bin/provider-invoke --effort` exists, the portable executor must fail its startup contract check and must not execute at a default effort.
 Effort propagation should be asserted from captured executor call records before any live model smoke test is allowed.
 Replacement suggestions should pick the nearest effort by the ordered list `off < minimal < low < medium < high < xhigh < max`.
 Replacement suggestions should be suggestions only and require explicit user confirmation through Edit or Reset.
@@ -739,8 +755,8 @@ The council engine should disable model tools for MVP to avoid hidden file edits
 Existing `/synthesis` behavior must remain unchanged.
 Existing `bin/provider-invoke` flags must remain backward compatible.
 Adding `--auth` to `bin/provider-probe` must default to `auto` and preserve existing callers.
-Adding `package.json` intentionally introduces a Node/TypeScript contributor toolchain and immediately activates the repository's existing `.pipelane.json` npm pre-PR commands.
-The implementation should add `package-lock.json`, require `npm ci` before npm-backed checks, and keep `npm run test`, `npm run typecheck`, and `npm run build` green on a clean checkout in the same commit that introduces `package.json`.
+Adding `package.json` intentionally introduces a Node/TypeScript contributor toolchain and must happen in the same commit as the `.pipelane.json` install-aware pre-PR check update.
+The implementation should add `package-lock.json`, require `npm ci` before npm-backed checks, and keep `npm ci`, `npm run test`, `npm run typecheck`, and `npm run build` green on a clean checkout in the same commit that introduces `package.json`.
 Clean-checkout npm scripts must not require an installed Pi runtime; Pi-present verification remains available through `npm run verify:pi-surface` and the manual `pi -e` self-test.
 This repo-wide development requirement is separate from runtime installation: existing Claude Code skill users who only symlink the repo should not need Node unless they run the new portable `bin/council` fallback or contributor checks.
 Existing session files in `./.ai-synthesis/sessions/` must remain readable by `expand`, `list`, `resume`, `rate`, and `revisit`.
@@ -758,27 +774,29 @@ If the in-file `scope` disagrees with the resolved config location, migration sh
 ## Implementation Phases
 
 Each phase may land independently or as one feature branch, but the repository must remain green after every committed phase.
-Phase 1 should add package scaffolding, `package-lock.json`, Node `>=20` engines, TypeScript types, JSON schemas, TypeScript test runner setup, repo-local Pi type stubs, package-local scripts, conformance fixtures, and the installed Pi API surface verifier without model execution.
-Phase 1 should treat the existing `.pipelane.json` `npm run test`, `npm run typecheck`, and `npm run build` commands as active as soon as `package.json` exists.
-Phase 1 should not be complete until `npm ci`, `npm run typecheck`, `npm run build`, `npm run test`, and `tests/conformance/run.sh all` pass on a clean checkout with no installed Pi runtime.
+Phase 1 should add package scaffolding, `package-lock.json`, Node `>=22.19.0` engines, TypeScript types, JSON schemas, TypeScript test runner setup, repo-local Pi type stubs, package-local scripts, conformance fixtures, the installed Pi API surface verifier, and the install-aware `.pipelane.json` pre-PR check update without model execution.
+Phase 1 should treat the current direct npm-only `.pipelane.json` commands as broken for a clean checkout because Pipelane runs them without an automatic install step.
+Phase 1 should not be complete until `tests/conformance/run.sh all`, `npm ci`, `npm run typecheck`, `npm run build`, `npm run test`, and every `.pipelane.json` `prePrChecks` command pass on a clean checkout with no installed Pi runtime.
 Phase 1 should also run `npm run verify:pi-surface` and the `pi -e ./extensions/council/index.ts` `/council --self-test` spike once in a Pi-present local environment before Phase 2 starts, with no model calls and no persistent roster writes.
 Phase 2 should implement input parsing, trusted path validation, immutable plan loading, stable route IDs, route discovery, effort support, and roster config persistence.
 Phase 3 should implement the Pi TUI roster editor and non-TUI fallback behavior.
-Phase 4 should implement the Pi `complete` executor with per-call `reasoningEffort`, the provider-invoke fallback executor, structured validation, retry-once behavior, and cancellation through an engine-owned `AbortController`.
+Phase 4 should rerun `npm run verify:pi-surface`, then implement the Pi `complete` executor with provider-specific per-call effort options, the provider-invoke fallback executor, structured validation, retry-once behavior, and cancellation through an engine-owned `AbortController`.
 Phase 5 should implement the council engine state machine, evidence ledger, degradation, report strategies, report writer, and Pi session custom entry.
 Phase 6 should add documentation, README install/update notes, and the portable `skills/council/SKILL.md` instructions.
 Phase 7 should run live smoke tests manually with at least one subscription Claude route and one Codex route after the fake conformance suite is green.
-Rollback after any phase should revert all council-related edits made through that phase, then prove `tests/conformance/run.sh all` is green.
-The rollback set after Phase 2 or later includes `.pipelane.json` if changed, `package.json`, `package-lock.json`, `tsconfig.json`, test runner config, `scripts/verify-pi-package.mjs`, `scripts/verify-pi-surface.mjs`, `extensions/council/`, `skills/council/`, `roles/council/`, council schemas, `bin/council`, `bin/council-route-probe`, the `bin/provider-probe` auth flag edit, the `bin/adapters/claude.sh` subscription-probe edit, `tests/conformance/council.sh`, the `tests/conformance/run.sh` source line for council tests, council fixtures, `tests/council/`, Pi type stubs, `bin/README.md` council additions, and `README.md` council additions.
+Rollback after any phase should revert all council-related edits made through that phase, then prove `tests/conformance/run.sh all` and every `.pipelane.json` `prePrChecks` command are green.
+The rollback target for `.pipelane.json` is the install-aware known-good form from Phase 1, not the current direct npm-only form.
+The rollback set after Phase 2 or later includes `.pipelane.json`, `package.json`, `package-lock.json`, `tsconfig.json`, test runner config, `scripts/verify-pi-package.mjs`, `scripts/verify-pi-surface.mjs`, `extensions/council/`, `skills/council/`, `roles/council/`, council schemas, `bin/council`, `bin/council-route-probe`, the `bin/provider-probe` auth flag edit, the `bin/adapters/claude.sh` subscription-probe edit, `tests/conformance/council.sh`, the `tests/conformance/run.sh` source line for council tests, council fixtures, `tests/council/`, Pi type stubs, `bin/README.md` council additions, and `README.md` council additions.
 
 ## Exact File-Level Changes
 
-Add `package.json` in Phase 1 with package metadata, Node `>=20` engines, `pi` manifest, Pi peer dependencies, runtime `jiti` dependency if TypeScript is loaded directly by the CLI, dev dependencies for TypeScript testing, and scripts for `test`, `test:sh`, `test:ts`, `typecheck`, `build`, `verify:pi-package`, and `verify:pi-surface`.
+Add `package.json` in Phase 1 with package metadata, Node `>=22.19.0` engines, `pi` manifest, Pi peer dependencies, runtime `jiti` dependency if TypeScript is loaded directly by the CLI, dev dependencies for TypeScript testing, and scripts for `test`, `test:sh`, `test:ts`, `typecheck`, `build`, `verify:pi-package`, and `verify:pi-surface`.
 Add `package-lock.json` in Phase 1 so CI and pre-PR checks can use `npm ci` reproducibly.
 Add `tsconfig.json`, `vitest.config.ts`, `scripts/verify-pi-package.mjs`, and `scripts/verify-pi-surface.mjs` in Phase 1 unless the implementation chooses an equivalent Node built-in test setup with the same coverage.
 Add `tests/council/pi-fixtures/types/@earendil-works/` in Phase 1 with minimal type stubs for the Pi imports used by council code and contracts.
 Do not rely on installed Pi peer dependencies for `npm run typecheck` or `npm run build`.
-Do not modify `.pipelane.json` unless the current `prePrChecks` change; if it is modified, preserve `npm run test`, `npm run typecheck`, and `npm run build` as green clean-checkout commands.
+Modify `.pipelane.json` in Phase 1 so `prePrChecks` runs `tests/conformance/run.sh all`, then `test ! -f package.json || npm ci`, then the guarded `npm run test`, `npm run typecheck`, and `npm run build` commands.
+Do not leave `.pipelane.json` pointing directly at npm scripts without an install step.
 Add `extensions/council/index.ts` in Phase 1 as a self-test-only Pi surface spike or in Phase 3 as the real command registration, and do not expose executable `/council` behavior until the UI and engine dependencies exist.
 Add `extensions/council/cli.ts` in Phase 2 as the Node-backed portable entrypoint that parses inputs and route probes, then wire it to the shared engine in Phase 5.
 Add `extensions/council/lib/types.ts` in Phase 1 for all interfaces listed in this plan.
@@ -787,8 +805,8 @@ Add `extensions/council/lib/input.ts` in Phase 2 for `/council` argument parsing
 Add `extensions/council/lib/routes.ts` in Phase 2 for Pi route discovery, family detection, supported effort calculation, Claude subscription-only filtering, and replacement suggestions.
 Add `extensions/council/lib/recommend.ts` in Phase 2 for issue-versus-plan roster recommendations and composition feedback.
 Add `extensions/council/lib/engine.ts` in Phase 5 for the state machine, phase-role assignment, deterministic synthesis, degradation, cancellation, and phase orchestration.
-Add `extensions/council/lib/executors/pi-complete.ts` in Phase 4 for Pi direct model calls through `complete()`.
-Add `extensions/council/lib/executors/provider-invoke.ts` in Phase 4 for portable provider calls through `bin/provider-invoke`.
+Add `extensions/council/lib/executors/pi-complete.ts` in Phase 4 for Pi direct model calls through `complete()` and the `toPiEffortOptions` mapper.
+Add `extensions/council/lib/executors/provider-invoke.ts` in Phase 4 for portable provider calls through the existing `bin/provider-invoke --effort` flag.
 Add `extensions/council/lib/report.ts` in Phase 5 for structured report validation, markdown rendering, report frontmatter, and report file writes.
 Add `extensions/council/ui/roster-editor.ts` in Phase 3 for the custom TUI component.
 Add `extensions/council/ui/composition.ts` in Phase 3 for composition feedback rendering.
@@ -798,7 +816,7 @@ Add `bin/council` in Phase 2 as a thin shell launcher for `extensions/council/cl
 Add `bin/council-route-probe` in Phase 2 as a thin shell launcher for `extensions/council/cli.ts route-probe` that emits `CouncilRouteProbeEnvelopeV1`.
 Modify `bin/provider-probe` in Phase 2 to accept optional `--auth <auto|subscription|apikey>` while retaining `provider-probe <claude|codex>`.
 Modify `bin/adapters/claude.sh` `adapter_probe` in Phase 2 to honor `A_AUTH=subscription` by refusing API-key-only auth.
-Do not modify `bin/provider-invoke` default auth behavior except to document that council passes `--auth subscription`.
+Do not modify `bin/provider-invoke` default auth behavior or `--effort` parsing for MVP; the existing flag is sufficient, and council-owned validation prevents unsupported values from reaching adapter clamps.
 Add `roles/council/initial.md`, `roles/council/critique.md`, `roles/council/steelman.md`, `roles/council/adversary.md`, and `roles/council/chair.md` in Phase 5.
 Add `schemas/council-voice.json`, `schemas/council-critique.json`, `schemas/council-adversary.json`, and `schemas/council-report.json` in Phase 1 as schema files and enforce them in Phase 5.
 Add `tests/conformance/council.sh` and source it from `tests/conformance/run.sh` in Phase 2, with skipped or fixture-gated cases allowed until their implementation phase lands.
@@ -806,7 +824,10 @@ Add fake route fixtures under `tests/conformance/fixtures/council/` in Phase 2.
 Add TypeScript unit tests under `tests/council/` across Phases 2 through 5 for input parsing, route reconciliation, effort propagation, phase-role assignment, deterministic synthesis, config persistence, cancellation, and report validation as each module lands.
 Add Pi integration fixtures or fakes under `tests/pi/` or `tests/council/pi-fixtures/` in Phase 3 to simulate `ctx.modelRegistry`, `ctx.ui.custom()`, `session_shutdown`, and session replacement without live model calls.
 Add `tests/council/pi-surface-contract.test-d.ts` in Phase 1 to compile-check the exact Pi imports and call signatures used by the package.
-Add `tests/council/pi-complete-options-contract.test-d.ts` in Phase 1 to compile-check the exact `complete()` options object including per-call `reasoningEffort` before `pi-complete.ts` exists.
+Add `tests/council/pi-effort-options-contract.test-d.ts` in Phase 1 to compile-check the council-owned `toPiEffortOptions` contract against repo-local stubs.
+Make `npm run verify:pi-surface` compile or execute an installed-Pi check that imports `AnthropicOptions`, `OpenAIResponsesOptions`, `OpenAICodexResponsesOptions`, `complete`, `hasApi`, and `getSupportedThinkingLevels` from the actual Pi package tree.
+Add a TypeScript executor unit test in Phase 4 that verifies Anthropic routes receive `effort`, OpenAI Responses routes receive `reasoningEffort`, OpenAI Codex `off` maps to `"none"` only when installed support is confirmed, and other `off` routes omit explicit thinking options.
+Add a portable executor unit test in Phase 4 that captures `bin/provider-invoke` argv and proves selected supported efforts are forwarded with `--effort`, unsupported remembered efforts block before invocation, and the executor fails loudly if the wrapper contract check cannot find `--effort`.
 Update `bin/README.md` in Phase 2 with the council route probe and subscription-only Claude behavior.
 Update `README.md` in Phase 6 with optional Pi package install instructions and a short warning that the native `/council` menu is Pi-only.
 Force-add any non-public docs under `docs/` because `.gitignore` intentionally ignores them.
@@ -836,10 +857,12 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Member timeout scope | TypeScript engine/executor unit test | One member timeout aborts only that member controller; other concurrent members continue unless the run-level signal is aborted. |
 | Partial council degradation | `tests/conformance/council.sh` | One surviving voice yields degraded `not_ready`; two surviving voices yield degraded council report. |
 | Hidden-host-vote prevention | `tests/conformance/council.sh` | No model call occurs for `ctx.model` unless it appears in roster. |
-| Per-member Pi effort propagation | TypeScript executor unit test | `pi-complete` passes each roster entry's effort as per-call `reasoningEffort`, maps `off` to omitted or `undefined`, and never calls `pi.setThinkingLevel()`. |
+| Per-member Pi effort propagation | TypeScript executor unit test | `pi-complete` passes each roster entry's effort through provider-specific per-call options from `toPiEffortOptions` and never calls `pi.setThinkingLevel()`. |
 | Concurrent mixed efforts | TypeScript executor unit test | Two concurrent Pi member calls with different efforts preserve their own effort options and do not bleed session-global state. |
-| Pi API surface contract | `npm run verify:pi-surface` and `tests/council/pi-surface-contract.test-d.ts` | Installed Pi exports and command-context methods used by `/council` exist before route discovery, UI, or executor work is implemented. |
-| Pi complete options contract | `tests/council/pi-complete-options-contract.test-d.ts` | Phase 1 compile-checks `complete()` with per-call `reasoningEffort` before `pi-complete.ts` exists and fails if Pi renames the option. |
+| Pi API surface contract | `npm run verify:pi-surface` and `tests/council/pi-surface-contract.test-d.ts` | Repo-local stubs compile council imports in clean checkout, and the Pi-present verifier confirms installed Pi exports and command-context methods used by `/council` exist before route discovery, UI, or executor work is implemented. |
+| Pi effort option contract | `npm run verify:pi-surface`, `tests/council/pi-effort-options-contract.test-d.ts`, and TypeScript executor unit test | Clean checkout tests prove council code uses `toPiEffortOptions`, and the Pi-present verifier proves installed provider-specific option types still expose the effort keys the mapper emits. |
+| Pi provider-specific effort mapping | TypeScript executor unit test | Anthropic routes receive `effort`, OpenAI Responses routes receive `reasoningEffort`, OpenAI Codex `off` maps to `"none"` only when installed support is confirmed, other `off` routes omit explicit thinking options, and no route uses session-global thinking state. |
+| Provider-invoke effort propagation | TypeScript executor unit test plus `tests/conformance/council.sh` | The portable executor verifies the existing `bin/provider-invoke --effort` flag, forwards only route-supported efforts, blocks unsupported remembered efforts before invocation, and fails loudly if the flag contract is missing. |
 | Phase-role fallback | TypeScript engine unit test | Rosters without explicit critic, steelman, or adversary roles receive deterministic explicit-member phase assignments recorded in diagnostics. |
 | State-machine guarded transitions | TypeScript engine unit test | Zero, one, and two-plus successful initial voices take the specified transitions; later phase failures continue to the next named phase with degradation instead of skipping straight to synthesis. |
 | Roster entry id uniqueness | TypeScript roster validation and UI unit test | Add and duplicate-row flows mint fresh opaque ids, edit and reorder preserve ids, duplicate loaded ids quarantine or block Run, and `chairEntryId` resolves to exactly one entry. |
@@ -875,9 +898,10 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Council report isolation | Existing suites plus fixture | A council report under `./.ai-synthesis/council-sessions/` does not affect `/synthesis list`, `expand`, `resume`, `rate`, or `revisit`; no `mode: council` file is written under legacy `sessions/`. |
 | Node fallback parity | TypeScript CLI unit test plus `tests/conformance/council.sh` | `bin/council` invokes the shared TypeScript engine and does not contain independent shell synthesis logic. |
 | Missing Node fallback dependency | `tests/conformance/council.sh` | Missing Node or runtime loader prints setup instructions and does not create config or reports. |
-| Package check activation | CI/local script test | On a clean checkout with no installed Pi runtime, `npm ci`, `npm run test`, `npm run typecheck`, and `npm run build` pass as soon as `package.json` exists because `.pipelane.json` already names those commands. |
+| Pipelane pre-PR install step | CI/local script test | On a clean checkout with no installed Pi runtime, every `.pipelane.json` `prePrChecks` command passes because the config runs conformance, guards npm commands behind `package.json`, and runs `npm ci` before npm scripts. |
+| Package check activation | CI/local script test | On a clean checkout with no installed Pi runtime, `npm ci`, `npm run test`, `npm run typecheck`, and `npm run build` pass in the same commit that introduces `package.json` and the install-aware `.pipelane.json` shape. |
 | Pi-present surface gate | Local Pi integration check | In an environment with installed Pi, `npm run verify:pi-surface` and `pi -e ./extensions/council/index.ts /council --self-test` pass before Phase 2 starts. |
-| Rollback safety | Scripted rollback checklist or manual verification | Reverting the full council file set through the current phase restores `tests/conformance/run.sh all` to green and leaves no `run.sh` source line pointing at removed council tests. |
+| Rollback safety | Scripted rollback checklist or manual verification | Reverting the full council file set through the current phase restores `tests/conformance/run.sh all` and every `.pipelane.json` `prePrChecks` command to green, and leaves no `run.sh` source line pointing at removed council tests. |
 | Backward compatibility | Existing suites | `tests/conformance/run.sh all` keeps current unit, Claude, and Codex tests green. |
 
 ## Acceptance Criteria
@@ -901,7 +925,11 @@ Route discovery does not make paid model calls.
 Claude council routes never use Anthropic API credentials.
 Claude subscription-only auth is enforced both during route discovery and immediately before each Claude execution.
 Pi direct Claude execution refuses API-key-only auth before calling `complete()`.
-Phase 1 Pi surface checks compile the exact `complete()` per-call `reasoningEffort` option before Pi execution code is built.
+Phase 1 clean-checkout Pi contracts compile only council-owned stubs and mapper usage; installed Pi drift is caught by `npm run verify:pi-surface`.
+Phase 4 cannot land Pi model execution until `npm run verify:pi-surface` passes against installed Pi and verifies the provider-specific effort option types used by `toPiEffortOptions`.
+Pi direct execution maps effort per provider API and never assumes that every model accepts `reasoningEffort`.
+Portable execution uses the existing `bin/provider-invoke --effort` flag only after route validation confirms the exact selected effort is supported.
+Unsupported remembered efforts block before portable invocation and are never delegated to adapter-level clamps.
 Every model voice in the final report corresponds to an explicit roster entry.
 The host model is not used as a hidden chair, summarizer, or vote.
 The reviewed plan file is never modified.
@@ -920,11 +948,12 @@ Issue-input position catalogs are generated by the specified grammar and covered
 Every initial prompt contains the frozen position catalog bytes and prompt hashes cover those bytes.
 Deterministic synthesis groups only by engine-assigned `canonicalPositionId` from a frozen position catalog.
 Deterministic readiness uses the specified `materialDissent` predicate and critique-phase assumption reviews, not an unscheduled phase or model-prose similarity.
-Repository-wide npm pre-PR checks are treated as active immediately when `package.json` is introduced, because `.pipelane.json` already names them.
-The existing `.pipelane.json` npm pre-PR commands remain green immediately after `package.json` is introduced.
+Repository-wide pre-PR checks are made install-aware in the same commit that introduces `package.json`.
+`.pipelane.json` is changed in Phase 1 to an install-aware pre-PR shape because the Pipelane PR runner executes checks directly without an automatic install step.
+The install-aware `.pipelane.json` pre-PR commands remain green both with and without `package.json`.
 Clean-checkout npm checks do not require installed Pi packages.
-Pi-present surface checks remain available but are not required in generic clean-checkout CI.
-The full fake conformance suite, TypeScript unit suite, and clean-checkout npm pre-PR commands pass without installed Pi packages, and Pi-present surface checks pass where Pi is installed.
+Pi-present surface checks remain outside generic clean-checkout CI but are required before Pi-dependent phases land.
+The full fake conformance suite, TypeScript unit suite, clean-checkout npm commands, and install-aware pre-PR commands pass without installed Pi packages, and Pi-present surface checks pass where Pi is installed.
 
 ## Rollout And Evaluation
 
@@ -932,7 +961,7 @@ Ship `/council` behind optional Pi package installation only.
 Dogfood first with a local path install using `pi -e ./extensions/council/index.ts` and then `pi install ./`.
 Before UI dogfooding, run `/council --self-test` through `pi -e ./extensions/council/index.ts` to prove the installed Pi API surface, custom UI lifecycle, route catalog reads, custom entry append, and branch reads work without model calls.
 Validate with fake route tests before any live model spend.
-Validate `npm ci`, `npm run verify:pi-surface`, `npm run test`, `npm run typecheck`, and `npm run build` locally before live smoke so the new package checks are not discovered first by pre-PR automation.
+Validate `tests/conformance/run.sh all`, every `.pipelane.json` `prePrChecks` command, `npm ci`, `npm run verify:pi-surface`, `npm run test`, `npm run typecheck`, and `npm run build` locally before live smoke so the new package checks are not discovered first by pre-PR automation.
 Run live smoke with one plan file, one issue text, one same-model roster, and one cross-family roster.
 Record whether users choose recommended rosters or edit them heavily.
 Track canceled menus separately from failed runs.
@@ -949,19 +978,20 @@ Document that resolved config location is authoritative over the in-file `scope`
 Document pre-`routeId`, stale-`routeId`, and legacy entry-level chair migration and quarantine behavior.
 Document roster entry id format, uniqueness, stability, duplicate-row minting, and duplicate-id quarantine behavior.
 Document `pi remove` and the fact that reports remain local markdown.
-Document Node `>=20`, `npm ci`, package dependency requirements, repo-local Pi type stubs, Pi-present verification, and the fact that Node is a contributor/portable-CLI requirement rather than a `/synthesis` runtime requirement.
-Document that current `.pipelane.json` pre-PR checks are `npm run test`, `npm run typecheck`, and `npm run build`, and that adding `package.json` activates them immediately.
+Document Node `>=22.19.0`, `npm ci`, package dependency requirements, repo-local Pi type stubs, Pi-present verification, and the fact that Node is a contributor/portable-CLI requirement rather than a `/synthesis` runtime requirement.
+Document that current `.pipelane.json` pre-PR checks run npm scripts directly without an install step, and that Phase 1 replaces them with install-aware guarded commands.
 Document `AISYNTH_HOME`, `AISYNTH_CONFIG_HOME`, `PI_CODING_AGENT_DIR`, and Pi's `getAgentDir()` based storage behavior.
 Document the plan-file parser rules and path-shaped predicate with examples for `/council plan.md`, `/council @plan.md`, `/council fix plan.md`, and `/council caching`.
 Document the minimum valid council and explicitly state that family diversity is not required.
 Document chair identity authority, including that `reportStrategy.chairEntryId` must point to a `role: "chair"` entry and no entry-level `chair` boolean is canonical.
 Document Claude subscription-only behavior and the absence of Anthropic API fallback.
-Document the Pi direct Claude guard that checks OAuth/subscription state immediately before `complete()` and the Phase 1 type contract for `reasoningEffort`.
+Document the Pi direct Claude guard that checks OAuth/subscription state immediately before `complete()` and the provider-specific `toPiEffortOptions` mapping.
+Document that repo-local Pi stubs do not prove installed Pi API compatibility, and that `npm run verify:pi-surface` is the required installed-runtime drift check.
 Document provider billing labels and cost estimation limits.
 Document cancellation, reload, and session replacement behavior.
 Document the zero, one, and two-plus initial survivor state-machine outcomes, including the single-survivor mechanical report for chair strategies.
 Document the computed whole-run deadline formula and how it differs from per-member timeouts.
-Document rollback scope and the requirement to rerun `tests/conformance/run.sh all` after rollback.
+Document rollback scope and the requirement to rerun `tests/conformance/run.sh all` plus every `.pipelane.json` `prePrChecks` command after rollback.
 Document that `/council` never modifies the reviewed plan and never authorizes implementation.
 Document council report storage under `./.ai-synthesis/council-sessions/` and explicitly distinguish it from existing `/synthesis` sessions.
 Document portable CLI `--roster-file` validation behavior, exit codes, and `--json` diagnostic envelope.
@@ -974,7 +1004,7 @@ Document `decision_readiness` semantics, including critical phase degradation, t
 | Review | Trigger | Why | Runs | Status | Findings |
 |--------|---------|-----|------|--------|----------|
 | CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | not run | Not requested for this phase. |
-| Claude Challenge Review | `/claude-review challenge plan` | Independent adversarial plan challenge | 5 | ISSUES FOLDED | Commit `101f32b` found 7 issues; this revision folds clean-checkout Pi typing, immediate `.pipelane.json` npm activation, rollback scope, prompt/catalog ordering, roster id uniqueness, issue catalog grammar, and single-survivor frontmatter into the plan. |
+| Claude Challenge Review | `/claude-review challenge plan` | Independent adversarial plan challenge | 6 | ISSUES FOLDED | Commit `70836b1` found 4 issues; this revision folds verified Pipelane no-install behavior, rollback pre-PR health, installed Pi drift checks, provider-specific Pi effort mapping, and verified `bin/provider-invoke --effort` usage into the plan. |
 | Codex Review | `/codex review` | Independent 2nd opinion | 0 | not run | Not requested for this phase. |
 | Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | CLEAR | 1 issue found and folded: Pi `off` effort now omits `reasoningEffort` instead of passing `"off"`. |
 | Design Review | `/plan-design-review` | UI/UX gaps | 0 | not run | No design review requested for this phase. |
