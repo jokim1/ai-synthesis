@@ -22,7 +22,7 @@ The design keeps `/council` as personal `ai-synthesis` customization and does no
 `bin/lib/frontmatter_set.py` updates session frontmatter fields for rating and revisit flows and should remain available for council report metadata updates if needed.
 `tests/conformance/run.sh` runs `unit`, `claude`, and `codex` suites, while `tests/conformance/fakes.sh` provides fake CLIs for deterministic auth, timeout, malformed, retry, and argv tests.
 `.gitignore` ignores `/docs/*` except `/docs/public/`, so this plan and later non-public implementation docs must be added with `git add -f`.
-`.pipelane.json` declares generic npm pre-PR checks that do not currently match the shell-only repository, so council tests should be explicit shell conformance tests until a package build is introduced.
+`.pipelane.json` declares generic npm pre-PR checks that do not currently match the shell-only repository, so package scripts or `.pipelane.json` must be aligned in the same phase that adds `package.json`.
 Pi documentation under `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/` supports the required optional package path.
 Pi package resources are declared in `package.json` under a `pi` key or discovered from conventional `extensions/`, `skills/`, `prompts/`, and `themes/` directories.
 Pi extension commands are registered with `pi.registerCommand(name, { description, handler, getArgumentCompletions })`.
@@ -40,7 +40,7 @@ Pi session replacement and reload invalidate old extension contexts, so any coun
 ## Goals
 
 Provide `/council [issue text]`, `/council <plan-file>`, and `/council @plan-file` as a Pi-first command installed only when the user installs the `ai-synthesis` package.
-Provide a portable non-Pi skill and CLI fallback that runs without claiming to provide Pi's native roster menu.
+Provide a portable non-Pi skill and CLI fallback that runs the same TypeScript council engine through Node without claiming to provide Pi's native roster menu.
 Review an issue or plan without modifying the reviewed plan file or authorizing implementation.
 Detect model execution routes without paid probe calls.
 Separate provider and model identity from the executor used to call it and from billing or authentication state.
@@ -83,7 +83,8 @@ The package should expose one Pi extension command named `council` and one skill
 The Pi extension command should render the polished roster editor only when `ctx.mode === "tui"`.
 In Pi RPC mode, `/council` should use dialog methods or a non-interactive fallback and should not call `ctx.ui.custom()`.
 In Pi print or JSON mode, `/council` should run only when enough input and a valid saved roster exist, otherwise it should print a usage error with no UI claim.
-In non-Pi environments, the portable `skills/council/SKILL.md` should explain that the native menu is Pi-only and should route users to `bin/council` or a JSON roster file.
+The portable CLI may require Node and package dependencies, and its missing-runtime error should name the exact command to run, such as `npm install` from the package root.
+In non-Pi environments, the portable `skills/council/SKILL.md` should explain that the native menu is Pi-only and should route users to the Node-backed `bin/council` CLI plus a JSON roster file.
 `/council` with empty input in Pi TUI should open a small choice flow that asks for issue text or a plan file path.
 `/council` with empty input outside Pi TUI should return usage and exit without creating or changing config.
 `/council @plan.md` should treat `plan.md` as the reviewed plan file when it resolves to a readable regular file under an allowed root.
@@ -115,7 +116,7 @@ Add Pi package resources while keeping the existing Claude Code `/synthesis` ski
 Use the Pi extension as the primary UI and model execution path.
 Use a shared council engine library for state machine, prompt assembly, validation, degradation, recommendation, and report generation.
 Use executor implementations to keep route identity separate from provider/model identity.
-Use the existing provider layer only for portable CLI routes and for non-Pi fallback.
+Use the existing provider layer only as a model executor behind the shared TypeScript engine for portable CLI routes and non-Pi fallback.
 Do not make the Pi extension shell out to `pi` itself.
 Do not change the current `/synthesis` orchestration in `SKILL.md` except for documentation links if desired later.
 
@@ -123,7 +124,10 @@ The package shape should be:
 
 ```text
 package.json
+tsconfig.json
+vitest.config.ts
 extensions/council/index.ts
+extensions/council/cli.ts
 extensions/council/lib/types.ts
 extensions/council/lib/config.ts
 extensions/council/lib/input.ts
@@ -139,6 +143,7 @@ extensions/council/ui/keymap.ts
 skills/council/SKILL.md
 bin/council
 bin/council-route-probe
+scripts/verify-pi-package.mjs
 roles/council/initial.md
 roles/council/critique.md
 roles/council/steelman.md
@@ -150,14 +155,20 @@ schemas/council-adversary.json
 schemas/council-report.json
 tests/conformance/council.sh
 tests/conformance/fixtures/council/
+tests/council/
+tests/council/pi-fixtures/
 ```
 
 `package.json` should include `"keywords": ["pi-package"]` and a `pi` manifest that exposes `extensions/council/index.ts` and `skills/council`.
 `package.json` should list Pi core packages as peer dependencies with `"*"` ranges, matching Pi package documentation.
-The Pi extension should import `ExtensionAPI`, `CONFIG_DIR_NAME`, `getAgentDir`, `DynamicBorder`, `BorderedLoader`, `getSettingsListTheme`, `complete`, `getSupportedThinkingLevels`, and `@earendil-works/pi-tui` controls.
+`package.json` should include runtime dependencies needed by the portable Node wrapper, including `jiti` if the CLI loads TypeScript sources directly.
+`package.json` scripts should make `npm run test`, `npm run typecheck`, and `npm run build` meaningful before `.pipelane.json` pre-PR checks see the new package.
+The Pi extension should import `ExtensionAPI`, `CONFIG_DIR_NAME`, `getAgentDir`, `DynamicBorder`, `BorderedLoader`, `getSettingsListTheme`, `complete` and `getSupportedThinkingLevels` from the installed Pi packages, and `@earendil-works/pi-tui` controls.
 The portable skill should use relative paths from its `SKILL.md` and should not require Pi APIs.
-The shell `bin/council` should be a non-Pi fallback wrapper that reads a JSON roster and uses `bin/provider-invoke` routes only.
-The shell `bin/council-route-probe` should produce route discovery JSON for the portable path and should call `bin/provider-probe` internally.
+`extensions/council/cli.ts` should be the non-Pi entrypoint and should call the same input parser, config loader, route catalog, engine, and report writer as the Pi extension.
+The shell `bin/council` should be only a thin launcher that checks for Node, loads the TypeScript CLI through `jiti` or the chosen runtime loader, and exits with clear setup instructions when dependencies are missing.
+The shell `bin/council-route-probe` should be only a thin launcher for `extensions/council/cli.ts route-probe --json`.
+Do not create a second shell implementation of roster validation, phase orchestration, synthesis, cancellation, or reporting.
 The shell interface should be:
 
 ```sh
@@ -166,9 +177,11 @@ bin/council --plan-file <path> --roster-file <path> [--report-strategy determini
 bin/council-route-probe --json [--auth-policy subscription-only|default]
 ```
 
-The portable shell path should refuse to run without a roster file because it cannot present Pi's native editable menu.
+The portable CLI path should refuse to run without a roster file because it cannot present Pi's native editable menu.
 The Pi extension should use `ctx.modelRegistry` for Pi routes and should not parse Pi auth files directly.
-The Pi extension should call `complete(model, context, { apiKey, headers, env, signal, timeoutMs, maxRetries: 0 })` for Pi model routes.
+The Pi extension should call `complete(model, context, { apiKey, headers, env, signal: runSignal, timeoutMs, maxRetries: 0, reasoningEffort: entry.effort })` for Pi model routes.
+The Pi executor must use the per-call `reasoningEffort` option shown by the installed Pi examples, not session-global `pi.setThinkingLevel()`, to avoid cross-member effort bleed during concurrent calls.
+If a future installed Pi version renames that option, Phase 1 should update the executor contract and type tests before model execution is implemented.
 The Pi extension should pass no model tools during council MVP.
 The extension itself should read plan files into immutable, line-numbered text and should instruct models to cite `plan.md:Lx-Ly`.
 The engine should accept issue text or immutable plan text, a confirmed roster, a route catalog, and an abort signal.
@@ -270,7 +283,13 @@ export interface CouncilRosterConfigV1 {
 }
 ```
 
-The route probe JSON contract for portable shell discovery should be:
+`routeId` must be a deterministic stable key with the form `v1:<executor>:<provider>:<model>`.
+Each component should be Unicode-normalized, percent-encoded, and never include display name, cost, auth source, billing state, or availability.
+Roster reconciliation should first match fresh routes by exact `routeId`, then by the same `(executor, provider, model)` tuple for old configs that predate `routeId`.
+If neither key matches, the remembered roster entry remains visible and unavailable with replacement suggestions.
+Changing a route's display label, auth state, billing label, cost metadata, or effort support must not change `routeId`.
+
+The route probe JSON contract for portable CLI discovery should be:
 
 ```ts
 export interface CouncilRouteProbeEnvelopeV1 {
@@ -292,6 +311,7 @@ The model voice schema in `schemas/council-voice.json` should require:
   "ok": true,
   "member_id": "stable roster entry id",
   "role": "role name",
+  "position_key": "stable lowercase short key for the member's recommendation position",
   "recommendation": "role-specific recommendation or position",
   "evidence": [
     {
@@ -314,6 +334,9 @@ The model voice schema in `schemas/council-voice.json` should require:
 }
 ```
 
+`position_key` should be generated by the model under instructions to use a short lowercase ASCII slug and should be normalized by the engine to `[a-z0-9-]{1,64}`.
+When the model omits or emits an invalid `position_key`, the engine should derive one from the first 80 characters of `recommendation` and mark it as derived in diagnostics.
+The deterministic synthesis strategy depends on `position_key`, grounded evidence, risks, and assumptions rather than free-form prose ordering.
 The critique schema should require targeted challenges, steelmans, and crux verification status.
 The adversary schema should reuse the existing bounded pattern from `schemas/adversary.json` with axes `evidence`, `framing`, and `recommendation_logic`.
 The final report schema should require:
@@ -386,6 +409,9 @@ For portable Codex CLI routes, supported efforts should be `["minimal", "low", "
 For portable Claude Code subscription routes, supported efforts should be the adapter-supported set, initially `["low", "medium", "high", "max"]`, unless a future no-cost capability probe provides better model-specific metadata.
 Unsupported remembered efforts should remain in config and UI until the user edits them.
 Execution should reject an enabled member whose selected effort is unsupported and should not call `pi.setThinkingLevel()` or `provider-invoke` with a different effort.
+Pi execution should pass the selected supported effort to `complete()` as per-call `reasoningEffort` for each member.
+Portable execution should pass the selected supported effort to `bin/provider-invoke --effort` for each member.
+Effort propagation should be asserted from captured executor call records before any live model smoke test is allowed.
 Replacement suggestions should pick the nearest effort by the ordered list `off < minimal < low < medium < high < xhigh < max`.
 Replacement suggestions should be suggestions only and require explicit user confirmation through Edit or Reset.
 
@@ -403,6 +429,7 @@ The command starts in `idle`.
 `confirm_run` fires when the user selects Run.
 `persist_roster` atomically writes the confirmed roster before model execution starts.
 `prepare_prompts` builds immutable prompts and line-numbered plan evidence.
+`prepare_prompts` also creates one per-run `AbortController` that is owned by the engine, not by `ctx.signal`, because Pi command contexts can be idle and may not provide a signal.
 `initial_analysis` runs each executable member independently without seeing other member outputs.
 `pool_evidence` deterministically builds a shared evidence ledger from issue text, plan lines, and member evidence.
 `critique` runs evidence-led critique over the ledger and initial outputs.
@@ -411,9 +438,20 @@ The command starts in `idle`.
 `synthesize` runs either an explicit chair model, deterministic synthesis code, or structured disagreement generation.
 `validate_report` validates the final report schema and `implementation_authorized: false`.
 `write_report` writes the markdown report through a temp file and rename.
+`write_terminal_report` writes a canceled or failed report only after the roster has been confirmed and execution has started.
 `done` displays the result and the report path.
 `canceled` aborts active work and reports what was canceled.
 `failed` reports why no council output could be produced.
+
+Phase-role semantics should be deterministic and independent of UI ordering except where explicitly stated.
+Every enabled executable roster entry runs `initial_analysis`, including a designated chair.
+Later phases select explicit roster members from the successful initial voices.
+`critique` should run all successful members with role `implementation-critic` or `risk-critic`; if none exist, select the highest-effort non-chair successful member, or the highest-effort successful member if every survivor is a chair, breaking ties by roster order.
+`steelman` should run all successful members with role `steelman`; if none exist, select the successful member whose `position_key` has the fewest supporters, breaking ties by highest effort then roster order.
+`adversary` should run all successful members with role `adversary`; if none exist, select a successful `risk-critic`, otherwise the highest-effort non-chair successful member, or the highest-effort successful member if every survivor is a chair.
+`chair` is a report strategy role only and does not automatically satisfy critique, steelman, or adversary selection unless its roster role also matches that phase.
+Phase fallback selection must be recorded in the report diagnostics so users can see when a member was reused outside its preferred role.
+If a selected later-phase member fails, that phase degrades; the engine should not silently substitute an unrecorded member after the phase starts.
 
 Allowed transitions should be:
 
@@ -424,13 +462,15 @@ edit_roster -> canceled
 validate_roster -> confirm_run
 confirm_run -> persist_roster -> prepare_prompts -> initial_analysis -> pool_evidence
 pool_evidence -> critique -> steelman -> adversary -> synthesize -> validate_report -> write_report -> done
-initial_analysis -> failed
+initial_analysis -> write_terminal_report -> failed
 initial_analysis -> pool_evidence
 critique -> synthesize
 steelman -> synthesize
 adversary -> synthesize
-any_running_state -> canceled
-any_state -> failed
+any_running_state_after_persist -> write_terminal_report -> canceled
+any_running_state_after_persist -> write_terminal_report -> failed
+any_running_state_before_persist -> canceled
+any_pre_confirm_state -> failed
 ```
 
 Initial analyses should run through a bounded promise pool.
@@ -447,10 +487,23 @@ If exactly one initial voice succeeds after at least one runtime failure, the re
 If at least two initial voices succeed, the report may complete as a council even when later critique, steelman, adversary, or chair phases degrade.
 A designated chair must be a roster entry and must also run an independent initial analysis before the synthesis phase.
 A deterministic strategy must not call any model for synthesis.
+A deterministic strategy should produce a mechanical synthesis with narrower guarantees than a chair model.
+A deterministic strategy should group successful initial voices by normalized `position_key`.
+A deterministic strategy should choose `recommendation` as the majority position when one position has more than half of successful voices.
+A deterministic strategy should choose `recommendation` as the plurality position only when it has at least two voices and at least one more supporter than the runner-up.
+A deterministic strategy should set `recommendation` to `No deterministic recommendation; see structured disagreement` when there is a tie, one surviving voice, no grounded evidence, or no plurality that meets the rule above.
+A deterministic strategy should rank `evidence_summary` by grounded evidence cited by the most voices, then by source locator, then by first appearance.
+A deterministic strategy should choose `strongest_dissent` from the largest non-winning position, breaking ties by count of grounded counter-evidence, count of load-bearing assumptions, and roster order.
+A deterministic strategy should set `decision_readiness` to `ready` only when at least two voices support the winning position, no critical phase degraded, and no winning-position load-bearing assumption is unverified.
+A deterministic strategy should set `decision_readiness` to `conditional` when there is a winning position but unresolved assumptions, partial degradation, or material dissent.
+A deterministic strategy should set `decision_readiness` to `not_ready` when the recommendation is the no-recommendation sentinel, only one initial voice survived, or validation failed.
+A deterministic strategy should set `next_action` to the highest-ranked assumption verification when readiness is conditional or not ready, otherwise to the smallest concrete next step named by the winning position.
+A deterministic strategy should include a report note that the synthesis was generated by auditable aggregation code, not by another model voice.
 A structured disagreement strategy must preserve major positions and dissent without forcing a recommendation.
 The current Pi host model must never be used for a model call unless its provider/model route is present as an enabled roster entry.
 The engine should create one `runId` per Run using timestamp, input hash, and random suffix.
 The Run button should become inactive after `confirm_run` to prevent duplicate starts.
+Escape, Pi `session_shutdown`, process signals in the portable CLI, and timeout handlers should all abort the per-run `AbortController`.
 Report writes should be idempotent by writing only to the `runId` report path.
 If a report path already exists for a `runId`, the writer should fail rather than overwrite.
 
@@ -473,7 +526,9 @@ Partial degradation should lower decision readiness and show which phases lost v
 Failure of an explicit chair should fall back to deterministic synthesis only if at least two initial voices succeeded and the report says the chair failed.
 Failure of deterministic synthesis validation should fail the run rather than invent a report.
 Escape in the roster editor should cancel without persistence.
-Escape during execution should abort active AbortSignals and write `status: canceled` only if execution had already started.
+Escape during execution should abort the per-run `AbortController` and write `status: canceled` only if execution had already started.
+If cancellation or failure happens before `confirm_run`, no council report should be written because there is no confirmed roster or run.
+If cancellation or failure happens after `persist_roster`, `write_terminal_report` should write a minimal report with frontmatter `status: canceled` or `status: failed`, member diagnostics collected so far, and `implementation_authorized: false`.
 Pi `/reload`, `/new`, `/resume`, `/fork`, `/clone`, or process shutdown during a run should trigger `session_shutdown`, abort active work, and avoid using stale `ctx` objects.
 After reload, the next `/council` invocation should load the last confirmed roster from global config, not from stale memory.
 Session replacement should not resume a half-finished council automatically.
@@ -496,7 +551,7 @@ Model prompts must state that council completion does not authorize implementati
 Claude council routes must not use Anthropic API keys.
 Other provider auth paths should be labeled honestly as subscription, OAuth, API key, gateway billing, local, or unknown.
 API keys and headers must never be logged, stored in reports, stored in roster config, or included in custom Pi entries.
-The existing `aisynth_redact` behavior in `bin/lib/common.sh` should remain in the shell fallback.
+The existing `aisynth_redact` behavior in `bin/lib/common.sh` should remain in the portable provider-invoke executor.
 Pi direct executor diagnostics should redact `sk-...`, `Bearer ...`, and known secret values before writing report diagnostics.
 Cost estimation should use catalog metadata and should not require an API call.
 The council engine should disable model tools for MVP to avoid hidden file edits or shell execution during review.
@@ -506,6 +561,7 @@ The council engine should disable model tools for MVP to avoid hidden file edits
 Existing `/synthesis` behavior must remain unchanged.
 Existing `bin/provider-invoke` flags must remain backward compatible.
 Adding `--auth` to `bin/provider-probe` must default to `auto` and preserve existing callers.
+Adding `package.json` must not activate failing pre-PR checks; package scripts and `.pipelane.json` must be aligned in the same implementation phase.
 Existing session files in `./.ai-synthesis/sessions/` must remain readable by `expand`, `list`, `resume`, `rate`, and `revisit`.
 Council reports can share the session directory by using `mode: council` frontmatter and should be ignored by older `/synthesis` commands that expect other modes.
 Existing `--solo` and `--compare` should not depend on the council roster or route catalog.
@@ -513,36 +569,40 @@ Existing `revisit` can later learn to include `mode: council`, but initial counc
 The optional Pi package should not be installed by default and should not affect users who only symlink the Claude Code skill.
 If users install the package and later remove it with `pi remove`, their `./.ai-synthesis/sessions/*-council.md` reports remain readable markdown.
 If users have a remembered roster from a future version, version mismatch should warn and start from recommendations rather than partially loading unknown fields.
+If users have a remembered roster from an early council build without `routeId`, migration should derive `routeId` from `(executor, provider, model)` and preserve the original entry id, role, effort, enabled state, and chair flag.
 
 ## Implementation Phases
 
-Phase 1 should add package scaffolding, TypeScript types, JSON schemas, and conformance fixtures without model execution.
-Phase 2 should implement input parsing, trusted path validation, immutable plan loading, route discovery, effort support, and roster config persistence.
+Phase 1 should add package scaffolding, TypeScript types, JSON schemas, TypeScript test runner setup, package scripts, `.pipelane.json` alignment, and conformance fixtures without model execution.
+Phase 2 should implement input parsing, trusted path validation, immutable plan loading, stable route IDs, route discovery, effort support, and roster config persistence.
 Phase 3 should implement the Pi TUI roster editor and non-TUI fallback behavior.
-Phase 4 should implement the Pi `complete` executor, provider-invoke fallback executor, structured validation, retry-once behavior, and cancellation.
+Phase 4 should implement the Pi `complete` executor with per-call `reasoningEffort`, the provider-invoke fallback executor, structured validation, retry-once behavior, and cancellation through an engine-owned `AbortController`.
 Phase 5 should implement the council engine state machine, evidence ledger, degradation, report strategies, report writer, and Pi session custom entry.
 Phase 6 should add documentation, README install/update notes, and the portable `skills/council/SKILL.md` instructions.
 Phase 7 should run live smoke tests manually with at least one subscription Claude route and one Codex route after the fake conformance suite is green.
 
 ## Exact File-Level Changes
 
-Add `package.json` with package metadata, `pi` manifest, peer dependencies, and test scripts.
+Add `package.json` with package metadata, `pi` manifest, peer dependencies, runtime `jiti` dependency if TypeScript is loaded directly by the CLI, dev dependencies for TypeScript testing, and scripts for `test`, `test:sh`, `test:ts`, `typecheck`, and `build`.
+Add `tsconfig.json`, `vitest.config.ts`, and `scripts/verify-pi-package.mjs` unless the implementation chooses an equivalent Node built-in test setup with the same coverage.
+Modify `.pipelane.json` in the same phase as `package.json` if needed so its `npm run test`, `npm run typecheck`, and `npm run build` checks call real scripts and stay green.
 Add `extensions/council/index.ts` to register `/council`, load config, handle Pi mode branching, and call the UI and engine.
+Add `extensions/council/cli.ts` as the Node-backed portable entrypoint that calls the same shared engine as the Pi extension.
 Add `extensions/council/lib/types.ts` for all interfaces listed in this plan.
 Add `extensions/council/lib/config.ts` for `getAgentDir()` based paths, non-Pi paths, config migration, quarantine, and atomic writes.
 Add `extensions/council/lib/input.ts` for `/council` argument parsing, `@plan-file` parsing, safe path resolution, plan loading, line numbering, and SHA-256 hashing.
 Add `extensions/council/lib/routes.ts` for Pi route discovery, family detection, supported effort calculation, Claude subscription-only filtering, and replacement suggestions.
 Add `extensions/council/lib/recommend.ts` for issue-versus-plan roster recommendations and composition feedback.
-Add `extensions/council/lib/engine.ts` for the state machine and phase orchestration.
+Add `extensions/council/lib/engine.ts` for the state machine, phase-role assignment, deterministic synthesis, degradation, cancellation, and phase orchestration.
 Add `extensions/council/lib/executors/pi-complete.ts` for Pi direct model calls through `complete()`.
-Add `extensions/council/lib/executors/provider-invoke.ts` for shell fallback calls through `bin/provider-invoke`.
+Add `extensions/council/lib/executors/provider-invoke.ts` for portable provider calls through `bin/provider-invoke`.
 Add `extensions/council/lib/report.ts` for structured report validation, markdown rendering, report frontmatter, and report file writes.
 Add `extensions/council/ui/roster-editor.ts` for the custom TUI component.
 Add `extensions/council/ui/composition.ts` for composition feedback rendering.
 Add `extensions/council/ui/keymap.ts` for key handling and `keyHint()` labels.
 Add `skills/council/SKILL.md` as the portable non-Pi skill.
-Add `bin/council` as a shell fallback wrapper that accepts `--issue`, `--plan-file`, `--roster-file`, `--report-strategy`, and `--json`.
-Add `bin/council-route-probe` as a shell fallback route probe that emits `CouncilRouteProbeEnvelopeV1`.
+Add `bin/council` as a thin shell launcher for `extensions/council/cli.ts` that accepts `--issue`, `--plan-file`, `--roster-file`, `--report-strategy`, and `--json`.
+Add `bin/council-route-probe` as a thin shell launcher for `extensions/council/cli.ts route-probe` that emits `CouncilRouteProbeEnvelopeV1`.
 Modify `bin/provider-probe` to accept optional `--auth <auto|subscription|apikey>` while retaining `provider-probe <claude|codex>`.
 Modify `bin/adapters/claude.sh` `adapter_probe` to honor `A_AUTH=subscription` by refusing API-key-only auth.
 Do not modify `bin/provider-invoke` default auth behavior except to document that council passes `--auth subscription`.
@@ -550,6 +610,8 @@ Add `roles/council/initial.md`, `roles/council/critique.md`, `roles/council/stee
 Add `schemas/council-voice.json`, `schemas/council-critique.json`, `schemas/council-adversary.json`, and `schemas/council-report.json`.
 Add `tests/conformance/council.sh` and source it from `tests/conformance/run.sh`.
 Add fake route fixtures under `tests/conformance/fixtures/council/`.
+Add TypeScript unit tests under `tests/council/` for input parsing, route reconciliation, effort propagation, phase-role assignment, deterministic synthesis, config persistence, cancellation, and report validation.
+Add Pi integration fixtures or fakes under `tests/pi/` or `tests/council/pi-fixtures/` to simulate `ctx.modelRegistry`, `ctx.ui.custom()`, `session_shutdown`, and session replacement without live model calls.
 Update `bin/README.md` with the council route probe and subscription-only Claude behavior.
 Update `README.md` with optional Pi package install instructions and a short warning that the native `/council` menu is Pi-only.
 Force-add any non-public docs under `docs/` because `.gitignore` intentionally ignores them.
@@ -573,7 +635,11 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Provider failure | `tests/conformance/council.sh` | Failed member is recorded and remaining members continue. |
 | Partial council degradation | `tests/conformance/council.sh` | One surviving voice yields degraded `not_ready`; two surviving voices yield degraded council report. |
 | Hidden-host-vote prevention | `tests/conformance/council.sh` | No model call occurs for `ctx.model` unless it appears in roster. |
+| Per-member Pi effort propagation | TypeScript executor unit test | `pi-complete` passes each roster entry's effort as per-call `reasoningEffort` and never calls `pi.setThinkingLevel()`. |
+| Concurrent mixed efforts | TypeScript executor unit test | Two concurrent Pi member calls with different efforts preserve their own effort options and do not bleed session-global state. |
+| Phase-role fallback | TypeScript engine unit test | Rosters without explicit critic, steelman, or adversary roles receive deterministic explicit-member phase assignments recorded in diagnostics. |
 | Deterministic report strategy | `tests/conformance/council.sh` | Final synthesis uses no model executor and report says deterministic. |
+| Deterministic synthesis algorithm | TypeScript engine unit test | Majority, plurality, tie, no-grounded-evidence, one-survivor, and degraded cases produce the specified readiness and recommendation fields. |
 | Chair report strategy | `tests/conformance/council.sh` | Chair route is an explicit roster member and has its own call record. |
 | Structured disagreement strategy | `tests/conformance/council.sh` | Report preserves disagreement without forcing a recommendation. |
 | Pi reload during menu | `tests/conformance/council.sh` or Pi integration test | Menu closes, no config write occurs, and stale context is not used. |
@@ -581,10 +647,16 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Non-Pi fallback | `tests/conformance/council.sh` | Portable skill or `bin/council` reports no native menu and uses JSON roster or clear usage. |
 | Claude subscription-only | `tests/conformance/council.sh` | API-key-only Claude is unavailable for council but existing `/synthesis` probe default remains auto. |
 | No paid probe calls | Unit test with fake executors | Route discovery calls only registry/probe methods and never invokes model execution. |
+| Stable route IDs | TypeScript route unit test | Display name, auth state, billing label, cost, and availability changes do not change `routeId`; missing routes stay visible. |
 | Structured output validation | Unit test with fixtures | `ok:false`, extra keys, wrong types, and prose-only responses fail validation and retry once. |
 | Report authorization guard | Unit test | `schemas/council-report.json` rejects `implementation_authorized: true`. |
 | Plan immutability | Unit test | Plan file hash and mtime are unchanged after a run. |
 | Atomic persistence | Unit test | Interrupted temp write does not corrupt last good roster. |
+| Canceled terminal report | TypeScript engine unit test | Cancellation after `persist_roster` writes a minimal `status: canceled` report and cancellation before Run writes no report. |
+| Failed terminal report | TypeScript engine unit test | Failure after execution starts writes `status: failed` with diagnostics and `implementation_authorized: false`. |
+| Node fallback parity | TypeScript CLI unit test plus `tests/conformance/council.sh` | `bin/council` invokes the shared TypeScript engine and does not contain independent shell synthesis logic. |
+| Missing Node fallback dependency | `tests/conformance/council.sh` | Missing Node or runtime loader prints setup instructions and does not create config or reports. |
+| Package check activation | CI/local script test | `npm run test`, `npm run typecheck`, and `npm run build` all resolve to real checks before `.pipelane.json` relies on them. |
 | Backward compatibility | Existing suites | `tests/conformance/run.sh all` keeps current unit, Claude, and Codex tests green. |
 
 ## Acceptance Criteria
@@ -605,13 +677,14 @@ The reviewed plan file is never modified.
 The final report includes recommendation, evidence, strongest dissent, assumptions, risks, what would change the recommendation, decision readiness, next action, and `implementation_authorized: false`.
 The final report explicitly says council completion does not authorize implementation.
 Existing `/synthesis`, `--solo`, `--compare`, and `revisit` behavior remains compatible.
-The full fake conformance suite passes.
+The full fake conformance suite and TypeScript unit suite pass.
 
 ## Rollout And Evaluation
 
 Ship `/council` behind optional Pi package installation only.
 Dogfood first with a local path install using `pi -e ./extensions/council/index.ts` and then `pi install ./`.
 Validate with fake route tests before any live model spend.
+Validate `npm run test`, `npm run typecheck`, and `npm run build` locally before live smoke so the new package checks are not discovered first by pre-PR automation.
 Run live smoke with one plan file, one issue text, one same-model roster, and one cross-family roster.
 Record whether users choose recommended rosters or edit them heavily.
 Track canceled menus separately from failed runs.
@@ -624,6 +697,7 @@ Use a future `revisit` extension only after council reports have enough outcome 
 Update `README.md` with an optional `/council` section that distinguishes Pi-native UI from portable skill fallback.
 Document `pi install` global and project-local installation paths.
 Document `pi remove` and the fact that reports remain local markdown.
+Document Node and package dependency requirements for the portable `bin/council` fallback.
 Document `AISYNTH_HOME`, `AISYNTH_CONFIG_HOME`, `PI_CODING_AGENT_DIR`, and Pi's `getAgentDir()` based storage behavior.
 Document the plan-file parser rules with examples for `/council plan.md`, `/council @plan.md`, and `/council fix plan.md`.
 Document the minimum valid council and explicitly state that family diversity is not required.
