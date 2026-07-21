@@ -25,7 +25,9 @@ The design keeps `/council` as personal `ai-synthesis` customization and does no
 `bin/lib/frontmatter_set.py` updates session frontmatter fields for rating and revisit flows and should remain available for council report metadata updates if needed.
 `tests/conformance/run.sh` runs `unit`, `claude`, and `codex` suites, while `tests/conformance/fakes.sh` provides fake CLIs for deterministic auth, timeout, malformed, retry, and argv tests.
 `.gitignore` ignores `/docs/*` except `/docs/public/`, so this plan and later non-public implementation docs must be added with `git add -f`.
-`.pipelane.json` declares generic npm pre-PR checks that do not currently match the shell-only repository, so package scripts or `.pipelane.json` must be aligned in the same phase that adds `package.json`.
+`.pipelane.json` currently declares `prePrChecks` exactly as `npm run test`, `npm run typecheck`, and `npm run build`.
+The current checkout has no `package.json`, so those checks would fail if invoked before package scripts exist.
+Adding `package.json` activates the existing `.pipelane.json` npm checks immediately because `.pipelane.json` already names the scripts; activation is not deferred to a later `.pipelane.json` edit.
 Pi documentation under `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/` supports the required optional package path.
 Pi package resources are declared in `package.json` under a `pi` key or discovered from conventional `extensions/`, `skills/`, `prompts/`, and `themes/` directories.
 Pi extension commands are registered with `pi.registerCommand(name, { description, handler, getArgumentCompletions })`.
@@ -173,18 +175,21 @@ tests/council/pi-complete-options-contract.test-d.ts
 
 `package.json` should include `"keywords": ["pi-package"]` and a `pi` manifest that exposes `extensions/council/index.ts` and `skills/council`.
 `package.json` should list Pi core packages as peer dependencies with `"*"` ranges, matching Pi package documentation.
+`package.json` should not rely on peer dependencies to satisfy clean-checkout typecheck or build because `npm ci` does not install peers by itself.
+Clean-checkout TypeScript checks should resolve Pi imports through repo-local type stubs under `tests/council/pi-fixtures/types/@earendil-works/` and `tsconfig.json` path mappings.
+The repo-local Pi type stubs should be deliberately minimal and should cover only the imports and call signatures used by `/council`; `npm run verify:pi-surface` remains the Pi-present guard against drift in the installed packages.
+`npm run verify:pi-surface` and the `pi -e` self-test should be excluded from `.pipelane.json` pre-PR checks and from clean-checkout CI unless `PI_CODING_AGENT_DIR` or the installed Pi package path is explicitly available.
 `package.json` should include runtime dependencies needed by the portable Node wrapper, including `jiti` if the CLI loads TypeScript sources directly.
-`package.json` scripts should be meaningful for the files present in the current implementation phase and should stay green before any `.pipelane.json` pre-PR checks call them.
+`package.json` scripts `test`, `typecheck`, and `build` should be meaningful for the files present in the current implementation phase and should stay green the same commit that `package.json` is introduced.
 Adding `package.json` is a deliberate repository-wide contributor and CI change, not only an optional runtime install detail.
 Phase 1 should require Node `>=20`, commit `package-lock.json`, document `npm ci`, and verify package-local scripts on a clean checkout after `npm ci`.
-Phase 1 should not activate repository-wide `.pipelane.json` npm checks unless the phase also contains buildable council entrypoints and the full scripts they call.
-Repository-wide `.pipelane.json` npm check activation should happen in the same phase that first ships a buildable `extensions/council/index.ts`, a buildable `extensions/council/cli.ts`, and passing TypeScript tests for the shared engine or stubs those entrypoints intentionally expose.
-If the council effort stalls before `.pipelane.json` activation, rollback is deleting the package scaffolding, lockfile, TypeScript config, and council-only tests from the unmerged council branch.
-If it stalls after `.pipelane.json` activation, rollback is a single revert of `.pipelane.json`, `package.json`, `package-lock.json`, TypeScript config, and `extensions/council` files before unrelated `/synthesis` work lands.
+Because `.pipelane.json` already declares npm pre-PR checks, Phase 1 must treat `package.json` as repository-wide check activation and must ship green `test`, `typecheck`, and `build` scripts immediately.
+Phase 1 should not add `.pipelane.json` references to `verify:pi-surface`; that command is a Pi-present local gate, not a clean-checkout gate.
+If the council effort stalls after `package.json` is added, rollback must remove every Phase 1 through current-phase council artifact and restore `tests/conformance/run.sh all` to green, not only revert package metadata.
 Users who only symlink the existing Claude Code `/synthesis` skill are unaffected at runtime because `SKILL.md` and the provider shell scripts must not require Node for existing flows.
 The Pi extension should import `ExtensionAPI`, `CONFIG_DIR_NAME`, `getAgentDir`, `DynamicBorder`, `BorderedLoader`, `getSettingsListTheme`, `complete` and `getSupportedThinkingLevels` from the installed Pi packages, and `@earendil-works/pi-tui` controls.
 Phase 1 must include an installed-runtime Pi surface contract before Phase 2 starts.
-`scripts/verify-pi-surface.mjs` should import from the installed `@earendil-works/pi-coding-agent`, `@earendil-works/pi-ai`, `@earendil-works/pi-ai/compat`, and `@earendil-works/pi-tui` packages and fail if `CONFIG_DIR_NAME`, `getAgentDir`, `ExtensionAPI` type exports, `ctx.modelRegistry` methods, `complete`, `getSupportedThinkingLevels`, `ctx.ui.custom`, `keyHint`, `BorderedLoader`, `DynamicBorder`, `getSettingsListTheme`, `pi.appendEntry`, `pi.registerCommand`, `session_shutdown`, and replacement-session `withSession` support are unavailable or renamed.
+`scripts/verify-pi-surface.mjs` should import from the installed `@earendil-works/pi-coding-agent`, `@earendil-works/pi-ai`, `@earendil-works/pi-ai/compat`, and `@earendil-works/pi-tui` packages when Pi is present, and should fail with a clear `PI_NOT_INSTALLED` diagnostic when those packages are unavailable.
 `tests/council/pi-surface-contract.test-d.ts` should compile the exact imports and call signatures planned for `extensions/council/index.ts`, `ui/roster-editor.ts`, and the later Pi executor without requiring the Phase 4 `pi-complete.ts` file to exist.
 `tests/council/pi-complete-options-contract.test-d.ts` should compile a Phase 1-only type assertion that `complete(model, context, { apiKey, headers, env, signal, timeoutMs, maxRetries, reasoningEffort })` accepts a per-call `reasoningEffort` option and rejects a renamed or session-global thinking-level substitute.
 The first local implementation milestone should be a no-model-call spike run with `pi -e ./extensions/council/index.ts` that registers `/council --self-test`, opens and closes a trivial `ctx.ui.custom()` component in TUI, reads `ctx.modelRegistry.getAll()` and `getAvailable()` after `refresh()`, calls `getSupportedThinkingLevels()` on a fixture or current model when present, appends a harmless `ai-synthesis-council-self-test` entry, and exercises `ctx.sessionManager.getBranch()` without invoking `complete()`.
@@ -384,6 +389,12 @@ When tuple fallback succeeds for an entry that already had a mismatched `routeId
 The on-disk `scope` field is compatibility metadata only; when it disagrees with the resolved location, the loader should warn, use the resolved location's scope, and overwrite the field on the next successful Run persistence.
 Report frontmatter `config_scope` should always come from `CouncilConfigLocation.scope`, not from the file contents.
 Portable `--roster-file` always resolves to `scope: "explicit"` regardless of any in-file `scope`.
+`CouncilRosterEntryV1.id` should be an opaque generated id with the form `entry_<26 lowercase base32 chars>` derived from 128 bits of randomness, not from route, provider, model, role, order, or display text.
+Entry ids must be unique within a roster config and stable across edit, reorder, disable, effort changes, and route replacement of the same row.
+Add and duplicate-row actions must mint a fresh id even when the copied row keeps the same route, role, effort, and enabled state.
+`validate_roster` should block Run and portable execution when any duplicate id exists, because `reportStrategy.chairEntryId` and phase fallback need exactly one target.
+Config load should quarantine a saved roster with duplicate ids rather than repairing it silently, because the intended chair and persisted ordering are ambiguous.
+Migration should preserve original ids only when they are unique and valid; missing or invalid ids should be replaced with fresh ids with a diagnostic before the user confirms Run.
 
 The route probe JSON contract for portable CLI discovery should be:
 
@@ -431,9 +442,17 @@ The model voice schema in `schemas/council-voice.json` should require:
 }
 ```
 
-`derive_position_catalog` should build a model-free `CouncilPositionCatalogV1` before `initial_analysis` and include it verbatim in every initial prompt.
+`derive_position_catalog` should build a model-free `CouncilPositionCatalogV1` before prompt assembly and include it verbatim in every initial prompt.
 For plan input, the catalog should contain `accept_plan`, `revise_plan`, `reject_plan`, and `needs_more_evidence`.
-For issue input, the catalog should deterministically extract up to four explicit alternatives from separators such as `vs`, `versus`, `or`, numbered lists, and bullet lists, using ids `issue_option_1` through `issue_option_4`.
+For issue input, explicit alternatives should be extracted only by this grammar.
+Normalize CRLF to LF, trim outer whitespace, and ignore blank leading and trailing lines.
+List extraction applies when every nonblank line is a bullet `- text` or `* text`, or a numbered item `1. text` or `1) text`, and at least two items remain after normalization.
+Inline extraction applies only when the entire issue is one line of at most 200 characters containing exactly one separator token ` vs `, ` versus `, or ` or ` with ASCII whitespace on both sides.
+Inline extraction should reject candidates that contain `.`, `?`, `!`, `;`, or `:`, contain more than 10 words, or are shorter than 3 or longer than 80 characters after trimming.
+List item candidates should be 3 to 120 characters after trimming and should have one trailing `.` stripped.
+Extraction should dedupe candidates by lowercase ASCII, collapsed whitespace, and stripped surrounding quotes; keep the first occurrence.
+If fewer than two explicit candidates remain after validation and dedupe, emit zero `issue_option_*` entries.
+Use ids `issue_option_1` through `issue_option_4` in source order for the first four explicit candidates only.
 Every issue catalog should also include `propose_alternative` and `defer_for_evidence`, even when no explicit alternatives are extracted.
 Models should be instructed to set `position_key` to exactly one catalog id unless none fits, in which case they may emit `other:<slug>`.
 The engine should reject invalid `position_key` values after one JSON-only retry; if the retry still fails, that voice degrades rather than deriving a hidden semantic grouping.
@@ -477,7 +496,8 @@ date: <iso timestamp>
 status: complete | degraded | canceled | failed
 roster_version: 1
 config_scope: user | project | explicit
-report_strategy: chair | deterministic | structured_disagreement
+report_strategy: chair | deterministic | structured_disagreement | single_survivor
+configured_report_strategy: chair | deterministic | structured_disagreement
 report_strategy_source: cli | roster_file | recommendation
 chair_entry_id: <entry id or null>
 members_total: <n>
@@ -546,9 +566,10 @@ The command starts in `idle`.
 `validate_roster` should mark `chair` report strategy invalid unless `chairEntryId` references an enabled executable entry in the current reconciled roster whose `role` is exactly `chair`.
 `confirm_run` fires when the user selects Run.
 `persist_roster` atomically writes the confirmed roster before model execution starts.
-`prepare_prompts` builds immutable prompts and line-numbered plan evidence.
-`prepare_prompts` also creates one per-run `AbortController` that is owned by the engine, not by `ctx.signal`, because Pi command contexts can be idle and may not provide a signal.
-`derive_position_catalog` builds the model-free `CouncilPositionCatalogV1` and freezes it for the run.
+`prepare_run_context` creates one per-run `AbortController` owned by the engine and line-numbers immutable plan evidence.
+`derive_position_catalog` builds the model-free `CouncilPositionCatalogV1` from immutable input text and freezes it for the run.
+`prepare_prompts` builds immutable prompts from the frozen input evidence, frozen position catalog, confirmed roster, and role templates.
+The prompt hash recorded for each initial voice should cover the position catalog bytes exactly as included in the prompt.
 `initial_analysis` runs each executable member independently without seeing other member outputs.
 `pool_evidence` deterministically builds a shared evidence ledger from issue text, plan lines, and member evidence.
 `critique` runs evidence-led critique over the ledger and initial outputs.
@@ -588,7 +609,7 @@ idle -> parse_input -> validate_input -> discover_routes -> load_roster -> recom
 edit_roster -> validate_roster -> edit_roster
 edit_roster -> canceled
 validate_roster -> confirm_run
-confirm_run -> persist_roster -> prepare_prompts -> derive_position_catalog -> initial_analysis
+confirm_run -> persist_roster -> prepare_run_context -> derive_position_catalog -> prepare_prompts -> initial_analysis
 initial_analysis -> write_terminal_report -> failed [zero successful initial voices]
 initial_analysis -> synthesize [exactly one successful initial voice after one or more initial runtime failures]
 initial_analysis -> pool_evidence [at least two successful initial voices]
@@ -601,7 +622,7 @@ any_pre_confirm_state -> failed
 ```
 
 The one-survivor `initial_analysis -> synthesize` edge should always produce a mechanical single-survivor report with `status: degraded`, `decision_readiness: not_ready`, `implementation_authorized: false`, and a diagnostics field naming the failed initial members.
-The one-survivor edge should ignore the configured chair or structured-disagreement strategy, should make no chair model call, and should set `report_strategy_effective: "single_survivor_mechanical"` in diagnostics.
+The one-survivor edge should ignore the configured chair or structured-disagreement strategy, should make no chair model call, should set frontmatter `report_strategy: single_survivor`, should preserve the configured strategy in `configured_report_strategy`, and should set `report_strategy_effective: "single_survivor_mechanical"` in diagnostics.
 If the configured chair survived as the only initial voice, the report should use that voice once and should not ask it to synthesize itself.
 If the configured chair failed and a non-chair survived, the report should use the non-chair survivor once and should record that the chair strategy was unavailable because fewer than two initial voices succeeded.
 The normal at-least-two-survivor path must not skip `critique`, `steelman`, or `adversary` when a fallback member can be selected.
@@ -718,8 +739,9 @@ The council engine should disable model tools for MVP to avoid hidden file edits
 Existing `/synthesis` behavior must remain unchanged.
 Existing `bin/provider-invoke` flags must remain backward compatible.
 Adding `--auth` to `bin/provider-probe` must default to `auto` and preserve existing callers.
-Adding `package.json` intentionally introduces a Node/TypeScript contributor toolchain, but repository-wide `.pipelane.json` npm checks should remain inactive or council-scoped until the same phase provides buildable council entrypoints and passing scripts.
-The implementation should add `package-lock.json`, require `npm ci` before npm-backed checks, and keep `npm run test`, `npm run typecheck`, and `npm run build` green on a clean checkout before `.pipelane.json` relies on them.
+Adding `package.json` intentionally introduces a Node/TypeScript contributor toolchain and immediately activates the repository's existing `.pipelane.json` npm pre-PR commands.
+The implementation should add `package-lock.json`, require `npm ci` before npm-backed checks, and keep `npm run test`, `npm run typecheck`, and `npm run build` green on a clean checkout in the same commit that introduces `package.json`.
+Clean-checkout npm scripts must not require an installed Pi runtime; Pi-present verification remains available through `npm run verify:pi-surface` and the manual `pi -e` self-test.
 This repo-wide development requirement is separate from runtime installation: existing Claude Code skill users who only symlink the repo should not need Node unless they run the new portable `bin/council` fallback or contributor checks.
 Existing session files in `./.ai-synthesis/sessions/` must remain readable by `expand`, `list`, `resume`, `rate`, and `revisit`.
 Council reports should use `./.ai-synthesis/council-sessions/` for MVP because existing `/synthesis` `list`, `expand`, `resume`, and `rate` use the legacy `sessions/*.md` namespace broadly, and `revisit` only specifies skipping `mode: compare`.
@@ -736,25 +758,27 @@ If the in-file `scope` disagrees with the resolved config location, migration sh
 ## Implementation Phases
 
 Each phase may land independently or as one feature branch, but the repository must remain green after every committed phase.
-Phase 1 should add package scaffolding, `package-lock.json`, Node `>=20` engines, TypeScript types, JSON schemas, TypeScript test runner setup, package-local scripts, conformance fixtures, and the installed Pi API surface verifier without model execution.
-Phase 1 should not modify `.pipelane.json` to call npm scripts unless those scripts already pass against buildable council entrypoints in the same phase.
-Phase 1 should not be complete until `npm ci`, `npm run verify:pi-surface`, `npm run typecheck`, `npm run build`, `npm run test`, and `tests/conformance/run.sh all` pass on a clean checkout for the files present in Phase 1.
-Phase 1 should also run the `pi -e ./extensions/council/index.ts` `/council --self-test` spike once locally before Phase 2 starts, with no model calls and no persistent roster writes.
+Phase 1 should add package scaffolding, `package-lock.json`, Node `>=20` engines, TypeScript types, JSON schemas, TypeScript test runner setup, repo-local Pi type stubs, package-local scripts, conformance fixtures, and the installed Pi API surface verifier without model execution.
+Phase 1 should treat the existing `.pipelane.json` `npm run test`, `npm run typecheck`, and `npm run build` commands as active as soon as `package.json` exists.
+Phase 1 should not be complete until `npm ci`, `npm run typecheck`, `npm run build`, `npm run test`, and `tests/conformance/run.sh all` pass on a clean checkout with no installed Pi runtime.
+Phase 1 should also run `npm run verify:pi-surface` and the `pi -e ./extensions/council/index.ts` `/council --self-test` spike once in a Pi-present local environment before Phase 2 starts, with no model calls and no persistent roster writes.
 Phase 2 should implement input parsing, trusted path validation, immutable plan loading, stable route IDs, route discovery, effort support, and roster config persistence.
 Phase 3 should implement the Pi TUI roster editor and non-TUI fallback behavior.
 Phase 4 should implement the Pi `complete` executor with per-call `reasoningEffort`, the provider-invoke fallback executor, structured validation, retry-once behavior, and cancellation through an engine-owned `AbortController`.
-Phase 5 should implement the council engine state machine, evidence ledger, degradation, report strategies, report writer, Pi session custom entry, and the first repository-wide `.pipelane.json` npm activation if all called npm scripts are now real and green.
+Phase 5 should implement the council engine state machine, evidence ledger, degradation, report strategies, report writer, and Pi session custom entry.
 Phase 6 should add documentation, README install/update notes, and the portable `skills/council/SKILL.md` instructions.
 Phase 7 should run live smoke tests manually with at least one subscription Claude route and one Codex route after the fake conformance suite is green.
-If the implementation chooses to keep all phases in one branch, `.pipelane.json` activation should still be the last commit before the branch is declared implementation-ready.
+Rollback after any phase should revert all council-related edits made through that phase, then prove `tests/conformance/run.sh all` is green.
+The rollback set after Phase 2 or later includes `.pipelane.json` if changed, `package.json`, `package-lock.json`, `tsconfig.json`, test runner config, `scripts/verify-pi-package.mjs`, `scripts/verify-pi-surface.mjs`, `extensions/council/`, `skills/council/`, `roles/council/`, council schemas, `bin/council`, `bin/council-route-probe`, the `bin/provider-probe` auth flag edit, the `bin/adapters/claude.sh` subscription-probe edit, `tests/conformance/council.sh`, the `tests/conformance/run.sh` source line for council tests, council fixtures, `tests/council/`, Pi type stubs, `bin/README.md` council additions, and `README.md` council additions.
 
 ## Exact File-Level Changes
 
-Add `package.json` in Phase 1 with package metadata, Node `>=20` engines, `pi` manifest, peer dependencies, runtime `jiti` dependency if TypeScript is loaded directly by the CLI, dev dependencies for TypeScript testing, and scripts for `test`, `test:sh`, `test:ts`, `typecheck`, `build`, `verify:pi-package`, and `verify:pi-surface`.
-Add `package-lock.json` in Phase 1 so CI and pre-PR checks can use `npm ci` reproducibly once npm checks are activated.
+Add `package.json` in Phase 1 with package metadata, Node `>=20` engines, `pi` manifest, Pi peer dependencies, runtime `jiti` dependency if TypeScript is loaded directly by the CLI, dev dependencies for TypeScript testing, and scripts for `test`, `test:sh`, `test:ts`, `typecheck`, `build`, `verify:pi-package`, and `verify:pi-surface`.
+Add `package-lock.json` in Phase 1 so CI and pre-PR checks can use `npm ci` reproducibly.
 Add `tsconfig.json`, `vitest.config.ts`, `scripts/verify-pi-package.mjs`, and `scripts/verify-pi-surface.mjs` in Phase 1 unless the implementation chooses an equivalent Node built-in test setup with the same coverage.
-Do not modify `.pipelane.json` in Phase 1 unless Phase 1 also includes buildable `extensions/council/index.ts`, buildable `extensions/council/cli.ts`, and green scripts for all checks referenced by `.pipelane.json`.
-Modify `.pipelane.json` in Phase 5, or the equivalent final integration phase, so its `npm run test`, `npm run typecheck`, and `npm run build` checks call real scripts and stay green.
+Add `tests/council/pi-fixtures/types/@earendil-works/` in Phase 1 with minimal type stubs for the Pi imports used by council code and contracts.
+Do not rely on installed Pi peer dependencies for `npm run typecheck` or `npm run build`.
+Do not modify `.pipelane.json` unless the current `prePrChecks` change; if it is modified, preserve `npm run test`, `npm run typecheck`, and `npm run build` as green clean-checkout commands.
 Add `extensions/council/index.ts` in Phase 1 as a self-test-only Pi surface spike or in Phase 3 as the real command registration, and do not expose executable `/council` behavior until the UI and engine dependencies exist.
 Add `extensions/council/cli.ts` in Phase 2 as the Node-backed portable entrypoint that parses inputs and route probes, then wire it to the shared engine in Phase 5.
 Add `extensions/council/lib/types.ts` in Phase 1 for all interfaces listed in this plan.
@@ -818,12 +842,15 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Pi complete options contract | `tests/council/pi-complete-options-contract.test-d.ts` | Phase 1 compile-checks `complete()` with per-call `reasoningEffort` before `pi-complete.ts` exists and fails if Pi renames the option. |
 | Phase-role fallback | TypeScript engine unit test | Rosters without explicit critic, steelman, or adversary roles receive deterministic explicit-member phase assignments recorded in diagnostics. |
 | State-machine guarded transitions | TypeScript engine unit test | Zero, one, and two-plus successful initial voices take the specified transitions; later phase failures continue to the next named phase with degradation instead of skipping straight to synthesis. |
+| Roster entry id uniqueness | TypeScript roster validation and UI unit test | Add and duplicate-row flows mint fresh opaque ids, edit and reorder preserve ids, duplicate loaded ids quarantine or block Run, and `chairEntryId` resolves to exactly one entry. |
 | Chair identity authority | TypeScript roster validation and engine unit test | `reportStrategy.chairEntryId` is the only chair synthesis authority, the referenced entry must have `role: "chair"`, and no entry-level `chair` boolean is accepted in canonical config. |
 | One-survivor chair strategy | TypeScript engine unit test | With a chair strategy and exactly one surviving initial voice, no chair model call occurs and the report is single-survivor mechanical whether the chair survived or failed. |
 | Whole-run deadline budget | TypeScript scheduler unit test | The computed deadline is at least the sum of scheduled phase wave budgets plus overhead and never aborts before valid scheduled work exhausts its budget. |
 | Evidence-auditor routing | TypeScript engine unit test | A successful `evidence-auditor` roster entry is scheduled in the `critique` phase and emits `assumption_reviews`; no separate evidence-auditor phase is required. |
 | Deterministic report strategy | `tests/conformance/council.sh` | Final synthesis uses no model executor and report says deterministic. |
 | Position catalog grouping | TypeScript engine unit test | Plan and issue inputs build deterministic position catalogs, voices can only use catalog ids or exact `other:<slug>`, and majority/plurality grouping uses `canonicalPositionId`. |
+| Issue catalog extraction grammar | TypeScript catalog fixture test | Numbered lists, bullet lists, one-line `A vs B`, one-line `A versus B`, one-line `A or B`, ordinary prose containing `or`, duplicate candidates, overlong candidates, and single-option input produce the exact expected catalog ids and labels. |
+| Prompt catalog ordering | TypeScript prompt assembly unit test | `derive_position_catalog` runs before `prepare_prompts`, every initial prompt contains identical catalog bytes, and prompt hashes cover those bytes. |
 | Deterministic synthesis algorithm | TypeScript engine unit test | Majority, plurality, tie, no-grounded-evidence, one-survivor, degraded critical phase, verified assumption, unverified assumption, and material-dissent cases produce the specified readiness and recommendation fields. |
 | Chair report strategy | `tests/conformance/council.sh` | Chair route is an explicit roster member and has its own call record. |
 | Invalid chair strategy | TypeScript roster validation test | `chair:<member-id>` blocks Run when the member is disabled, unavailable, missing, or has unsupported effort. |
@@ -840,6 +867,7 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Stable route IDs | TypeScript route unit test | Display name, auth state, billing label, cost, and availability changes do not change `routeId`; missing routes stay visible; tuple fallback works even with a stale stored `routeId`. |
 | Structured output validation | Unit test with fixtures | `ok:false`, extra keys, wrong types, and prose-only responses fail validation and retry once. |
 | Report authorization guard | Unit test | `schemas/council-report.json` rejects `implementation_authorized: true`. |
+| Single-survivor frontmatter | TypeScript report unit test | One-survivor reports emit `report_strategy: single_survivor`, preserve `configured_report_strategy`, and do not claim `chair` when no chair call happened. |
 | Plan immutability | Unit test | Plan file hash and mtime are unchanged after a run. |
 | Atomic persistence | Unit test | Interrupted temp write does not corrupt last good roster. |
 | Canceled terminal report | TypeScript engine unit test | Cancellation after `persist_roster` writes a minimal `status: canceled` report and cancellation before Run writes no report. |
@@ -847,7 +875,9 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Council report isolation | Existing suites plus fixture | A council report under `./.ai-synthesis/council-sessions/` does not affect `/synthesis list`, `expand`, `resume`, `rate`, or `revisit`; no `mode: council` file is written under legacy `sessions/`. |
 | Node fallback parity | TypeScript CLI unit test plus `tests/conformance/council.sh` | `bin/council` invokes the shared TypeScript engine and does not contain independent shell synthesis logic. |
 | Missing Node fallback dependency | `tests/conformance/council.sh` | Missing Node or runtime loader prints setup instructions and does not create config or reports. |
-| Package check activation | CI/local script test | On a clean checkout, `npm ci`, `npm run verify:pi-surface`, `npm run test`, `npm run typecheck`, and `npm run build` all pass before `.pipelane.json` relies on them; Phase 1 does not activate repo-wide npm checks without buildable entrypoints. |
+| Package check activation | CI/local script test | On a clean checkout with no installed Pi runtime, `npm ci`, `npm run test`, `npm run typecheck`, and `npm run build` pass as soon as `package.json` exists because `.pipelane.json` already names those commands. |
+| Pi-present surface gate | Local Pi integration check | In an environment with installed Pi, `npm run verify:pi-surface` and `pi -e ./extensions/council/index.ts /council --self-test` pass before Phase 2 starts. |
+| Rollback safety | Scripted rollback checklist or manual verification | Reverting the full council file set through the current phase restores `tests/conformance/run.sh all` to green and leaves no `run.sh` source line pointing at removed council tests. |
 | Backward compatibility | Existing suites | `tests/conformance/run.sh all` keeps current unit, Claude, and Codex tests green. |
 
 ## Acceptance Criteria
@@ -866,6 +896,7 @@ Trusted project-local and user-global roster config precedence behaves exactly a
 Config scope is derived from the resolved config location, not trusted from an in-file field.
 Pre-`routeId` roster entries migrate before canonical validation when the tuple is complete.
 Stale stored `routeId` values do not make a route unavailable when `(executor, provider, model)` still matches.
+Roster entry ids are opaque, unique within a roster, stable across edits and reorders, and collisions block Run.
 Route discovery does not make paid model calls.
 Claude council routes never use Anthropic API credentials.
 Claude subscription-only auth is enforced both during route discovery and immediately before each Claude execution.
@@ -883,11 +914,17 @@ Portable CLI `--report-strategy` overrides the roster-file strategy for one run 
 The input parser uses the specified path-shaped predicate and treats a single bare non-file token as issue text.
 Zero, one, and two-plus initial survivor paths take explicit tested state transitions.
 One-survivor execution always emits a mechanical single-survivor report and never calls a chair model, even when the configured strategy is chair.
+One-survivor report frontmatter uses `report_strategy: single_survivor` and records the originally configured strategy separately.
 The whole-run deadline is computed from scheduled phase budgets and cannot abort before valid scheduled work exhausts its budget.
+Issue-input position catalogs are generated by the specified grammar and covered by fixtures for ordinary prose and explicit alternatives.
+Every initial prompt contains the frozen position catalog bytes and prompt hashes cover those bytes.
 Deterministic synthesis groups only by engine-assigned `canonicalPositionId` from a frozen position catalog.
 Deterministic readiness uses the specified `materialDissent` predicate and critique-phase assumption reviews, not an unscheduled phase or model-prose similarity.
-Repository-wide npm pre-PR checks are activated only after buildable council entrypoints and green scripts exist in the same phase.
-The full fake conformance suite, TypeScript unit suite, Pi surface contract checks, and clean-checkout npm pre-PR commands pass.
+Repository-wide npm pre-PR checks are treated as active immediately when `package.json` is introduced, because `.pipelane.json` already names them.
+The existing `.pipelane.json` npm pre-PR commands remain green immediately after `package.json` is introduced.
+Clean-checkout npm checks do not require installed Pi packages.
+Pi-present surface checks remain available but are not required in generic clean-checkout CI.
+The full fake conformance suite, TypeScript unit suite, and clean-checkout npm pre-PR commands pass without installed Pi packages, and Pi-present surface checks pass where Pi is installed.
 
 ## Rollout And Evaluation
 
@@ -910,8 +947,10 @@ Document `pi install` global and project-local installation paths.
 Document user-global, trusted project-local, and explicit portable roster config paths and precedence.
 Document that resolved config location is authoritative over the in-file `scope` metadata.
 Document pre-`routeId`, stale-`routeId`, and legacy entry-level chair migration and quarantine behavior.
+Document roster entry id format, uniqueness, stability, duplicate-row minting, and duplicate-id quarantine behavior.
 Document `pi remove` and the fact that reports remain local markdown.
-Document Node `>=20`, `npm ci`, package dependency requirements, and the fact that Node is a contributor/portable-CLI requirement rather than a `/synthesis` runtime requirement.
+Document Node `>=20`, `npm ci`, package dependency requirements, repo-local Pi type stubs, Pi-present verification, and the fact that Node is a contributor/portable-CLI requirement rather than a `/synthesis` runtime requirement.
+Document that current `.pipelane.json` pre-PR checks are `npm run test`, `npm run typecheck`, and `npm run build`, and that adding `package.json` activates them immediately.
 Document `AISYNTH_HOME`, `AISYNTH_CONFIG_HOME`, `PI_CODING_AGENT_DIR`, and Pi's `getAgentDir()` based storage behavior.
 Document the plan-file parser rules and path-shaped predicate with examples for `/council plan.md`, `/council @plan.md`, `/council fix plan.md`, and `/council caching`.
 Document the minimum valid council and explicitly state that family diversity is not required.
@@ -922,6 +961,7 @@ Document provider billing labels and cost estimation limits.
 Document cancellation, reload, and session replacement behavior.
 Document the zero, one, and two-plus initial survivor state-machine outcomes, including the single-survivor mechanical report for chair strategies.
 Document the computed whole-run deadline formula and how it differs from per-member timeouts.
+Document rollback scope and the requirement to rerun `tests/conformance/run.sh all` after rollback.
 Document that `/council` never modifies the reviewed plan and never authorizes implementation.
 Document council report storage under `./.ai-synthesis/council-sessions/` and explicitly distinguish it from existing `/synthesis` sessions.
 Document portable CLI `--roster-file` validation behavior, exit codes, and `--json` diagnostic envelope.
@@ -934,7 +974,7 @@ Document `decision_readiness` semantics, including critical phase degradation, t
 | Review | Trigger | Why | Runs | Status | Findings |
 |--------|---------|-----|------|--------|----------|
 | CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | not run | Not requested for this phase. |
-| Claude Challenge Review | `/claude-review challenge plan` | Independent adversarial plan challenge | 4 | ISSUES FOLDED | Commit `b4a9a20` found 6 issues; this revision folds chair identity authority, one-survivor chair behavior, computed run deadline, path-shaped parsing, Phase 1 `complete()` option validation, and unconditional route tuple fallback into the plan. |
+| Claude Challenge Review | `/claude-review challenge plan` | Independent adversarial plan challenge | 5 | ISSUES FOLDED | Commit `101f32b` found 7 issues; this revision folds clean-checkout Pi typing, immediate `.pipelane.json` npm activation, rollback scope, prompt/catalog ordering, roster id uniqueness, issue catalog grammar, and single-survivor frontmatter into the plan. |
 | Codex Review | `/codex review` | Independent 2nd opinion | 0 | not run | Not requested for this phase. |
 | Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | CLEAR | 1 issue found and folded: Pi `off` effort now omits `reasoningEffort` instead of passing `"off"`. |
 | Design Review | `/plan-design-review` | UI/UX gaps | 0 | not run | No design review requested for this phase. |
