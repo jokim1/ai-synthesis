@@ -47,6 +47,7 @@ The current task shell reached the npm registry through `npm config get registry
 Adding `package.json` without dependency bootstrapping in the npm scripts would therefore activate direct npm checks without dependencies installed, so Phase 1 must make the `test`, `typecheck`, and `build` scripts install-aware in the same commit that introduces package metadata.
 Pi documentation under `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/` supports the required optional package path.
 The installed Pi package surface verified for this plan is `@earendil-works/pi-coding-agent` `0.80.10` under `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/`, with nested `@earendil-works/pi-ai` `0.80.10` and `@earendil-works/pi-tui` `0.80.10`, all requiring Node `>=22.19.0`.
+Installed Pi `0.80.10` package installation clones git packages into the Pi package store and runs `npm install --omit=dev` when package metadata exists, so `/council` must not depend on npm `prepack` or `prepare` as an end-user install gate.
 Pi package resources are declared in `package.json` under a `pi` key or discovered from conventional `extensions/`, `skills/`, `prompts/`, and `themes/` directories.
 Pi extension commands are registered with `pi.registerCommand(name, { description, handler, getArgumentCompletions })`.
 Pi extension commands run before input events, skill commands, and prompt templates, so `/council ...` should be implemented as an extension command for native Pi behavior.
@@ -184,6 +185,8 @@ bin/council-route-probe
 scripts/verify-pi-package.mjs
 scripts/verify-pi-surface.mjs
 scripts/verify-pi-effort-live.mjs
+docs/public/council-pi-surface-gate.v1.json
+docs/public/council-pi-effort-live.v1.json
 scripts/ensure-node-deps.mjs
 roles/council/initial.md
 roles/council/critique.md
@@ -243,8 +246,14 @@ The clean-checkout checker should accept only artifact statuses `verified` and `
 For contributors without installed Pi, `node scripts/check-council-pi-gate.mjs --mark-pending --reason <text>` may update the artifact with current hashes and `status: "pending_pi_regeneration"` so generic clean-checkout npm checks can pass while making the missing Pi-present verification explicit.
 `node scripts/check-council-pi-gate.mjs --strict-verified` should fail on `pending_pi_regeneration` and is required before Phase 4 Pi execution acceptance.
 `npm run verify:pi-execution-release` should run `node scripts/check-council-pi-gate.mjs --strict-verified` and `npm run verify:pi-surface` when Pi direct execution files exist, and it must make no model calls.
-The Pi route catalog and Pi executor should also enforce the strict verified gate at runtime: if the artifact is missing, stale, pending, or not strict-verified, Pi direct execution routes should be unavailable with reason `pi_surface_not_verified`, and `complete()` must not be called.
-This runtime gate is the automated enforcement point that prevents unverified Pi execution from shipping even if a pending artifact passes generic clean-checkout tests.
+`prepack` is only a maintainer pack or publish gate for `npm pack`, `npm publish`, and equivalent packaging flows run from a development checkout with dev dependencies installed.
+`prepack` is not an install gate for `pi install git:...`, `pi install -l git:...`, or local Pi installs, because installed Pi `0.80.10` runs dependency installation in the target package checkout with production dependencies only.
+Do not add a `prepare` install gate for MVP, because it would either require dev dependencies in an end-user Pi install or duplicate the runtime gate.
+The install-time safety boundary is runtime route availability: a package may install successfully, but Pi direct routes remain disabled until the runtime gates below pass.
+The Pi route catalog and Pi executor should enforce the strict verified source gate at runtime: if the surface artifact is missing, stale, pending, or not strict-verified, Pi direct execution routes should be unavailable with reason `pi_surface_not_verified`, and `complete()` must not be called.
+The Pi route catalog and Pi executor should also enforce an end-user installed-Pi compatibility gate at runtime by comparing the live installed package versions for `@earendil-works/pi-coding-agent`, `@earendil-works/pi-ai`, and `@earendil-works/pi-tui` with the exact versions recorded in the verified surface artifact.
+If any runtime Pi package version differs from the verified artifact, every Pi direct route should be unavailable with reason `pi_runtime_version_mismatch`, the UI should suggest installing an `ai-synthesis` council package verified for the current Pi version or regenerating the artifact in a trusted development checkout, and `complete()` must not be called.
+The runtime compatibility gate protects end users from installed-Pi drift; the clean-checkout hash gate protects maintainers from source-versus-artifact drift.
 Before any Pi execution phase is considered complete, a Pi-equipped maintainer must replace every `pending_pi_regeneration` artifact with a `verified` artifact generated by `npm run verify:pi-surface -- --write-artifact`; pending artifacts are allowed only as an ordinary-edit unblocker, not as final acceptance for Pi execution behavior.
 If the council effort stalls after `package.json` is added, the default rollback path should remove Phase 2+ council feature artifacts while retaining the Phase 1 package baseline so `npm run test`, `npm run typecheck`, and `npm run build` remain green for installed Pipelane's default checks.
 Full abandonment may remove `package.json`, `package-lock.json`, and Phase 1 package scaffolding, but that intentionally returns the repository to the documented pre-plan red state for installed Pipelane's synthesized npm checks unless a separate Pipelane configuration change is made outside this council plan.
@@ -296,7 +305,11 @@ The Pi executor must use provider-specific per-call effort options from `toPiEff
 `npm run verify:pi-effort-live` should be an opt-in Pi-present live conformance runner requiring `COUNCIL_LIVE_PI_MODEL`, `COUNCIL_LIVE_PI_EFFORT_LOW`, `COUNCIL_LIVE_PI_EFFORT_HIGH`, and `AISYNTH_LIVE_MODEL_TESTS=1`.
 That runner should execute two sequential and two concurrent calls through installed Pi `complete()` against one real reasoning route whose provider or Pi response exposes non-secret request or response metadata sufficient to prove the requested effort value was honored per call.
 The runner should assert that low-effort and high-effort calls record distinct per-call effort metadata, that concurrent mixed-effort calls preserve their own metadata, and that no session-global thinking setting changes during the run.
-If no available real reasoning route exposes such metadata, the runner should exit `77` with `PI_EFFORT_LIVE_INCONCLUSIVE`, Phase 7 should not claim real provider no-bleed verification, and the release checklist should either find a qualifying route or explicitly mark Pi concurrent mixed-effort execution as unverified and unsupported.
+On success with `--write-artifact`, the runner should write `docs/public/council-pi-effort-live.v1.json` with `status: "verified"`, the exact live Pi package versions, the tested provider/model route id, the two tested effort values, the verification command, timestamp, and a redacted metadata proof summary.
+If no available real reasoning route exposes such metadata, the runner should exit `77` with `PI_EFFORT_LIVE_INCONCLUSIVE`, write no verified live-effort artifact, and Phase 7 should not claim real provider no-bleed verification.
+Runtime Pi direct concurrency should be conservative: unless a current verified `council-pi-effort-live.v1.json` artifact exists and its recorded Pi package versions match the live runtime versions, the scheduler must run Pi direct model calls serially with a Pi-direct lane width of `1`.
+When the live-effort artifact is missing, inconclusive, stale, or version-mismatched, non-Pi provider-invoke routes may still use the normal promise pool, same-effort and mixed-effort Pi direct calls are serialized, and the composition panel plus report diagnostics should show `pi_concurrency_mode: "serial_unverified_effort_isolation"`.
+When the live-effort artifact is verified and runtime versions match, Pi direct calls may use the configured `maxConcurrency` with per-call effort options, and diagnostics should show `pi_concurrency_mode: "parallel_verified_effort_isolation"`.
 If a future installed Pi version renames a provider-specific effort option, `npm run verify:pi-surface` should fail before Phase 4 model execution lands and the mapper contract should be updated.
 The Pi extension should pass no model tools during council MVP.
 The extension itself should read plan files into immutable, line-numbered text and should instruct models to cite `plan.md:Lx-Ly`.
@@ -555,13 +568,34 @@ export interface CouncilPiSurfaceGateV1 {
     command: "npm run verify:pi-surface -- --write-artifact";
     nodeVersion: string;
     piPackagePath: string;
-    piVersions: Record<string, string>;
+    piVersions: Record<"@earendil-works/pi-coding-agent" | "@earendil-works/pi-ai" | "@earendil-works/pi-tui", string>;
+    surfaceSummary: {
+      thinkingVocabulary: ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
+      providerEffortOptions: Record<"anthropic-messages" | "openai-responses" | "azure-openai-responses" | "openai-codex-responses", "effort" | "reasoningEffort">;
+    };
   };
 }
+
+export interface CouncilPiEffortLiveGateV1 {
+  version: 1;
+  status: "verified";
+  generatedAt: string;
+  command: "npm run verify:pi-effort-live -- --write-artifact";
+  piVersions: Record<"@earendil-works/pi-coding-agent" | "@earendil-works/pi-ai" | "@earendil-works/pi-tui", string>;
+  routeId: string;
+  testedEfforts: [CouncilEffort, CouncilEffort];
+  metadataProofSummary: string[];
+}
+
+export type CouncilPiRuntimeGateResultV1 =
+  | { ok: true; surfaceGate: "verified"; effortConcurrency: "parallel_verified_effort_isolation" | "serial_unverified_effort_isolation"; piVersions: Record<string, string> }
+  | { ok: false; reason: "pi_surface_not_verified" | "pi_runtime_version_mismatch" | "pi_runtime_unavailable"; piVersions?: Record<string, string>; expectedPiVersions?: Record<string, string> };
 ```
 
 A `verified` Pi surface gate artifact must include `verifiedBy` and must not include `reason`.
 A `pending_pi_regeneration` artifact must include `reason` and must not include `verifiedBy`.
+The runtime Pi gate should treat any version mismatch between `CouncilPiSurfaceGateV1.verifiedBy.piVersions` and the live installed packages as `pi_runtime_version_mismatch` rather than attempting best-effort execution.
+The live-effort gate is optional for shipping but authoritative for Pi direct concurrency; when `CouncilPiEffortLiveGateV1` is absent, stale, or version-mismatched, the scheduler must serialize Pi direct calls.
 
 `routeId` must be a deterministic stable key with the form `v1:<executor>:<provider>:<model>`.
 Each component should be Unicode-normalized, percent-encoded, and never include display name, cost, auth source, billing state, or availability.
@@ -881,6 +915,9 @@ Early `critique -> synthesize` or `steelman -> synthesize` shortcuts should not 
 Initial analyses should run through a bounded promise pool.
 The default max concurrent member calls should be `4`.
 The default hard roster cap should be `6` enabled members, with a config override allowed up to `8`.
+The scheduler should apply `maxConcurrency` across portable provider-invoke calls and verified-concurrent Pi direct calls, but it should maintain a separate Pi direct lane width of `1` whenever the live-effort concurrency gate is absent, inconclusive, stale, or version-mismatched.
+Serial Pi direct mode should preserve deterministic roster order inside each phase, should still allow portable provider-invoke calls to run in parallel up to the remaining pool capacity, and should record the effective lane mode in phase diagnostics.
+Parallel Pi direct mode is allowed only when both the runtime surface gate and the live-effort concurrency gate pass against the current installed Pi versions.
 The default `memberTimeoutMs` should be `300000` ms for each scheduled member in initial, critique, steelman, and adversary phases.
 The default `memberTimeoutMs` should be `420000` ms for an explicit chair synthesis member.
 The default whole-run deadline should be computed from the scheduled phase budgets rather than a flat wall-clock cap.
@@ -958,6 +995,9 @@ Portable CLI roster semantic validation failure should exit `4`, write no report
 Portable CLI `--json` validation failures should emit `{ "ok": false, "status": "validation_failed", "exitCode": 3 | 4, "diagnostics": [...] }` and should not include secrets or raw auth headers.
 Unavailable remembered routes should stay visible and should not count toward the two-member minimum.
 Unsupported remembered efforts should stay visible and should block that member from being executable until edited.
+Pi direct routes with missing, pending, stale, or source-hash-mismatched surface artifacts should stay visible but unavailable with reason `pi_surface_not_verified`, and `complete()` should never be called.
+Pi direct routes whose live installed Pi package versions differ from the verified surface artifact should stay visible but unavailable with reason `pi_runtime_version_mismatch`, and the UI should suggest installing a council package verified for the current Pi version.
+Missing, inconclusive, stale, or version-mismatched live-effort artifacts should not make Pi direct routes unavailable; they should force serial Pi direct execution and produce `pi_concurrency_mode: "serial_unverified_effort_isolation"` diagnostics.
 Provider auth failure at execution time should mark that member failed and continue if possible.
 Provider timeout should abort only the timed-out member's controller, mark that member timed out, and continue if the run-level signal has not been aborted.
 Provider malformed output after retry should preserve raw text in diagnostics but should not count as a structured voice.
@@ -1043,10 +1083,10 @@ Phase 1 should also run `tests/conformance/run.sh all` in a provider-present dev
 Phase 1 should also run `npm run verify:pi-surface` and the `pi -e ./extensions/council/index.ts` `/council --self-test` spike once in a Pi-present local environment before Phase 2 starts, with no model calls and no persistent roster writes.
 Phase 2 should implement input parsing, trusted path validation, immutable plan loading, stable route IDs, route discovery, effort support, and roster config persistence.
 Phase 3 should implement the Pi TUI roster editor and non-TUI fallback behavior.
-Phase 4 should rerun `npm run verify:pi-surface`, then implement the Pi `complete` executor with provider-specific per-call effort options, strict Pi surface runtime gating, the provider-invoke fallback executor, structured validation, retry-once behavior, and cancellation through an engine-owned `AbortController`.
+Phase 4 should rerun `npm run verify:pi-surface`, then implement the Pi `complete` executor with provider-specific per-call effort options, strict Pi surface runtime gating, live Pi version mismatch refusal, serial-until-verified Pi direct scheduling, the provider-invoke fallback executor, structured validation, retry-once behavior, and cancellation through an engine-owned `AbortController`.
 Phase 5 should implement the council engine state machine, evidence ledger, degradation, report strategies, report writer, and Pi session custom entry.
 Phase 6 should add documentation, README install/update notes, and the portable `skills/council/SKILL.md` instructions.
-Phase 7 should run live smoke tests manually with at least one subscription Claude route and one Codex route after the fake conformance suite is green, and should run `npm run verify:pi-effort-live` before claiming real Pi effort honoring or concurrent no-bleed support.
+Phase 7 should run live smoke tests manually with at least one subscription Claude route and one Codex route after the fake conformance suite is green, and should run `npm run verify:pi-effort-live -- --write-artifact` before enabling Pi direct parallelism or claiming real Pi effort honoring and concurrent no-bleed support.
 Rollback has two distinct targets.
 The normal Phase 2+ rollback target reverts council feature files while retaining the Phase 1 package baseline, then proves `tests/conformance/run.sh hermetic` and the effective installed-Pipelane `prePrChecks` commands are green through direct `sh -lc` execution.
 The full-abandonment rollback target removes the Phase 1 package baseline too and intentionally returns to the documented pre-plan state where installed Pipelane's synthesized `npm run test`, `npm run typecheck`, and `npm run build` checks fail unless a separate Pipelane config change is made outside this council plan.
@@ -1058,7 +1098,8 @@ The normal Phase 2+ rollback set must not remove Phase 1 baseline files while `p
 ## Exact File-Level Changes
 
 Add `package.json` in Phase 1 with package metadata, Node `>=22.19.0` engines, `pi` manifest, Pi peer dependencies, runtime `jiti` dependency if TypeScript is loaded directly by the CLI, dev dependencies for TypeScript testing, and scripts for `test`, `test:sh`, `test:ts`, `typecheck`, `build`, `verify:pi-package`, `verify:pi-surface`, `verify:pi-effort-live`, `verify:pi-execution-release`, and `prepack`.
-The `prepack` script should run `npm run verify:pi-execution-release` when Pi direct execution files exist so package creation cannot silently publish or install an unverified Pi direct executor, but `prepack` must not run `npm run verify:pi-effort-live` or any other model-executing check.
+The `prepack` script should run `npm run verify:pi-execution-release` when Pi direct execution files exist so maintainer package creation cannot silently pack or publish an unverified Pi direct executor, but `prepack` must not be described as an end-user install gate and must not run `npm run verify:pi-effort-live` or any other model-executing check.
+Do not add a `prepare` script for the council package in MVP, because installed Pi git package installs use production dependency installation and runtime route gates provide the end-user protection.
 Add `package-lock.json` in Phase 1 so CI and pre-PR checks can use `npm ci --prefer-offline --no-audit --fund=false` reproducibly.
 Add `tsconfig.json`, `vitest.config.ts`, `scripts/ensure-node-deps.mjs`, `scripts/verify-pi-package.mjs`, `scripts/verify-pi-surface.mjs`, and `scripts/verify-pi-effort-live.mjs` in Phase 1 unless the implementation chooses an equivalent Node built-in test setup with the same coverage.
 Configure `vitest.config.ts` so clean-checkout tests include portable `extensions/council/lib/**` tests and exclude Pi-coupled entrypoint, UI, and executor modules from runtime evaluation unless a Pi-present test explicitly opts in.
@@ -1084,6 +1125,9 @@ Add `extensions/council/lib/engine.ts` in Phase 5 for the state machine, phase-r
 Add `extensions/council/lib/pi-runtime.ts` in Phase 1 for lazy installed-Pi value imports and Pi-present surface helpers; this file and `extensions/council/lib/executors/pi-complete.ts` are the only council runtime files in MVP allowed to import `@earendil-works/*` values.
 Add `extensions/council/lib/executors/pi-complete.ts` in Phase 4 for Pi direct model calls through `complete()` and the `toPiEffortOptions` mapper.
 Phase 4 must add or update `docs/public/council-pi-surface-gate.v1.json` in the same commit as the first Pi direct model execution file, generated from a successful `npm run verify:pi-surface` and `pi -e ./extensions/council/index.ts /council --self-test` run against installed Pi.
+Phase 4 must implement `readPiRuntimeGate()` in `extensions/council/lib/pi-runtime.ts` to load the surface artifact, read live installed Pi package versions from the lazy runtime imports, compare exact versions, and return `pi_surface_not_verified` or `pi_runtime_version_mismatch` before route discovery exposes executable Pi direct routes.
+Phase 4 must make `extensions/council/lib/routes.ts` and `extensions/council/lib/executors/pi-complete.ts` call `readPiRuntimeGate()` independently so a stale route catalog cannot bypass the executor refusal.
+Phase 4 must implement scheduler support for `pi_concurrency_mode`, with Pi direct lane width `1` unless `docs/public/council-pi-effort-live.v1.json` is verified and version-matched at runtime.
 Add `extensions/council/lib/executors/provider-invoke.ts` in Phase 4 for portable provider calls through the existing `bin/provider-invoke --effort` and `--auth` flags, and make this file own child-process environment sanitizing for Claude routes.
 Add `extensions/council/lib/validate-json.ts` in Phase 5 for the TypeScript-native tolerant JSON extraction and schema validation helper; it must not spawn `bin/lib/json_extract.py` or `python3`.
 Add `extensions/council/lib/report.ts` in Phase 5 for structured report validation, markdown rendering, report frontmatter, and report file writes.
@@ -1114,7 +1158,10 @@ Make `npm run verify:pi-surface` compile or execute an installed-Pi check that i
 Add a TypeScript executor unit test in Phase 4 that verifies Anthropic routes receive `effort`, OpenAI Responses routes receive `reasoningEffort`, OpenAI Codex `off` maps to `"none"` only when installed support is confirmed, and other `off` routes omit explicit thinking options.
 Add a Node script unit test in Phase 4 that runs `scripts/check-council-pi-gate.mjs` against fixture source hashes and proves it fails when the Pi gate artifact is missing, stale, or has `sourceFiles` keys different from `PI_SURFACE_GATE_FILES_V1`, passes current `verified` artifacts, passes current `pending_pi_regeneration` artifacts with a visible diagnostic in default mode, and fails pending artifacts in `--strict-verified` mode.
 Add a TypeScript route unit test in Phase 4 that proves Pi direct routes are unavailable with `pi_surface_not_verified` and never call `complete()` when the strict artifact check fails, even though default clean-checkout tests accept a current pending artifact.
-Add a Pi-present live script test in Phase 7 for `scripts/verify-pi-effort-live.mjs` that can return pass, `PI_EFFORT_LIVE_INCONCLUSIVE` exit `77`, or a hard failure, with release acceptance requiring pass before claiming real Pi concurrent mixed-effort support.
+Add a TypeScript route and executor unit test in Phase 4 that fakes live Pi package versions different from `docs/public/council-pi-surface-gate.v1.json`, proves Pi direct routes are unavailable with `pi_runtime_version_mismatch`, and proves `complete()` is not called even if a stale catalog entry reaches the executor.
+Add a TypeScript scheduler unit test in Phase 4 that schedules mixed-effort Pi direct members with `maxConcurrency: 4`, no live-effort artifact, and a fake clock, then proves Pi direct calls run one at a time in roster order while portable provider-invoke calls may still overlap.
+Add a TypeScript scheduler unit test in Phase 4 that supplies a version-matched `CouncilPiEffortLiveGateV1` fixture and proves Pi direct calls may overlap while preserving per-call effort options.
+Add a Pi-present live script test in Phase 7 for `scripts/verify-pi-effort-live.mjs` that can return pass, `PI_EFFORT_LIVE_INCONCLUSIVE` exit `77`, or a hard failure, writes `docs/public/council-pi-effort-live.v1.json` only on pass with `--write-artifact`, and leaves runtime Pi direct scheduling in serial mode on exit `77`.
 Add a portable executor unit test in Phase 4 that captures `bin/provider-invoke` argv and proves selected supported efforts are forwarded with `--effort`, unsupported remembered efforts block before invocation, and the executor fails loudly if the wrapper contract check cannot find `--effort`.
 Add a portable Claude effort contract test in Phase 4 that installs a fake `claude` binary, invokes `bin/provider-invoke claude --auth subscription --effort` for `low`, `medium`, `high`, `xhigh`, and `max`, proves each value reaches the CLI unchanged, and proves `off`, `minimal`, and unknown values are blocked by council before invocation.
 Add a portable Claude executor unit test in Phase 4 that captures the child environment and proves Anthropic credential variables and unclassified `ANTHROPIC_*` variables are absent before `bin/provider-probe` or `bin/provider-invoke` is started, while `ANTHROPIC_BASE_URL` is preserved without logging its value.
@@ -1156,8 +1203,8 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Partial council degradation | `tests/conformance/council.sh` | One surviving voice yields degraded `not_ready`; two surviving voices yield degraded council report. |
 | Hidden-host-vote prevention | `tests/conformance/council.sh` | No model call occurs for `ctx.model` unless it appears in roster. |
 | Per-member Pi effort propagation | TypeScript executor unit test | `pi-complete` passes each roster entry's effort through provider-specific per-call options from `toPiEffortOptions` and never calls `pi.setThinkingLevel()`. |
-| Concurrent mixed efforts | TypeScript executor unit test | Two concurrent fake Pi member calls with different efforts preserve their own per-call effort options and do not use session-global state; real provider honoring is covered only by the live Pi effort test. |
-| Live Pi effort honoring | `npm run verify:pi-effort-live` | With `AISYNTH_LIVE_MODEL_TESTS=1` and a qualifying real reasoning route, sequential and concurrent low/high calls expose distinct per-call effort metadata and no session-global thinking-state mutation; inconclusive metadata exits `77` and blocks any release claim of real no-bleed support. |
+| Concurrent mixed efforts | TypeScript executor unit test | Two concurrent fake Pi member calls with different efforts preserve their own per-call effort options and do not use session-global state only when the live-effort concurrency gate is verified; otherwise scheduler tests require serial Pi execution. |
+| Live Pi effort honoring | `npm run verify:pi-effort-live` | With `AISYNTH_LIVE_MODEL_TESTS=1` and a qualifying real reasoning route, sequential and concurrent low/high calls expose distinct per-call effort metadata and no session-global thinking-state mutation; inconclusive metadata exits `77`, writes no verified artifact, blocks any release claim of real no-bleed support, and leaves runtime Pi direct concurrency in serial fallback. |
 | Pi API surface contract | `npm run verify:pi-surface` and `tests/council/pi-surface-contract.test-d.ts` | Repo-local stubs compile council imports in clean checkout, and the Pi-present verifier confirms installed Pi exports and command-context methods used by `/council` exist before route discovery, UI, or executor work is implemented. |
 | Pi runtime path-mapping guard | Local Pi integration check | A `pi -e` or installed-loader self-test proves runtime imports of `@earendil-works/*` resolve installed Pi modules rather than repo-local type stubs despite `tsconfig.json` path mappings. |
 | Clean-checkout Pi runtime isolation | TypeScript runtime unit test plus build smoke | A clean-checkout import/load test monkey-patches module loading, imports the portable CLI and shared `extensions/council/lib/**` modules, and proves no `@earendil-works/*` value module is requested; `npm run build` compiles but does not execute Pi-coupled modules. |
@@ -1220,7 +1267,11 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Provider-present conformance | Local integration check | `tests/conformance/run.sh all` remains available for developer machines with configured providers but is not required by generic Pipelane pre-PR checks. |
 | Pi-present surface gate | Local Pi integration check | In an environment with installed Pi, `npm run verify:pi-surface` and `pi -e ./extensions/council/index.ts /council --self-test` pass before Phase 2 starts. |
 | Pi gate artifact enforcement | Clean-checkout script test | Once Pi direct execution files exist, `scripts/check-council-pi-gate.mjs` fails without a current git-tracked `docs/public/council-pi-surface-gate.v1.json` artifact, fails when artifact keys differ from `PI_SURFACE_GATE_FILES_V1`, passes for current `verified` artifacts, passes with a visible `pending_pi_regeneration` diagnostic only when hashes are current, and fails pending artifacts in `--strict-verified` mode. |
-| Pi strict runtime gate | TypeScript route/executor unit test plus `npm run verify:pi-execution-release` | A pending or stale artifact leaves Pi direct routes unavailable with `pi_surface_not_verified`, `complete()` is never called, the strict release script fails until the artifact is verified, and `npm pack --dry-run` reaches that script through `prepack`. |
+| Pi package install lifecycle | Local Pi package-manager inspection or smoke test | Installed Pi git package installation is verified to run production dependency installation rather than relying on `prepack`; the plan and docs treat `prepack` as pack/publish-only and runtime route gates as the end-user execution guard. |
+| Pi strict runtime gate | TypeScript route/executor unit test plus `npm run verify:pi-execution-release` | A pending or stale artifact leaves Pi direct routes unavailable with `pi_surface_not_verified`, `complete()` is never called, the strict release script fails until the artifact is verified, and `npm pack --dry-run` reaches the pack/publish gate through `prepack`. |
+| Pi runtime version drift | TypeScript route/executor unit test | A verified surface artifact generated for Pi version A plus a live fake Pi runtime reporting version B leaves every Pi direct route unavailable with `pi_runtime_version_mismatch`, suggests a verified package for the live Pi version, and never calls `complete()`. |
+| Pi serial fallback without live effort proof | TypeScript scheduler/executor unit test | With missing, inconclusive, stale, or version-mismatched `docs/public/council-pi-effort-live.v1.json`, mixed-effort Pi direct members run serially in roster order with `pi_concurrency_mode: serial_unverified_effort_isolation`, while portable calls can still overlap. |
+| Pi parallel only after live effort proof | TypeScript scheduler/executor unit test plus `npm run verify:pi-effort-live` artifact fixture | A version-matched `CouncilPiEffortLiveGateV1` enables parallel Pi direct calls up to `maxConcurrency`, preserves per-call effort options, and records `pi_concurrency_mode: parallel_verified_effort_isolation`. |
 | Phase 2+ rollback safety | Scripted rollback checklist or manual verification | Reverting Phase 2+ council feature files while retaining the Phase 1 package baseline restores `tests/conformance/run.sh hermetic` and the effective installed-Pipelane checks to green through `sh -lc`, retains any script still referenced by `package.json`, and leaves no `run.sh` source line pointing at removed council tests. |
 | Full abandonment rollback | Manual rollback checklist | Removing the Phase 1 package baseline is documented as returning to the pre-plan state where installed Pipelane's synthesized npm checks fail unless a separate Pipelane config decision changes those checks. |
 | Backward compatibility | Existing suites | `tests/conformance/run.sh all` keeps current unit, Claude, and Codex tests green. |
@@ -1253,17 +1304,19 @@ When `ANTHROPIC_BASE_URL` is present, diagnostics disclose only its presence, no
 Direct `bin/provider-invoke claude --auth subscription` applies the same credential-denylist plus verified-non-credential-allowlist sanitizer before the Claude CLI starts after the planned adapter update.
 Default `/synthesis` auto Claude execution keeps existing behavior and continues to preserve non-credential `ANTHROPIC_*` variables when it uses a first-party session.
 Default `/synthesis` auto Claude execution also preserves `ANTHROPIC_OAUTH_TOKEN`; explicit council subscription execution is the only MVP path that removes it.
-Phase 1 clean-checkout Pi contracts compile only council-owned stubs and mapper usage; installed Pi drift is caught by `npm run verify:pi-surface`.
+Phase 1 clean-checkout Pi contracts compile only council-owned stubs and mapper usage; maintainer installed-Pi drift is caught by `npm run verify:pi-surface`, and end-user installed-Pi drift is caught by the runtime version compatibility gate.
 Clean-checkout runtime tests and build scripts do not execute any `@earendil-works/*` value import; installed Pi value imports are lazy and isolated to `extensions/council/lib/pi-runtime.ts` and the Pi executor.
 Runtime Pi extension imports are verified to resolve installed Pi modules rather than repo-local type stubs despite `tsconfig.json` path mappings before any Pi-dependent phase lands.
 Phase 4 cannot land Pi model execution until `npm run verify:pi-surface` passes against installed Pi and verifies the provider-specific effort option types used by `toPiEffortOptions`.
 Phase 4 also cannot be considered complete until `docs/public/council-pi-surface-gate.v1.json` is committed, git-tracked, uses exactly `PI_SURFACE_GATE_FILES_V1`, has `status: "verified"`, and both default and `--strict-verified` `scripts/check-council-pi-gate.mjs` checks pass in clean checkout.
 Generic clean-checkout checks may pass a current `pending_pi_regeneration` artifact to unblock ordinary edits, but that status is not acceptable for final Phase 4 Pi execution acceptance.
 Pi direct route discovery and execution enforce the strict verified artifact at runtime and keep Pi direct routes unavailable with `pi_surface_not_verified` until that gate passes.
-Package creation runs the same strict Pi execution gate through `prepack` when Pi direct execution files exist.
+Pi direct route discovery and execution also compare live installed Pi package versions against the verified artifact and keep Pi direct routes unavailable with `pi_runtime_version_mismatch` until a matching verified package or artifact exists.
+Package creation runs the same strict Pi execution gate through `prepack` when Pi direct execution files exist, but end-user Pi installs are protected by runtime route gates rather than by `prepack`.
 Pi supported efforts are normalized through the exact installed Pi thinking-level table and any unknown or empty raw level list makes the route unavailable until the mapper is updated.
 Pi direct execution maps effort per provider API and never assumes that every model accepts `reasoningEffort`.
-Real Pi effort honoring and concurrent mixed-effort support are claimed only after `npm run verify:pi-effort-live` passes against a qualifying real reasoning route; inconclusive metadata blocks that claim.
+Real Pi effort honoring and concurrent mixed-effort support are claimed only after `npm run verify:pi-effort-live -- --write-artifact` passes against a qualifying real reasoning route and the live-effort artifact matches the end user's Pi package versions.
+Until the live-effort artifact is verified and version-matched, Pi direct model calls run serially even when the global `maxConcurrency` is higher.
 Portable execution uses the existing `bin/provider-invoke --effort` flag only after route validation confirms the exact selected effort is supported.
 Portable Claude effort support records wrapper-contract provenance and the current supported list `low`, `medium`, `high`, `xhigh`, and `max` only after the fake argv contract proves pass-through behavior.
 Unsupported remembered efforts block before portable invocation and are never delegated to adapter-level clamps.
@@ -1318,8 +1371,9 @@ When validating recurring Pipelane checks, record whether the runner used live n
 Before Phase 4 live Pi execution is accepted, generate a `status: "verified"` `docs/public/council-pi-surface-gate.v1.json` from the Pi-present verifier and confirm `scripts/check-council-pi-gate.mjs` passes in a clean checkout without installed Pi.
 If a non-Pi contributor used `--mark-pending`, replace the `pending_pi_regeneration` artifact with a verified artifact before Phase 4 acceptance or any release note claiming Pi direct execution support.
 Run `npm run verify:pi-execution-release` before any release, tag, or local install instructions claim Pi direct execution support.
-Confirm `npm pack --dry-run` reaches the same strict gate through `prepack` before publishing or sharing the optional Pi package.
-Run `npm run verify:pi-effort-live` with a qualifying real reasoning route before claiming real Pi effort honoring or concurrent mixed-effort no-bleed support.
+Confirm `npm pack --dry-run` reaches the same strict pack/publish gate through `prepack` before publishing or sharing the optional Pi package, and do not claim that `prepack` protects `pi install`.
+Run `npm run verify:pi-effort-live -- --write-artifact` with a qualifying real reasoning route before claiming real Pi effort honoring or enabling concurrent Pi direct execution by default.
+Dogfood one run with the live-effort artifact absent or renamed and confirm Pi direct calls serialize with `pi_concurrency_mode: serial_unverified_effort_isolation`.
 Run `tests/conformance/run.sh all` only as a provider-present local integration check, not as the clean pre-PR gate.
 Run live smoke with one plan file, one issue text, one same-model roster, and one cross-family roster.
 Record whether users choose recommended rosters or edit them heavily.
@@ -1332,6 +1386,8 @@ Use a future `revisit` extension only after council reports have enough outcome 
 
 Update `README.md` with an optional `/council` section that distinguishes Pi-native UI from portable skill fallback.
 Document `pi install` global and project-local installation paths.
+Document that installed Pi git package installs run production dependency installation and that `/council` does not rely on `prepack` or `prepare` as an end-user install gate.
+Document that `prepack` is a maintainer pack/publish guard only.
 Document user-global, trusted project-local, and explicit portable roster config paths and precedence.
 Document that resolved config location is authoritative over the in-file `scope` metadata.
 Document pre-`routeId`, stale-`routeId`, legacy entry-level chair migration, portable legacy-chair refusal, missing-strategy refusal, and quarantine behavior.
@@ -1355,6 +1411,8 @@ Document clean-checkout Pi runtime import isolation, including the lazy `pi-runt
 Document the exact Pi thinking-level normalization table, the fail-closed behavior for unknown or empty raw Pi levels, and the reason council does not use Pi's clamp behavior for remembered roster efforts.
 Document portable Claude effort provenance, including the `provider-invoke --help` accepted set, `bin/adapters/claude.sh` pass-through behavior, wrapper-contract confidence, and the current exclusion of `off` and `minimal`.
 Document that repo-local Pi stubs do not prove installed Pi API compatibility, that the installed Pi `jiti` loader uses Pi-owned aliases rather than repo `tsconfig.json` path mappings for `@earendil-works/*` imports in Pi `0.80.10`, and that `npm run verify:pi-surface` plus the `pi -e` self-test are required installed-runtime drift checks.
+Document the end-user runtime Pi version compatibility gate, including `pi_runtime_version_mismatch`, why it disables Pi direct routes, and how to install or build a council package verified for the current Pi version.
+Document the live-effort concurrency gate, including `docs/public/council-pi-effort-live.v1.json`, serial fallback behavior, and the meaning of `pi_concurrency_mode` diagnostics.
 Document provider billing labels and cost estimation limits.
 Document cancellation, reload, and session replacement behavior.
 Document the zero, one, and two-plus initial survivor state-machine outcomes, including the single-survivor mechanical report for chair strategies.
@@ -1372,14 +1430,14 @@ Document why free-form issue prose defaults recommendations to structured disagr
 Document `decision_readiness` semantics, including critical phase degradation, the mechanical `materialDissent` predicate, load-bearing assumption verification from critique-phase `assumption_reviews`, and mechanical no-model structured disagreement synthesis.
 Document the synthesis input contract, including `CouncilSynthesisBriefV1`, `CouncilAdversaryOutputV1[]`, and where critique, steelman, and adversary outputs appear in deterministic, structured-disagreement, and chair reports.
 Document the Pi gate artifact workflow, including `docs/public/council-pi-surface-gate.v1.json`, `PI_SURFACE_GATE_FILES_V1`, `verified` versus `pending_pi_regeneration` status, `--mark-pending --reason`, `--strict-verified`, the runtime `pi_surface_not_verified` route gate, `npm run verify:pi-execution-release`, the `prepack` hook, the Pi-equipped maintainer regeneration responsibility, and `scripts/check-council-pi-gate.mjs` clean-checkout enforcement.
-Document `npm run verify:pi-effort-live`, required environment variables, exit `77` inconclusive behavior, and the difference between fake option-propagation tests and a real provider no-bleed support claim.
+Document `npm run verify:pi-effort-live -- --write-artifact`, required environment variables, exit `77` inconclusive behavior, the fact that exit `77` writes no verified artifact, and the difference between fake option-propagation tests and a real provider no-bleed support claim.
 
 ## GSTACK REVIEW REPORT
 
 | Review | Trigger | Why | Runs | Status | Findings |
 |--------|---------|-----|------|--------|----------|
 | CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | not run | Not requested for this phase. |
-| Claude Challenge Review | `/claude-review challenge plan` | Independent adversarial plan challenge | 12 | ISSUES FOLDED | Commits through `40cfb71` found follow-up issues; this revision folds explicit phase-output synthesis contracts, automated strict Pi runtime and release gates, split rollback targets, live Pi effort conformance, and deadline-over-single-survivor precedence into the plan. |
+| Claude Challenge Review | `/claude-review challenge plan` | Independent adversarial plan challenge | 13 | ISSUES FOLDED | Commits through `b3876ac` found follow-up issues; this revision folds Pi install-lifecycle limits for `prepack`, end-user installed-Pi version drift refusal, and serial Pi direct fallback until live effort isolation is verified into the plan. |
 | Codex Review | `/codex review` | Independent 2nd opinion | 0 | not run | Not requested for this phase. |
 | Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | CLEAR | 1 issue found and folded: Pi `off` effort now omits `reasoningEffort` instead of passing `"off"`. |
 | Design Review | `/plan-design-review` | UI/UX gaps | 0 | not run | No design review requested for this phase. |
