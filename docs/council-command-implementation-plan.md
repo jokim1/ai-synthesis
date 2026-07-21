@@ -22,10 +22,12 @@ The design keeps `/council` as personal `ai-synthesis` customization and does no
 `bin/provider-invoke` already parses `--auth` and `--effort`, exports `A_AUTH` and `A_EFFORT`, and rejects unknown top-level flags through `aisynth_die_usage`.
 `bin/provider-invoke` does not validate the semantic effort vocabulary; `bin/adapters/codex.sh` maps `max` to `xhigh` and clamps unknown effort strings to `medium`, so council must validate supported efforts before invoking it.
 `bin/adapters/claude.sh` already consumes `A_AUTH=auto|subscription|apikey`, but `bin/provider-probe` does not currently expose a CLI flag to set `A_AUTH`.
-`bin/adapters/claude.sh` currently unsets the known Claude API credential variables when its internal first-party-session branch is active, but it does not own a complete child-environment scrub for every variable whose name begins with `ANTHROPIC_`.
+`bin/adapters/claude.sh` currently unsets known Claude credential variables when its internal first-party-session branch is active and preserves non-credential `ANTHROPIC_*` variables in the default `auto` path.
+`bin/adapters/claude.sh` currently omits `ANTHROPIC_OAUTH_TOKEN` from that known-credential unset list, while installed Pi's `env-api-keys.js` treats `ANTHROPIC_OAUTH_TOKEN` and `ANTHROPIC_API_KEY` as Anthropic credentials.
 `bin/adapters/claude.sh` defaults to subscription-preferred auto mode and can fall back to `ANTHROPIC_API_KEY`, which `/council` must avoid for Claude routes.
 `bin/adapters/codex.sh` maps `max` to `xhigh` for `/synthesis`, but `/council` must not silently clamp remembered effort values.
-`bin/lib/json_extract.py` provides tolerant JSON extraction plus full schema validation and is the correct shared validator for model text that is not provider-enforced.
+`bin/lib/json_extract.py` provides the existing provider-layer tolerant JSON extraction algorithm and minimal JSON Schema subset for model text that is not provider-enforced.
+`bin/lib/json_extract.py` is small enough to port to TypeScript for council runtime use, so `/council` should not introduce a Python dependency for Pi or portable Node execution.
 `bin/lib/frontmatter_set.py` updates session frontmatter fields for rating and revisit flows and should remain available for council report metadata updates if needed.
 `tests/conformance/run.sh` supports the exact current targets `unit`, `claude`, `codex`, and `all`, with `all` running unit, Claude, and Codex suites.
 The current `claude` and `codex` suites include live provider probe or smoke sections before their fake-only branches, so the current `all` target is not a hermetic clean-runner gate when real provider CLIs or auth are absent.
@@ -49,6 +51,9 @@ Pi state that should survive reloads inside a session can be appended with `pi.a
 Pi user-global config locations must be derived with `getAgentDir()` and project config directory names with `CONFIG_DIR_NAME`, not hardcoded as `~/.pi/agent` or `.pi`.
 Pi model discovery is available from `ctx.modelRegistry.getAll()`, `getAvailable()`, `find()`, `hasConfiguredAuth()`, `getProviderAuthStatus()`, `getApiKeyAndHeaders()`, `isUsingOAuth()`, and provider display names.
 Pi model effort support is exposed by `getSupportedThinkingLevels(model)` from `@earendil-works/pi-ai`.
+Installed Pi `0.80.10` defines CLI thinking levels as `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, and `max`.
+Installed `@earendil-works/pi-ai` `0.80.10` defines `ModelThinkingLevel` as `off` plus `minimal`, `low`, `medium`, `high`, `xhigh`, and `max`, and `getSupportedThinkingLevels(model)` returns `["off"]` for non-reasoning models.
+Installed `@earendil-works/pi-ai` `0.80.10` `getSupportedThinkingLevels(model)` filters `xhigh` and `max` through `model.thinkingLevelMap`, and `clampThinkingLevel(model, level)` would silently choose a nearby level, so council route reconciliation must normalize levels itself and must not use Pi clamping for remembered roster efforts.
 Pi direct model execution can use `complete(model, context, options)` from `@earendil-works/pi-ai/compat` after resolving auth with `ctx.modelRegistry.getApiKeyAndHeaders(model)`.
 The installed `@earendil-works/pi-ai/compat` `complete()` declaration accepts open `ProviderStreamOptions`, so compiling a call to `complete(..., { reasoningEffort })` alone cannot prove that a provider actually honors that option.
 The installed provider-specific Pi option types in `dist/api/openai-responses.d.ts`, `dist/api/openai-codex-responses.d.ts`, and `dist/api/anthropic-messages.d.ts` expose `reasoningEffort` for OpenAI Responses and OpenAI Codex models, while Anthropic models expose `effort`, so the Pi executor needs an explicit provider/API-specific effort mapper.
@@ -227,6 +232,10 @@ The portable skill should use relative paths from its `SKILL.md` and should not 
 The shell `bin/council` should be only a thin launcher that checks for Node, loads the TypeScript CLI through `jiti` or the chosen runtime loader, and exits with clear setup instructions when dependencies are missing.
 The shell `bin/council-route-probe` should be only a thin launcher for `extensions/council/cli.ts route-probe --json`.
 Do not create a second shell implementation of roster validation, phase orchestration, synthesis, cancellation, or reporting.
+The council runtime dependency contract is Node `>=22.19.0` plus the package-local Node dependencies; it must not require `python3` in Pi or portable runtime paths.
+`extensions/council/lib/runtime.ts` should implement a startup contract check that verifies Node version, package root, runtime loader, `bin/provider-invoke --auth`, `bin/provider-invoke --effort`, and the planned `bin/provider-probe --auth` flag before route execution.
+Missing startup contract requirements should disable Run in Pi TUI or exit `5` from the portable CLI after printing actionable setup diagnostics.
+Do not add a runtime startup check for `bin/lib/json_extract.py` or `python3`, because council structured validation should be TypeScript-native.
 The shell interface should be:
 
 ```sh
@@ -284,6 +293,18 @@ Core TypeScript interfaces should be:
 
 ```ts
 export type CouncilEffort = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+
+export const COUNCIL_EFFORT_ORDER: readonly CouncilEffort[] = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
+
+export const PI_THINKING_LEVEL_TO_COUNCIL_EFFORT = {
+  off: "off",
+  minimal: "minimal",
+  low: "low",
+  medium: "medium",
+  high: "high",
+  xhigh: "xhigh",
+  max: "max",
+} as const satisfies Record<CouncilEffort, CouncilEffort>;
 
 export type CouncilExecutorKind = "pi-complete" | "provider-invoke";
 
@@ -404,6 +425,22 @@ export interface CouncilPositionCatalogV1 {
   inputKind: "issue" | "plan";
   candidates: CouncilPositionCandidateV1[];
   otherPrefix: "other:";
+}
+
+export type CouncilJsonValidationResult =
+  | { ok: true; value: unknown; source: "whole" | "fence" | "scan" }
+  | { ok: false; kind: "no_json" | "schema_invalid" | "validator_usage_error"; rawText: string; error: string };
+
+export interface CouncilRuntimeContractReport {
+  ok: boolean;
+  nodeVersion: string;
+  packageRoot: string;
+  loader: "jiti" | "compiled_js";
+  providerInvokeAuthFlag: boolean;
+  providerInvokeEffortFlag: boolean;
+  providerProbeAuthFlag: boolean;
+  piInstalled?: boolean;
+  errors: string[];
 }
 ```
 
@@ -568,15 +605,21 @@ After `ctx.modelRegistry.getApiKeyAndHeaders(model)` resolves, a Claude route wi
 The executor should rely on `ctx.modelRegistry.isUsingOAuth(model)` and `ctx.modelRegistry.getProviderAuthStatus(model.provider)` for non-secret source validation and should never inspect or log credential material to infer auth type.
 Portable Claude Code routes should call `bin/provider-probe claude --auth subscription` and `bin/provider-invoke claude --auth subscription`.
 No `bin/provider-invoke` parser change is required for `--auth subscription` because the current parser already accepts `--auth` and exports `A_AUTH`.
-`extensions/council/lib/executors/provider-invoke.ts` must own the portable child-process environment scrub for Claude routes by copying `process.env`, deleting every key whose name matches `^ANTHROPIC_`, and passing that sanitized environment to the spawned `bin/provider-probe` and `bin/provider-invoke` children.
+`extensions/council/lib/executors/provider-invoke.ts` must own the portable child-process environment sanitizer for Claude routes by copying `process.env`, deleting Anthropic credential variables, deleting unclassified `ANTHROPIC_*` variables, preserving only verified non-credential Anthropic configuration variables from an explicit allowlist, and passing that sanitized environment to the spawned `bin/provider-probe` and `bin/provider-invoke` children.
 The portable executor should expose an internal pure helper with the signature `sanitizeProviderInvokeEnv(route: CouncilRoute, baseEnv: NodeJS.ProcessEnv): NodeJS.ProcessEnv` so unit tests can verify Claude scrubbing without spawning a real provider.
+The initial Anthropic credential denylist must be `ANTHROPIC_API_KEY`, `ANTHROPIC_OAUTH_TOKEN`, `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_BEARER_TOKEN`, `ANTHROPIC_CONSOLE_API_KEY`, and `ANTHROPIC_CONSOLE_AUTH_TOKEN`.
+The initial verified non-credential Anthropic allowlist is empty, because the current `ai-synthesis` shell adapters and installed Pi `0.80.10` surfaces reference only `ANTHROPIC_API_KEY` and `ANTHROPIC_OAUTH_TOKEN` as Anthropic environment variables.
+An implementation may add a non-credential name such as `ANTHROPIC_BASE_URL` to the allowlist only after a test or installed-surface inspection proves that the variable is non-secret and does not route council Claude execution to Anthropic API-key billing.
+The sanitizer should record a diagnostic listing deleted unclassified `ANTHROPIC_*` names without logging values.
 The portable Claude executor should pass `--auth subscription` per member call only after that environment scrub has been applied.
 `bin/adapters/claude.sh` should also distinguish explicit `A_AUTH=subscription` from `A_AUTH=auto` that happens to find a subscription session.
-Only explicit `A_AUTH=subscription` should scrub every `ANTHROPIC_*` variable before executing the Claude CLI, preserving `/synthesis` auto behavior while making council and direct `bin/provider-invoke claude --auth subscription` defense-in-depth safe.
+Only explicit `A_AUTH=subscription` should apply the credential-denylist plus verified-non-credential-allowlist sanitizer before executing the Claude CLI, preserving `/synthesis` auto behavior while making council and direct `bin/provider-invoke claude --auth subscription` defense-in-depth safe.
 The existing `A_AUTH=auto` path should keep today's behavior: when a first-party session exists it unsets only the known Anthropic credential variables needed to avoid API-key fallback, and it should continue to pass through non-credential `ANTHROPIC_*` configuration variables.
-Fake tests must assert that no `ANTHROPIC_*` variable, including unknown future names such as `ANTHROPIC_TEST_SENTINEL`, reaches the child Claude process for council portable Claude routes.
+The `A_AUTH=auto` known-credential unset list should add `ANTHROPIC_OAUTH_TOKEN` for consistency with installed Pi and should otherwise preserve the existing default auto semantics.
+Fake tests must assert that Anthropic credential variables and unknown future names such as `ANTHROPIC_TEST_SENTINEL` do not reach the child Claude process for council portable Claude routes, while allowlisted verified non-credential names would be preserved if the allowlist becomes non-empty.
 Add a backward-compatible optional `--auth <auto|subscription|apikey>` flag to `bin/provider-probe`.
 Leave `bin/provider-probe claude` defaulting to existing `auto` behavior for `/synthesis` compatibility.
+Phase 2 must prove subscription execution survives the sanitizer before any council route execution lands by running fake `provider-probe claude --auth subscription` and fake `provider-invoke claude --auth subscription` cases with credential and unclassified Anthropic variables set, plus a no-paid live `bin/provider-probe claude --auth subscription` when a real logged-in Claude CLI is available.
 When only `ANTHROPIC_API_KEY` is present, `/council` should show Claude as unavailable with the reason `Claude API key detected, but council requires subscription auth`.
 Codex routes may use ChatGPT subscription auth through Pi or Codex CLI auth, and should label billing as subscription when the route is OAuth or CLI login.
 OpenAI API key routes, Gemini routes, Bedrock routes, OpenRouter routes, Vercel AI Gateway routes, and other provider routes may be shown if Pi marks auth configured.
@@ -588,7 +631,9 @@ Family derivation should be advisory only.
 Recommended rosters should prefer distinct families when available but must accept single-family and single-model rosters.
 Effort values must come from the route, not from generic assumptions.
 For Pi routes, call `getSupportedThinkingLevels(model)` and map the result to `CouncilEffort[]`.
-For non-reasoning Pi routes, supported efforts should be `["off"]`.
+`normalizePiThinkingLevels(model, rawLevels)` should accept only the exact installed Pi vocabulary `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, and `max`, should deduplicate in `COUNCIL_EFFORT_ORDER`, and should return those same values as `CouncilEffort[]`.
+For non-reasoning Pi routes, installed Pi should already return `["off"]`, and council should treat a missing or empty raw level list as a route-discovery contract failure rather than guessing `off`.
+If `getSupportedThinkingLevels(model)` returns an unknown raw value, council should mark that route unavailable with reason `unknown_pi_thinking_level`, preserve remembered entries visibly, and require `npm run verify:pi-surface` plus a mapper update before execution.
 For portable Codex CLI routes, supported efforts should be `["minimal", "low", "medium", "high", "xhigh"]`.
 For portable Claude Code subscription routes, supported efforts should be the adapter-supported set, initially `["low", "medium", "high", "max"]`, unless a future no-cost capability probe provides better model-specific metadata.
 Unsupported remembered efforts should remain in config and UI until the user edits them.
@@ -682,10 +727,10 @@ Early `critique -> synthesize` or `steelman -> synthesize` shortcuts should not 
 Initial analyses should run through a bounded promise pool.
 The default max concurrent member calls should be `4`.
 The default hard roster cap should be `6` enabled members, with a config override allowed up to `8`.
-The default timeout should be `300000` ms for initial, critique, steelman, and adversary calls.
-The default timeout should be `420000` ms for explicit chair synthesis.
+The default `memberTimeoutMs` should be `300000` ms for each scheduled member in initial, critique, steelman, and adversary phases.
+The default `memberTimeoutMs` should be `420000` ms for an explicit chair synthesis member.
 The default whole-run deadline should be computed from the scheduled phase budgets rather than a flat wall-clock cap.
-The deadline formula should be `max(1200000, sum(ceil(selectedMembersForPhase / maxConcurrency) * phaseTimeoutMs for initial, critique, steelman, and adversary) + chairTimeoutMsWhenScheduled + 120000)`.
+The deadline formula should be `max(1200000, sum(ceil(selectedMembersForPhase / maxConcurrency) * phaseMemberTimeoutMs for initial, critique, steelman, and adversary) + chairMemberTimeoutMsWhenScheduled + 120000)`.
 The deadline should be recalculated after each phase selection is known, should never be lower than the remaining budget for already scheduled valid work, and should abort the run-level `AbortController` only after that computed budget expires.
 The default `1200000` ms value is a minimum safety floor for small councils, not a cap for full rosters.
 Each member call should receive a `memberSignal` from a per-member `AbortController` that is linked to the run-level signal.
@@ -693,9 +738,13 @@ Run-level aborts from Escape, Pi `session_shutdown`, process signals, or the com
 When the computed whole-run deadline fires, the engine should set abort reason `deadline_exceeded`, abort every active member controller, skip unscheduled remaining phases, and proceed directly to terminal failure reporting.
 Per-member timeout handlers should abort only that member's controller or rely on the executor's per-call `timeoutMs`; they must never abort the run-level controller.
 The provider retry count should be `0` for transport-level retries so Pi can surface rate limits instead of waiting silently.
-Malformed structured output should get one JSON-only retry per voice.
-Structured validation should use a helper with the concrete signature `validateModelJson(schemaPath: string, rawText: string): Promise<{ ok: true; value: unknown } | { ok: false; kind: "no_json" | "schema_invalid" | "validator_usage_error"; parserExitCode: 3 | 4 | 2; rawText: string; error: string }>` and should delegate to `bin/lib/json_extract.py` for parity with the existing provider layer.
-`validateModelJson` is a per-voice validation helper, so `parserExitCode` is diagnostic metadata only and must never be propagated as the portable CLI process exit code.
+Malformed structured output should get at most one JSON-only retry per voice inside that voice's `memberTimeoutMs` budget.
+The first attempt and JSON-only retry are not separate whole-run budget units.
+The executor should pass each attempt a provider `timeoutMs` equal to the remaining `memberTimeoutMs` budget, skip the JSON-only retry when no positive member budget remains, and record `retry_skipped_no_member_budget` rather than extending the deadline.
+Structured validation should use a TypeScript-native helper with the concrete signature `validateModelJson(schemaPath: string, rawText: string): Promise<CouncilJsonValidationResult>`.
+The helper should implement the current `bin/lib/json_extract.py` behavior in TypeScript: parse whole trimmed input, parse a single stripped markdown fence, scan at most `512` plausible `{` or `[` starts, find the shortest syntactically complete JSON object or array substring with a bounded decoder that respects strings and escapes, parse that substring with `JSON.parse`, prefer the last satisfying object, prefer objects over arrays, and validate the JSON Schema subset used by council and existing role schemas.
+That supported schema subset is `type`, `const`, `enum`, `required`, `properties`, `additionalProperties: false`, and object `items`.
+The council runtime must not spawn `bin/lib/json_extract.py`; parity should be enforced with checked-in fixture cases derived from the existing helper.
 The engine should map `no_json` and `schema_invalid` to voice degradation with one JSON-only retry, and should map `validator_usage_error` to a failed voice plus implementation diagnostic unless every initial voice fails.
 Auth, timeout, malformed, budget, rate limit, and invocation failures should degrade that voice rather than crash the whole council.
 If no initial voices succeed, the run should fail with no recommendation.
@@ -781,7 +830,8 @@ User-global config under `getAgentDir()` is always user-owned and can be loaded 
 Context and plan contents must be treated as data, not instructions.
 Model prompts must state that council completion does not authorize implementation.
 Claude council routes must not use Anthropic API keys.
-Portable Claude council children must receive an environment with every `ANTHROPIC_*` variable removed before either `bin/provider-probe` or `bin/provider-invoke` starts.
+Portable Claude council children must receive an environment with Anthropic credential variables and unclassified `ANTHROPIC_*` variables removed before either `bin/provider-probe` or `bin/provider-invoke` starts.
+Only explicitly allowlisted verified non-credential Anthropic variables may remain in those child environments.
 Other provider auth paths should be labeled honestly as subscription, OAuth, API key, gateway billing, local, or unknown.
 API keys and headers must never be logged, stored in reports, stored in roster config, or included in custom Pi entries.
 The existing `aisynth_redact` behavior in `bin/lib/common.sh` should remain in the portable provider-invoke executor.
@@ -847,13 +897,16 @@ Do not leave `.pipelane.json` pointing directly at npm scripts without an instal
 Add `extensions/council/index.ts` in Phase 1 as a self-test-only Pi surface spike or in Phase 3 as the real command registration, and do not expose executable `/council` behavior until the UI and engine dependencies exist.
 Add `extensions/council/cli.ts` in Phase 2 as the Node-backed portable entrypoint that parses inputs and route probes, then wire it to the shared engine in Phase 5.
 Add `extensions/council/lib/types.ts` in Phase 1 for all interfaces listed in this plan.
+Add `extensions/council/lib/runtime.ts` in Phase 2 for the `CouncilRuntimeContractReport` startup check over Node, package root, loader, `bin/provider-invoke --auth`, `bin/provider-invoke --effort`, and `bin/provider-probe --auth`.
 Add `extensions/council/lib/config.ts` in Phase 2 for `getAgentDir()` based paths, non-Pi paths, tolerant config migration, authoritative location scope, quarantine, and atomic writes.
 Add `extensions/council/lib/input.ts` in Phase 2 for `/council` argument parsing, `@plan-file` parsing, safe path resolution, plan loading, line numbering, and SHA-256 hashing.
-Add `extensions/council/lib/routes.ts` in Phase 2 for Pi route discovery, family detection, supported effort calculation, Claude subscription-only filtering, and replacement suggestions.
+Add `extensions/council/lib/effort.ts` in Phase 2 for `COUNCIL_EFFORT_ORDER`, `PI_THINKING_LEVEL_TO_COUNCIL_EFFORT`, `normalizePiThinkingLevels`, supported-effort validation, and nearest-effort replacement suggestions.
+Add `extensions/council/lib/routes.ts` in Phase 2 for Pi route discovery, family detection, Claude subscription-only filtering, effort normalization through `extensions/council/lib/effort.ts`, and replacement suggestions.
 Add `extensions/council/lib/recommend.ts` in Phase 2 for issue-versus-plan roster recommendations and composition feedback.
 Add `extensions/council/lib/engine.ts` in Phase 5 for the state machine, phase-role assignment, deterministic synthesis, degradation, cancellation, and phase orchestration.
 Add `extensions/council/lib/executors/pi-complete.ts` in Phase 4 for Pi direct model calls through `complete()` and the `toPiEffortOptions` mapper.
-Add `extensions/council/lib/executors/provider-invoke.ts` in Phase 4 for portable provider calls through the existing `bin/provider-invoke --effort` and `--auth` flags, and make this file own child-process environment scrubbing for Claude routes.
+Add `extensions/council/lib/executors/provider-invoke.ts` in Phase 4 for portable provider calls through the existing `bin/provider-invoke --effort` and `--auth` flags, and make this file own child-process environment sanitizing for Claude routes.
+Add `extensions/council/lib/validate-json.ts` in Phase 5 for the TypeScript-native tolerant JSON extraction and schema validation helper; it must not spawn `bin/lib/json_extract.py` or `python3`.
 Add `extensions/council/lib/report.ts` in Phase 5 for structured report validation, markdown rendering, report frontmatter, and report file writes.
 Add `extensions/council/ui/roster-editor.ts` in Phase 3 for the custom TUI component.
 Add `extensions/council/ui/composition.ts` in Phase 3 for composition feedback rendering.
@@ -863,8 +916,9 @@ Add `bin/council` in Phase 2 as a thin shell launcher for `extensions/council/cl
 Add `bin/council-route-probe` in Phase 2 as a thin shell launcher for `extensions/council/cli.ts route-probe` that emits `CouncilRouteProbeEnvelopeV1`.
 Modify `bin/provider-probe` in Phase 2 to accept optional `--auth <auto|subscription|apikey>` while retaining `provider-probe <claude|codex>`.
 Modify `bin/adapters/claude.sh` `adapter_probe` in Phase 2 to honor `A_AUTH=subscription` by refusing API-key-only auth.
-Modify `bin/adapters/claude.sh` `_claude_exec` in Phase 2 so only explicit `A_AUTH=subscription` unsets every environment variable whose name begins with `ANTHROPIC_` before running the Claude CLI.
-Add a private shell helper named `_claude_unset_anthropic_env` in `bin/adapters/claude.sh` that enumerates current environment names, unsets names matching `ANTHROPIC_*`, and is called only when `A_AUTH` is exactly `subscription`.
+Modify `bin/adapters/claude.sh` `_claude_exec` in Phase 2 so only explicit `A_AUTH=subscription` applies the Anthropic credential-denylist plus verified-non-credential-allowlist sanitizer before running the Claude CLI.
+Add a private shell helper named `_claude_unset_anthropic_credentials` in `bin/adapters/claude.sh` that unsets `ANTHROPIC_API_KEY`, `ANTHROPIC_OAUTH_TOKEN`, `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_BEARER_TOKEN`, `ANTHROPIC_CONSOLE_API_KEY`, and `ANTHROPIC_CONSOLE_AUTH_TOKEN`.
+Add a private shell helper named `_claude_sanitize_subscription_env` in `bin/adapters/claude.sh` that calls `_claude_unset_anthropic_credentials`, removes unclassified `ANTHROPIC_*` names not present in the verified non-credential allowlist, and never logs values.
 Keep `A_AUTH=auto` behavior backward compatible for `/synthesis`: when a first-party session exists, unset only the current known credential variables and preserve non-credential `ANTHROPIC_*` variables.
 Do not modify `bin/provider-invoke` default auth behavior, `--auth` parsing, or `--effort` parsing for MVP; the existing flags are sufficient, and council-owned validation prevents unsupported values from reaching adapter clamps.
 Add `roles/council/initial.md`, `roles/council/critique.md`, `roles/council/steelman.md`, `roles/council/adversary.md`, and `roles/council/chair.md` in Phase 5.
@@ -875,10 +929,12 @@ Add TypeScript unit tests under `tests/council/` across Phases 2 through 5 for i
 Add Pi integration fixtures or fakes under `tests/pi/` or `tests/council/pi-fixtures/` in Phase 3 to simulate `ctx.modelRegistry`, `ctx.ui.custom()`, `session_shutdown`, and session replacement without live model calls.
 Add `tests/council/pi-surface-contract.test-d.ts` in Phase 1 to compile-check the exact Pi imports and call signatures used by the package.
 Add `tests/council/pi-effort-options-contract.test-d.ts` in Phase 1 to compile-check the council-owned `toPiEffortOptions` contract against repo-local stubs.
-Make `npm run verify:pi-surface` compile or execute an installed-Pi check that imports `AnthropicOptions`, `OpenAIResponsesOptions`, `OpenAICodexResponsesOptions`, `complete`, `hasApi`, and `getSupportedThinkingLevels` from the actual Pi package tree.
+Make `npm run verify:pi-surface` compile or execute an installed-Pi check that imports `AnthropicOptions`, `OpenAIResponsesOptions`, `OpenAICodexResponsesOptions`, `complete`, `hasApi`, and `getSupportedThinkingLevels` from the actual Pi package tree and asserts the returned Pi thinking-level vocabulary is still exactly representable by `PI_THINKING_LEVEL_TO_COUNCIL_EFFORT`.
 Add a TypeScript executor unit test in Phase 4 that verifies Anthropic routes receive `effort`, OpenAI Responses routes receive `reasoningEffort`, OpenAI Codex `off` maps to `"none"` only when installed support is confirmed, and other `off` routes omit explicit thinking options.
 Add a portable executor unit test in Phase 4 that captures `bin/provider-invoke` argv and proves selected supported efforts are forwarded with `--effort`, unsupported remembered efforts block before invocation, and the executor fails loudly if the wrapper contract check cannot find `--effort`.
-Add a portable Claude executor unit test in Phase 4 that captures the child environment and proves every `ANTHROPIC_*` variable is absent before `bin/provider-probe` or `bin/provider-invoke` is started.
+Add a portable Claude executor unit test in Phase 4 that captures the child environment and proves Anthropic credential variables and unclassified `ANTHROPIC_*` variables are absent before `bin/provider-probe` or `bin/provider-invoke` is started, while allowlisted verified non-credential variables would be preserved if the allowlist is non-empty.
+Add a TypeScript validator unit test in Phase 5 that proves `extensions/council/lib/validate-json.ts` matches checked-in `bin/lib/json_extract.py` fixture expectations without requiring Python at runtime.
+Add an engine retry-budget unit test in Phase 5 that proves a malformed first attempt and JSON-only retry share one `memberTimeoutMs` budget and cannot extend the whole-run deadline.
 Update `bin/README.md` in Phase 2 with the council route probe and subscription-only Claude behavior.
 Update `README.md` in Phase 6 with optional Pi package install instructions and a short warning that the native `/council` menu is Pi-only.
 Force-add any non-public docs under `docs/` because `.gitignore` intentionally ignores them.
@@ -907,6 +963,7 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Empty input | `tests/conformance/council.sh` | TUI opens input flow and non-TUI prints usage. |
 | Provider failure | `tests/conformance/council.sh` | Failed member is recorded and remaining members continue. |
 | Member timeout scope | TypeScript engine/executor unit test | One member timeout aborts only that member controller; other concurrent members continue unless the run-level signal is aborted. |
+| Retry shares member timeout | TypeScript scheduler/executor unit test | A malformed first attempt and JSON-only retry consume the same `memberTimeoutMs`; the retry is skipped when no positive member budget remains and the whole-run deadline is not extended. |
 | Partial council degradation | `tests/conformance/council.sh` | One surviving voice yields degraded `not_ready`; two surviving voices yield degraded council report. |
 | Hidden-host-vote prevention | `tests/conformance/council.sh` | No model call occurs for `ctx.model` unless it appears in roster. |
 | Per-member Pi effort propagation | TypeScript executor unit test | `pi-complete` passes each roster entry's effort through provider-specific per-call options from `toPiEffortOptions` and never calls `pi.setThinkingLevel()`. |
@@ -915,6 +972,7 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Pi runtime path-mapping guard | Local Pi integration check | A `pi -e` or installed-loader self-test proves runtime imports of `@earendil-works/*` resolve installed Pi modules rather than repo-local type stubs despite `tsconfig.json` path mappings. |
 | Pi effort option contract | `npm run verify:pi-surface`, `tests/council/pi-effort-options-contract.test-d.ts`, and TypeScript executor unit test | Clean checkout tests prove council code uses `toPiEffortOptions`, and the Pi-present verifier proves installed provider-specific option types still expose the effort keys the mapper emits. |
 | Pi provider-specific effort mapping | TypeScript executor unit test | Anthropic routes receive `effort`, OpenAI Responses routes receive `reasoningEffort`, OpenAI Codex `off` maps to `"none"` only when installed support is confirmed, other `off` routes omit explicit thinking options, and no route uses session-global thinking state. |
+| Pi thinking-level normalization | TypeScript route unit test plus `npm run verify:pi-surface` | `getSupportedThinkingLevels()` values normalize through the exact `off|minimal|low|medium|high|xhigh|max` table, non-reasoning routes expose only `off`, empty or unknown raw levels make the route unavailable, and no Pi clamp is used. |
 | Provider-invoke effort propagation | TypeScript executor unit test plus `tests/conformance/council.sh` | The portable executor verifies the existing `bin/provider-invoke --effort` flag, forwards only route-supported efforts, blocks unsupported remembered efforts before invocation, and fails loudly if the flag contract is missing. |
 | Phase-role fallback | TypeScript engine unit test | Rosters without explicit critic, steelman, or adversary roles receive deterministic explicit-member phase assignments recorded in diagnostics. |
 | State-machine guarded transitions | TypeScript engine unit test | Zero, one, and two-plus successful initial voices take the specified transitions; later phase failures continue to the next named phase with degradation instead of skipping straight to synthesis. |
@@ -940,14 +998,17 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Portable report-strategy override | TypeScript CLI unit test plus `tests/conformance/council.sh` | `--report-strategy` overrides roster-file `reportStrategy` for the current run only, validates chair executability, records `report_strategy_source: cli`, and does not rewrite the roster strategy. |
 | Claude subscription-only | `tests/conformance/council.sh` | API-key-only Claude is unavailable for council but existing `/synthesis` probe default remains auto. |
 | Pi complete Claude auth guard | TypeScript executor unit test with fake Pi registry | When `ctx.modelRegistry.isUsingOAuth(model)` is false for a Claude route, the member fails with `auth_policy` and `complete()` is never called. |
-| Claude mixed credentials | TypeScript executor unit test plus fake Claude CLI | OAuth/subscription route remains subscription-only when `ANTHROPIC_API_KEY` is also present, and no Claude council child receives any `ANTHROPIC_*` environment variable. |
+| Claude mixed credentials | TypeScript executor unit test plus fake Claude CLI | OAuth/subscription route remains subscription-only when `ANTHROPIC_API_KEY` or `ANTHROPIC_OAUTH_TOKEN` is also present, and no Anthropic credential or unclassified `ANTHROPIC_*` variable reaches a Claude council child. |
 | Claude auto compatibility | Existing conformance plus fake Claude env test | `bin/provider-invoke claude` with default `A_AUTH=auto` preserves non-credential `ANTHROPIC_*` variables while still avoiding API-key fallback when a first-party session exists. |
-| Claude explicit subscription scrub | Fake Claude env test | `bin/provider-invoke claude --auth subscription` removes all `ANTHROPIC_*` variables before the Claude CLI starts. |
+| Claude explicit subscription sanitizer | Fake Claude env test | `bin/provider-invoke claude --auth subscription` removes the Anthropic credential denylist and unclassified `ANTHROPIC_*` names, preserves only allowlisted verified non-credential names, and still succeeds with a fake logged-in subscription session. |
+| Claude no-cost subscription probe | Phase 2 local integration check | When a real logged-in Claude CLI is available, `bin/provider-probe claude --auth subscription` succeeds with credential and unclassified Anthropic variables present in the parent environment and makes no paid model call. |
 | Provider-invoke auth surface | TypeScript executor unit test plus shell fixture | The portable executor verifies the existing `bin/provider-invoke --auth` flag, passes `--auth subscription` for Claude routes, and fails the startup contract if a future wrapper removes that flag. |
+| Provider-probe auth surface | TypeScript runtime unit test plus shell fixture | The portable executor verifies the planned `bin/provider-probe --auth` flag exists before route probing and fails the startup contract if a future wrapper removes that flag. |
 | No paid probe calls | Unit test with fake executors | Route discovery calls only registry/probe methods and never invokes model execution. |
 | Stable route IDs | TypeScript route unit test | Display name, auth state, billing label, cost, and availability changes do not change `routeId`; missing routes stay visible; tuple fallback works even with a stale stored `routeId`. |
-| Structured output validation | Unit test with fixtures | `ok:false`, extra keys, wrong types, and prose-only responses fail validation and retry once. |
-| Per-voice validation mapping | TypeScript engine unit test | `validateModelJson` returns `kind` plus `parserExitCode` metadata, malformed voice output degrades only that member, and no parser code is reused as the portable CLI process exit code. |
+| Structured output validation | Unit test with fixtures | TypeScript-native validation rejects `ok:false`, extra keys, wrong types, and prose-only responses, then retries once inside the same member budget. |
+| JSON extractor parity | TypeScript validator fixture test | The TypeScript validator matches checked-in `bin/lib/json_extract.py` fixture expectations for whole JSON, fenced JSON, last-object scan preference, arrays, schema-invalid JSON, prose-only text, and scan-start capping without requiring Python at runtime. |
+| Per-voice validation mapping | TypeScript engine unit test | `validateModelJson` returns `kind`, malformed voice output degrades only that member, and validator failures never become portable CLI process exit codes. |
 | Report authorization guard | Unit test | `schemas/council-report.json` rejects `implementation_authorized: true`. |
 | Single-survivor frontmatter | TypeScript report unit test | One-survivor reports emit `report_strategy: single_survivor`, preserve `configured_report_strategy`, and do not claim `chair` when no chair call happened. |
 | Plan immutability | Unit test | Plan file hash and mtime are unchanged after a run. |
@@ -987,15 +1048,18 @@ Route discovery does not make paid model calls.
 Claude council routes never use Anthropic API credentials.
 Claude subscription-only auth is enforced both during route discovery and immediately before each Claude execution.
 Pi direct Claude execution refuses API-key-only auth before calling `complete()`.
-Portable Claude execution removes every `ANTHROPIC_*` environment variable before starting `bin/provider-probe` or `bin/provider-invoke`.
-Direct `bin/provider-invoke claude --auth subscription` also scrubs every `ANTHROPIC_*` variable before the Claude CLI starts after the planned adapter update.
+Portable Claude execution removes Anthropic credential variables and unclassified `ANTHROPIC_*` variables before starting `bin/provider-probe` or `bin/provider-invoke`, while preserving only explicitly allowlisted verified non-credential Anthropic variables.
+The initial verified non-credential Anthropic allowlist is empty, and adding a name requires a test proving that it is non-secret and does not route Claude council execution to API-key billing.
+Direct `bin/provider-invoke claude --auth subscription` applies the same credential-denylist plus verified-non-credential-allowlist sanitizer before the Claude CLI starts after the planned adapter update.
 Default `/synthesis` auto Claude execution keeps existing behavior and continues to preserve non-credential `ANTHROPIC_*` variables when it uses a first-party session.
 Phase 1 clean-checkout Pi contracts compile only council-owned stubs and mapper usage; installed Pi drift is caught by `npm run verify:pi-surface`.
 Runtime Pi extension imports are verified to resolve installed Pi modules rather than repo-local type stubs despite `tsconfig.json` path mappings before any Pi-dependent phase lands.
 Phase 4 cannot land Pi model execution until `npm run verify:pi-surface` passes against installed Pi and verifies the provider-specific effort option types used by `toPiEffortOptions`.
+Pi supported efforts are normalized through the exact installed Pi thinking-level table and any unknown or empty raw level list makes the route unavailable until the mapper is updated.
 Pi direct execution maps effort per provider API and never assumes that every model accepts `reasoningEffort`.
 Portable execution uses the existing `bin/provider-invoke --effort` flag only after route validation confirms the exact selected effort is supported.
 Unsupported remembered efforts block before portable invocation and are never delegated to adapter-level clamps.
+Council structured validation is TypeScript-native and does not require `python3` or spawn `bin/lib/json_extract.py` at runtime.
 Every model voice in the final report corresponds to an explicit roster entry.
 The host model is not used as a hidden chair, summarizer, or vote.
 The reviewed plan file is never modified.
@@ -1010,6 +1074,7 @@ Zero, one, and two-plus initial survivor paths take explicit tested state transi
 One-survivor execution always emits a mechanical single-survivor report and never calls a chair model, even when the configured strategy is chair.
 One-survivor report frontmatter uses `report_strategy: single_survivor` and records the originally configured strategy separately.
 The whole-run deadline is computed from scheduled phase budgets and cannot abort before valid scheduled work exhausts its budget.
+Each malformed-output JSON retry shares the member's `memberTimeoutMs` budget and cannot extend either the member timeout or the whole-run deadline.
 When the whole-run deadline expires, active member calls are aborted and the terminal report records `status: failed` with `reason: deadline_exceeded`.
 Issue-input position catalogs are generated by the specified grammar and covered by fixtures for ordinary prose and explicit alternatives.
 Free-form issue input with no extracted explicit alternatives defaults recommendations to structured disagreement unless the user selects a chair or explicitly chooses deterministic synthesis.
@@ -1051,6 +1116,7 @@ Document roster entry id format, uniqueness, stability, duplicate-row minting, a
 Document future-version roster preservation, including backup naming, hash recheck, and no-overwrite behavior when backup fails.
 Document `pi remove` and the fact that reports remain local markdown.
 Document Node `>=22.19.0`, `npm ci --prefer-offline --no-audit --fund=false`, package dependency requirements, repo-local Pi type stubs, Pi-present verification, and the fact that Node is a contributor/portable-CLI requirement rather than a `/synthesis` runtime requirement.
+Document that `/council` has no Python runtime dependency because model-output validation is TypeScript-native, while `bin/lib/json_extract.py` remains the existing provider-layer behavioral reference.
 Document that current `.pipelane.json` pre-PR checks run npm scripts directly without an install step, and that Phase 1 replaces them with `tests/conformance/run.sh hermetic`, `scripts/prepr-npm-ci.sh`, and guarded npm script commands.
 Document that `scripts/prepr-npm-ci.sh` runs `npm ci --prefer-offline --no-audit --fund=false` only when `package.json` exists.
 Document `AISYNTH_HOME`, `AISYNTH_CONFIG_HOME`, `PI_CODING_AGENT_DIR`, and Pi's `getAgentDir()` based storage behavior.
@@ -1058,13 +1124,14 @@ Document the plan-file parser rules and path-shaped predicate with examples for 
 Document the minimum valid council and explicitly state that family diversity is not required.
 Document chair identity authority, including that `reportStrategy.chairEntryId` must point to a `role: "chair"` entry and no entry-level `chair` boolean is canonical.
 Document Claude subscription-only behavior and the absence of Anthropic API fallback.
-Document that portable Claude execution scrubs every `ANTHROPIC_*` variable from child environments, that `bin/adapters/claude.sh` enforces the same scrub only for explicit `--auth subscription`, and that `/synthesis` default auto auth preserves non-credential `ANTHROPIC_*` variables.
+Document the Anthropic credential denylist, the initially empty verified non-credential Anthropic allowlist, the deletion of unclassified `ANTHROPIC_*` variables in council subscription execution, and the fact that `/synthesis` default auto auth preserves non-credential `ANTHROPIC_*` variables.
 Document the Pi direct Claude guard that checks OAuth/subscription state immediately before `complete()` and the provider-specific `toPiEffortOptions` mapping.
+Document the exact Pi thinking-level normalization table, the fail-closed behavior for unknown or empty raw Pi levels, and the reason council does not use Pi's clamp behavior for remembered roster efforts.
 Document that repo-local Pi stubs do not prove installed Pi API compatibility, that the installed Pi `jiti` loader uses Pi-owned aliases rather than repo `tsconfig.json` path mappings for `@earendil-works/*` imports in Pi `0.80.10`, and that `npm run verify:pi-surface` plus the `pi -e` self-test are required installed-runtime drift checks.
 Document provider billing labels and cost estimation limits.
 Document cancellation, reload, and session replacement behavior.
 Document the zero, one, and two-plus initial survivor state-machine outcomes, including the single-survivor mechanical report for chair strategies.
-Document the computed whole-run deadline formula and how it differs from per-member timeouts.
+Document the computed whole-run deadline formula, `memberTimeoutMs`, and the rule that the JSON-only retry shares the same member budget.
 Document deadline expiration behavior as `status: failed` with `reason: deadline_exceeded`.
 Document rollback scope and the requirement to rerun `tests/conformance/run.sh hermetic` plus every `.pipelane.json` `prePrChecks` command after rollback.
 Document that `/council` never modifies the reviewed plan and never authorizes implementation.
@@ -1080,7 +1147,7 @@ Document `decision_readiness` semantics, including critical phase degradation, t
 | Review | Trigger | Why | Runs | Status | Findings |
 |--------|---------|-----|------|--------|----------|
 | CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | not run | Not requested for this phase. |
-| Claude Challenge Review | `/claude-review challenge plan` | Independent adversarial plan challenge | 8 | ISSUES FOLDED | Commit `bd8514a` found 5 issues; this revision folds retained rollback infrastructure, explicit-only Claude `ANTHROPIC_*` scrubbing that preserves `/synthesis` auto behavior, future-version roster backup, a new hermetic conformance pre-PR target, per-voice validation-result mapping, and verified Pi loader path-mapping behavior into the plan. |
+| Claude Challenge Review | `/claude-review challenge plan` | Independent adversarial plan challenge | 9 | ISSUES FOLDED | Commits through `16333b6` found follow-up issues; this revision folds TypeScript-native validation with no Python runtime dependency, credential-denylist Anthropic subscription sanitizing, retry-inclusive `memberTimeoutMs`, and exact Pi thinking-level normalization into the plan. |
 | Codex Review | `/codex review` | Independent 2nd opinion | 0 | not run | Not requested for this phase. |
 | Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | CLEAR | 1 issue found and folded: Pi `off` effort now omits `reasoningEffort` instead of passing `"off"`. |
 | Design Review | `/plan-design-review` | UI/UX gaps | 0 | not run | No design review requested for this phase. |
