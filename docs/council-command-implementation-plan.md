@@ -226,12 +226,12 @@ Clean-checkout CI can still enforce that the Pi-present gate was run by validati
 `package.json` should include runtime dependencies needed by the portable Node wrapper, including `jiti` if the CLI loads TypeScript sources directly.
 `package.json` scripts `test`, `typecheck`, and `build` should be meaningful for the files present in the current implementation phase and should stay green the same commit that `package.json` is introduced.
 Adding `package.json` is a deliberate repository-wide contributor and CI change, not only an optional runtime install detail.
-Phase 1 should require Node `>=22.19.0`, commit `package-lock.json`, document `npm ci --prefer-offline --no-audit --fund=false`, and verify package-local scripts on a clean checkout after that install command.
+Phase 1 should require Node `>=22.19.0`, commit `package-lock.json`, document `npm ci --prefer-offline --no-audit --fund=false`, and verify package-local scripts on a clean checkout.
 Because installed Pipelane runs effective `prePrChecks` directly without installing dependencies and ignores tracked `.pipelane.json`, Phase 1 must make `npm run test`, `npm run typecheck`, and `npm run build` bootstrap dependencies through package lifecycle scripts.
 Phase 1 should add `scripts/ensure-node-deps.mjs`: stale or missing install stamp runs `npm ci --prefer-offline --no-audit --fund=false`; a current stamp exits without network.
 `package.json` should wire `pretest`, `pretypecheck`, and `prebuild` to `node scripts/ensure-node-deps.mjs` so Pipelane's direct `npm run test`, `npm run typecheck`, and `npm run build` checks self-install before invoking dependency-backed commands.
 The recurring npm bootstrap precondition is that every fresh checkout runner has either network access to the configured npm registry or a prewarmed npm cache that satisfies the committed `package-lock.json`.
-If that precondition is absent, `ensure-node-deps.mjs` should fail with `DEPENDENCY_INSTALL_UNAVAILABLE`, registry/cache diagnostics, exact `npm ci` remediation, and no fake stamp.
+If that precondition is absent, `ensure-node-deps.mjs` should fail with `DEPENDENCY_INSTALL_UNAVAILABLE`, registry/cache diagnostics, `npm ci` remediation, and no fake stamp.
 This `npm ci` coupling is intentional for Pipelane; contributor docs must state that `package.json` and `package-lock.json` drift makes all npm scripts fail until the lock is repaired.
 Phase 1 verification must cover both a cache-hit run that avoids network and a cache-miss failure path with the diagnostic above.
 Phase 1 should add a new `tests/conformance/run.sh hermetic` target before package scripts start depending on Node test tooling.
@@ -657,6 +657,7 @@ export interface CouncilPiEffortLiveGateV1 {
   command: "npm run verify:pi-effort-live -- --write-artifact";
   piVersions: Record<"@earendil-works/pi-coding-agent" | "@earendil-works/pi-ai" | "@earendil-works/pi-tui", string>;
   routeId: string;
+  providerApiFamily: string;
   testedEfforts: [CouncilEffort, CouncilEffort];
   metadataProofSummary: string[];
 }
@@ -698,6 +699,7 @@ The runtime Pi gate should allow live versions inside range but different from t
 The live-effort gate is optional for shipping but authoritative for Pi direct concurrency; when `CouncilPiEffortLiveGateV1` is absent, stale, or version-mismatched, the scheduler must serialize Pi direct calls.
 
 `routeId` must be a deterministic stable key with the form `v1:<executor>:<provider>:<model>`.
+Portable provider-invoke route discovery should use model id `adapter-default` when no explicit `--model` is configured, pass no `--model` at execution for that route, and never tuple-reconcile that sentinel route with Pi model-specific routes.
 Each component should be NFC-normalized UTF-8 and percent-encode every byte outside `[A-Za-z0-9._~-]`, and `routeId` must never include display name, cost, auth source, billing state, or availability.
 The in-memory `CouncilRosterConfigV1` should require `routeId`, but the config loader should first parse `CouncilRosterConfigOnDiskV1` so early files without `routeId` can migrate.
 The config load pipeline order is parse JSON, resolve location/scope, future-version guard, duplicate/invalid-id quarantine, missing-`routeId` derivation from complete tuple, Pi-only legacy chair/reportStrategy migration, canonical validation, then route reconciliation.
@@ -889,6 +891,7 @@ If that execution-time guard is false, the member should fail with status `auth_
 After `ctx.modelRegistry.getApiKeyAndHeaders(model)` resolves, a Claude route with `auth.policy: "subscription_only"` should still fail before `complete()` when auth resolution reports `ok:false`.
 The executor should rely on `ctx.modelRegistry.isUsingOAuth(model)` and `ctx.modelRegistry.getProviderAuthStatus(model.provider)` for non-secret source validation and should never inspect or log credential material to infer auth type.
 Portable Claude Code routes should call `bin/provider-probe claude --auth subscription` and `bin/provider-invoke claude --auth subscription`.
+Portable route-probe, `--emit-roster`, roster validation, and report diagnostics must all use the same `adapter-default` model derivation unless a future explicit model config is added.
 No `bin/provider-invoke` parser change is required for `--auth subscription` because the current parser already accepts `--auth` and exports `A_AUTH`.
 Council explicit subscription mode requires a first-party Claude CLI login or Pi OAuth/subscription status, not an environment-token-only `ANTHROPIC_OAUTH_TOKEN` path.
 `extensions/council/lib/executors/provider-invoke.ts` must own Claude child env sanitizing, deleting credentials and unclassified `ANTHROPIC_*`, preserving only allowlisted names, and passing that env to provider shells.
@@ -949,7 +952,7 @@ The command starts in `idle`.
 `parse_input` resolves issue text or plan file.
 `validate_input` checks empty input, readable files, trusted roots, symlink escapes, regular file status, maximum size, and NUL or binary-looking content.
 For plan input, `validate_input` must resolve the path, open and read the regular file once, verify size and trust against the bytes read, compute `input_sha256`, collect file metadata, line-number the exact bytes, and freeze a `CouncilInputSnapshotV1`.
-No later state should re-read the plan file for prompts, catalogs, report text, or `input_sha256`.
+No later state should silently re-read the plan file for prompts, catalogs, report text, or `input_sha256`.
 `discover_routes` builds the route catalog without paid calls.
 `load_roster` reads the last confirmed roster config or creates an empty draft.
 `recommend_roster` builds an advisory recommendation using input kind, available routes, prior roster, and role coverage.
@@ -957,7 +960,7 @@ No later state should re-read the plan file for prompts, catalogs, report text, 
 `validate_roster` is a state-machine step backed by `validateRoster()` from `extensions/council/lib/validate-roster.ts`, not a second engine-local implementation.
 `validate_roster` computes executable members, unavailable members, unsupported efforts, composition feedback, and report strategy validity.
 `validate_roster` should mark `chair` report strategy invalid unless `chairEntryId` references an enabled executable entry in the current reconciled roster whose `role` is exactly `chair`.
-`confirm_run` fires when the user selects Run.
+`confirm_run` fires when the user selects Run, re-stats plan input metadata, and if it differs from the frozen snapshot requires Accept Frozen Snapshot, Re-snapshot, or Cancel before execution; portable CLI exits `2` unless `--accept-stale-input-sha <sha>` matches the snapshot.
 `persist_roster` atomically writes the confirmed roster before model execution starts.
 `prepare_run_context` creates one per-run `AbortController` owned by the engine and consumes the immutable `CouncilInputSnapshotV1`.
 For plan input, `prepare_run_context` reuses frozen `plan.md:Lx` bytes from `validate_input`; later disk changes only set `input_on_disk_changed_after_snapshot`.
@@ -1040,7 +1043,7 @@ The default hard roster cap should be `6` enabled members, with a config overrid
 The scheduler should apply `maxConcurrency` across portable provider-invoke calls and verified-concurrent Pi direct calls, but it should maintain a separate Pi direct lane width of `1` whenever the live-effort concurrency gate is absent, inconclusive, stale, or version-mismatched.
 Serial Pi direct mode preserves roster order, consumes one global `maxConcurrency` slot while active, lets portable calls use only `max(0, maxConcurrency - 1)` slots, and records lane mode diagnostics.
 When `maxConcurrency` is `1`, serial Pi direct calls and portable provider-invoke calls must not overlap.
-Parallel Pi direct mode is allowed only when both the runtime surface gate and the live-effort concurrency gate pass against the current installed Pi versions.
+Parallel Pi direct mode is allowed only when runtime surface and live-effort gates pass and every scheduled Pi route belongs to the provider/API family proven by `CouncilPiEffortLiveGateV1`.
 Provider-invoke calls should also be partitioned by an opaque non-secret `executionLaneKey` derived from executor, provider, auth source, and normalized account/session identity when the route can expose one.
 The default provider-invoke lane width should be `1` for members sharing an `executionLaneKey`, including two same-route Claude subscription members emitted for a single-route roster.
 A provider-invoke lane may use width greater than `1` only after a no-paid contract or provider metadata proves parallel same-account calls are supported without violating rate-limit or auth-session semantics.
@@ -1255,14 +1258,14 @@ Add `package.json` in Phase 1 with package metadata, Node `>=22.19.0`, `pi` mani
 Do not add a `prepare` script for the council package in MVP, because installed Pi git package installs use production dependency installation and runtime route gates provide the end-user protection.
 Add `package-lock.json` in Phase 1 so CI and pre-PR checks can use `npm ci --prefer-offline --no-audit --fund=false` reproducibly.
 Add `.gitattributes` in Phase 1 pinning `PI_SURFACE_GATE_FILES_V1` members to LF-normalized text, and test the same normalizer in the artifact writer and runtime gate.
-Add `tsconfig.json`, `vitest.config.ts`, `scripts/ensure-node-deps.mjs`, `scripts/verify-pi-package.mjs`, `scripts/verify-pi-surface.mjs`, and `scripts/verify-pi-effort-live.mjs` in Phase 1 unless the implementation chooses an equivalent Node built-in test setup with the same coverage.
+Add `tsconfig.json`, `vitest.config.ts`, `scripts/ensure-node-deps.mjs`, `scripts/verify-pi-package.mjs`, and `scripts/verify-pi-surface.mjs` in Phase 1 unless an equivalent Node built-in test setup provides the same coverage.
 Add `scripts/verify-pipelane-prepr.mjs` in Phase 1 to inspect active and empty-`PIPELANE_HOME` Pipelane configs, assert package version `0.2.0` and observed `pr.ts`/`runShell()` shape, compare checks to the artifact, and execute through `sh -lc`.
 Add `docs/public/pipelane-prepr-checks.v1.json` in Phase 1 with active and synthesized `prePrChecks`, derived config paths, Pipelane version/path, observed execution shape, runner npm registry/cache status, and synthesized defaults.
 Configure `vitest.config.ts` so clean-checkout tests include portable `extensions/council/lib/**` tests and exclude Pi-coupled entrypoint, UI, and executor modules from runtime evaluation unless a Pi-present test explicitly opts in.
 `npm run build` should be a TypeScript compile or emit check that does not bundle or execute Pi-coupled modules; if a future bundler is introduced, `@earendil-works/*` imports must remain external and unevaluated in clean checkout.
 Add `scripts/check-council-pi-gate.mjs` in Phase 1 as a dependency-free clean-checkout checker for the committed Pi surface gate artifact, with the static `PI_SURFACE_GATE_FILES_V1` list, tracked Pi value-import scanning, `--mark-pending --reason <text>`, and `--strict-verified` modes described above.
 Add `scripts/check-council-release-artifacts.mjs` in Phase 4 so release tags and default-branch refs intended for `pi install git:` fail unless the Pi surface artifact is current and `status: "verified"`.
-`scripts/ensure-node-deps.mjs` should use an advisory lock plus atomic stamp, run `npm ci --prefer-offline --no-audit --fund=false` only when the stamp is missing or stale, and fail with `DEPENDENCY_INSTALL_UNAVAILABLE` when required registry/cache access is unavailable.
+`scripts/ensure-node-deps.mjs` should first fail with `NODE_VERSION_UNSUPPORTED` when `process.version < 22.19.0`, then use an advisory lock/stamp and run `npm ci` only when needed.
 For non-Node/doc/skill-only diffs, Track A should provide a path-scoped lifecycle guard that skips dependency install and Node tests only when no tracked Node surface changed, with diagnostics proving the changed-file predicate.
 Add `tests/council/pi-fixtures/types/@earendil-works/` in Phase 1 with minimal type stubs for the Pi imports used by council code and contracts.
 Do not rely on installed Pi peer dependencies for `npm run typecheck` or `npm run build`.
@@ -1295,7 +1298,7 @@ Add `extensions/council/lib/report.ts` in Phase 2 for TypeScript-native report v
 Add `extensions/council/ui/roster-editor.ts` in Phase 3 for the custom TUI component.
 Add `extensions/council/ui/composition.ts` in Phase 3 for composition feedback rendering.
 Add `extensions/council/ui/keymap.ts` in Phase 3 for key handling and `keyHint()` labels.
-Add `skills/council/SKILL.md` in Phase 6 as the portable non-Pi skill.
+Add `skills/council/SKILL.md` in Phase 6 only after a Claude Code skill-discovery smoke test proves the symlinked `/synthesis` skill ignores nested skill files; otherwise place it outside the symlinked skill tree and expose it only through Pi/package docs.
 Add `bin/council` in Phase 2C as a thin shell launcher for `extensions/council/cli.ts` that accepts `--issue`, `--plan-file`, `--roster-file`, `--emit-roster`, `--report-strategy`, `--auth-policy`, `--overwrite`, and `--json`.
 Add `bin/council-route-probe` in Phase 2 as a thin shell launcher for `extensions/council/cli.ts route-probe` that emits `CouncilRouteProbeEnvelopeV1`.
 Modify `bin/provider-probe` in Phase 2B to accept optional `--auth <auto|subscription|apikey>` while retaining `provider-probe <claude|codex>`.
@@ -1336,7 +1339,7 @@ Add a TypeScript route and roster-validation unit test in Phase 4 that fakes Pi 
 Add a TypeScript route unit test in Phase 4 that fakes a patch-level live Pi version inside `>=<verifiedVersion> <nextMinor>`, proves `readPiRuntimeGate()` allows Pi direct routes after the runtime sanity contract passes, and proves a sanity failure returns `pi_runtime_surface_mismatch`.
 Add a TypeScript scheduler unit test in Phase 4 that schedules mixed-effort Pi direct members with `maxConcurrency: 4`, no live-effort artifact, and a fake clock, then proves Pi direct calls run one at a time in roster order while portable provider-invoke calls may still overlap.
 Add a TypeScript scheduler unit test in Phase 4 proving two same-account provider-invoke members from the single-route roster do not overlap by default, share no transport retry budget, and receive enough deadline budget for serial execution.
-Add a TypeScript scheduler unit test in Phase 4 that supplies a version-matched `CouncilPiEffortLiveGateV1` fixture and proves Pi direct calls may overlap while preserving per-call effort options.
+Add a Phase 4 scheduler test with a version-matched `CouncilPiEffortLiveGateV1` fixture proving only the recorded provider/API family may overlap.
 Add a Phase 7 live script test for `verify-pi-effort-live`: pass writes the artifact, exit `77` is inconclusive and keeps serial mode, hard failure blocks.
 Add a portable executor unit test in Phase 4 that captures `bin/provider-invoke` argv and proves selected supported efforts are forwarded with `--effort`, unsupported remembered efforts block before invocation, and the executor fails loudly if the wrapper contract check cannot find `--effort`.
 Add a portable Claude effort contract test in Phase 4 proving fake `claude --effort` pass-through for supported values and council blocking for `off`, `minimal`, and unknown values.
@@ -1367,7 +1370,7 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Unsupported effort | `tests/conformance/council.sh` | Remembered effort remains visible, member is not executable, and nearest valid effort is suggested without mutation. |
 | Unavailable remembered member | `tests/conformance/council.sh` | Unavailable member remains visible and is persisted only after Run if still in the confirmed draft. |
 | Project roster precedence | TypeScript config unit test plus Pi fixture | Trusted project-local roster wins over user-global without merging; untrusted project-local roster is ignored; missing project roster may seed from user-global and persists back to project scope on Run. |
-| Config scope authority | TypeScript config unit test | A user-path roster with in-file `scope: "project"` loads with in-memory `CouncilRosterConfigV1.scope` set to the resolved user scope, report frontmatter uses the resolved scope, no call site reads the stale on-disk value, and the field is rewritten only after Run. |
+| Config scope authority | TypeScript config unit test | Resolved config location controls in-memory scope and report frontmatter; stale on-disk scope is ignored and rewritten only after Run. |
 | Future-version config preservation | TypeScript config persistence unit test | A higher-version roster is backed up before v1 persistence; changed hash or backup failure skips overwrite. |
 | Pre-routeId migration | TypeScript config migration test | A v1 roster entry with `(executor, provider, model)` but no `routeId` migrates before canonical validation; an entry missing both `routeId` and a complete tuple is quarantined. |
 | RouteId tuple fallback mismatch | TypeScript route reconciliation test | A stored entry with a stale mismatched `routeId` but matching `(executor, provider, model)` remains available, emits `route_id_mismatch`, and rewrites only after Run. |
@@ -1443,9 +1446,9 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Provider-invoke auth surface | TypeScript executor unit test plus shell fixture | The portable executor verifies the existing `bin/provider-invoke --auth` flag, passes `--auth subscription` for Claude routes, and fails the startup contract if a future wrapper removes that flag. |
 | Provider-probe auth surface | TypeScript runtime unit test plus shell fixture | The portable executor verifies the planned `bin/provider-probe --auth` flag exists before route probing and fails the startup contract if a future wrapper removes that flag. |
 | No paid probe calls | Unit test with fake executors | Route discovery calls only registry/probe methods and never invokes model execution. |
-| Stable route IDs | TypeScript route unit test | Display name, auth state, billing label, cost, and availability changes do not change `routeId`; missing routes stay visible; tuple fallback works even with a stale stored `routeId`. |
+| Stable route IDs | TypeScript route unit test | Display/auth/cost changes do not change `routeId`; provider-invoke defaults use `adapter-default`; tuple fallback never maps that sentinel to Pi model routes. |
 | Structured output validation | Unit test with fixtures | TypeScript-native validation rejects `ok:false`, extra keys, wrong types, and prose-only responses, then retries once inside the same member budget. |
-| JSON extractor parity | TypeScript validator fixture test | The TypeScript validator matches checked-in `bin/lib/json_extract.py` fixture expectations for whole JSON, fenced JSON, last-object scan preference, arrays, schema-invalid JSON, prose-only text, and scan-start capping without requiring Python at runtime. |
+| JSON extractor parity | TypeScript validator fixture test | TypeScript validation matches extractor fixtures for JSON, fences, arrays, schema failures, prose-only text, and scan caps without Python. |
 | Per-voice validation mapping | TypeScript engine unit test | `validateModelJson` returns `kind`, malformed voice output degrades only that member, and validator failures never become portable CLI process exit codes. |
 | Engine-owned grounding | TypeScript evidence-ledger unit test | Valid immutable plan and issue locators become grounded, theory and prior knowledge remain ungrounded, malformed or out-of-range locators remain ungrounded, and model output cannot set `grounded` directly. |
 | Evidence id validation | TypeScript phase-output validator unit test | Critique, steelman, and adversary outputs with fabricated `evidenceIds` are rejected after retry and degrade that phase member. |
@@ -1453,7 +1456,7 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Chair authorization normalization | TypeScript report unit test | Chair `implementation_authorized` defects are normalized with diagnostics, final assembly forces `false`, and schema validation rejects post-normalization `true`. |
 | Single-survivor frontmatter | TypeScript report unit test | One-survivor reports emit `report_strategy: single_survivor`, preserve `configured_report_strategy`, and do not claim `chair` when no chair call happened. |
 | Plan immutability | Unit test | Plan file hash and mtime are unchanged after a run. |
-| Plan snapshot TOCTOU | TypeScript input/engine unit test | A plan file changed during roster editing does not change prompts, citations, or `input_sha256`; diagnostics record the on-disk change. |
+| Plan snapshot TOCTOU | TypeScript input/engine unit test | A changed plan before Run requires Accept Frozen, Re-snapshot, or Cancel; portable CLI exits unless `--accept-stale-input-sha` matches. |
 | Atomic persistence | Unit test | Interrupted temp write does not corrupt the last good roster, and changed target hash causes a concurrent-write warning instead of clobber. |
 | Canceled terminal report | TypeScript engine unit test | Cancellation after `persist_roster` writes a minimal `status: canceled` report and cancellation before Run writes no report. |
 | Failed terminal report | TypeScript engine unit test | Failure after execution starts writes `status: failed` with diagnostics and `implementation_authorized: false`. |
@@ -1463,9 +1466,11 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Hermetic conformance target | CI/local script test | `tests/conformance/run.sh hermetic` passes with real `claude` and `codex` absent from `PATH`, no provider auth, and no model-network access. |
 | Pipelane blocking pre-PR gate | CI/local script test | `scripts/verify-pipelane-prepr.mjs` proves installed `pr.ts` treats failed `prePrChecks` as blocking and Track A is the first implementation merge to make them green. |
 | Pipelane version and shape drift | CI/local script test | The verifier records Pipelane `0.2.0`, derived config paths, and observed `pr.ts`/`runShell()` shape, and fails loudly on mismatch. |
+| Pipelane manual bypass | Manual gate checklist | On Pipelane version/shape drift, the maintainer records `pipelane-version-drift`, runs equivalent checks manually, and explicitly accepts or blocks the PR. |
 | Pipelane npm bootstrap | CI/local script test | Empty-`PIPELANE_HOME` checks use serial order, `ensure-node-deps` locking prevents overlapping `npm ci`, and effective checks pass through `sh -lc`. |
 | Pipelane synthesized defaults | CI/local script test | Active and empty-`PIPELANE_HOME` checks match `docs/public/pipelane-prepr-checks.v1.json` and execute green through `sh -lc`. |
 | Npm bootstrap offline miss | Script unit test | With Node-surface changes and no cache, `ensure-node-deps` fails with remediation; with only non-Node/doc/skill changes, scoped bypass skips install with changed-file diagnostics. |
+| Pipelane Node version | Script unit test plus artifact check | `ensure-node-deps` fails with `NODE_VERSION_UNSUPPORTED` below Node `22.19.0`, and the Pipelane artifact records the observed runner Node version. |
 | Package check activation | CI/local script test | Clean checkout without Pi passes `npm ci`, `test`, `typecheck`, and `build` in the same commit as `package.json` and install-aware scripts. |
 | Provider-present conformance | Local integration check | `tests/conformance/run.sh all` remains available for developer machines with configured providers but is not required by generic Pipelane pre-PR checks. |
 | Pi-present surface gate | Local Pi integration check | In an environment with installed Pi, `npm run verify:pi-surface` and `pi -e ./extensions/council/index.ts /council --self-test` pass before Phase 2 starts. |
@@ -1480,7 +1485,8 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Phase 2 readiness cap | Phase 2 vertical-slice test | The thin deterministic slice uses final synthesis code but cannot emit `ready` before Phase 5 critique exists. |
 | MVP usefulness gate | Manual dogfood checklist | Before Phase 4, two real authorized routes review one real plan and the maintainer marks recommendation, dissent, and evidence useful enough to continue. |
 | Pi serial fallback without live effort proof | TypeScript scheduler/executor unit test | Missing, inconclusive, stale, or version-mismatched live-effort artifact serializes Pi direct members while portable calls may overlap. |
-| Pi parallel only after live effort proof | TypeScript scheduler/executor unit test plus artifact fixture | Version-matched live-effort artifact enables parallel Pi direct calls, preserves per-call effort, and records parallel Pi mode. |
+| Pi parallel only after live effort proof | TypeScript scheduler/executor unit test plus artifact fixture | Version-matched live-effort artifact enables parallel Pi only for recorded provider/API family and records parallel Pi mode. |
+| Claude skill coexistence | Claude Code loader smoke test | With the repo symlinked as `/synthesis`, new package files and `skills/council/SKILL.md` do not alter `/synthesis`; otherwise the portable skill is relocated. |
 | Phase 2+ rollback safety | Scripted rollback checklist or manual verification | Reverting Phase 2+ while retaining Track A keeps hermetic conformance and effective Pipelane checks green, retains referenced scripts, and leaves no `run.sh` line pointing at removed tests. |
 | Full abandonment rollback | Manual rollback checklist | Track A removal names the ai-synthesis maintainer as rollback owner and records either green replacement Pipelane checks or accepted no-package baseline return. |
 | Backward compatibility | Existing suites | `tests/conformance/run.sh all` keeps current unit, Claude, and Codex tests green. |
@@ -1507,33 +1513,17 @@ Pre-`routeId` roster entries migrate before canonical validation when the tuple 
 Stale stored `routeId` values do not make a route unavailable when `(executor, provider, model)` still matches.
 Roster entry ids are opaque, unique within a roster, stable across edits and reorders, and collisions block Run.
 Route discovery does not make paid model calls.
-Claude council routes never use Anthropic API credentials.
-Claude subscription-only auth is enforced both during route discovery and immediately before each Claude execution.
-Pi direct Claude execution refuses API-key-only auth before calling `complete()`.
-Portable Claude execution removes Anthropic credential variables and unclassified `ANTHROPIC_*` variables before starting `bin/provider-probe` or `bin/provider-invoke`, while preserving only explicitly allowlisted verified non-credential Anthropic variables.
-An `ANTHROPIC_OAUTH_TOKEN`-only environment without a first-party Claude CLI login is explicitly unavailable for council with `claude_subscription_login_required_after_env_token_scrub`, while `/synthesis` auto behavior remains unchanged.
-The initial verified non-credential Anthropic allowlist is exactly `ANTHROPIC_BASE_URL`, and adding any other name requires a test proving that it is non-secret and cannot trigger API-key fallback.
-When `ANTHROPIC_BASE_URL` is present, diagnostics disclose only its presence, not its value, and billing is labeled unknown unless subscription billing is proven from non-secret auth status.
-Direct `bin/provider-invoke claude --auth subscription` applies the same credential-denylist plus verified-non-credential-allowlist sanitizer before the Claude CLI starts after the planned adapter update.
-Default `/synthesis` auto Claude execution keeps existing behavior and preserves non-credential `ANTHROPIC_*` plus `ANTHROPIC_OAUTH_TOKEN`; explicit council subscription execution is the only MVP path that removes them.
-Phase 1 clean-checkout Pi contracts compile only council-owned stubs and mapper usage; maintainer installed-Pi drift is caught by `npm run verify:pi-surface`, and end-user installed-Pi drift is caught by the runtime version compatibility gate.
-Clean-checkout runtime tests and build scripts do not execute any `@earendil-works/*` value import; installed Pi value imports are lazy and isolated to `extensions/council/lib/pi-runtime.ts` and the Pi executor.
-Clean-checkout Pi gate checks also fail any unlisted non-type `@earendil-works/*` value import so `PI_SURFACE_GATE_FILES_V1` cannot silently miss a new Pi-coupled file.
-Runtime Pi extension imports are verified to resolve installed Pi modules rather than repo-local type stubs despite `tsconfig.json` path mappings before any Pi-dependent phase lands.
-Phase 4 cannot land Pi model execution until `npm run verify:pi-surface` passes against installed Pi and verifies the provider-specific effort option types used by `toPiEffortOptions`.
-Phase 4 also cannot be considered complete until `docs/public/council-pi-surface-gate.v1.json` is committed, git-tracked, uses exactly `PI_SURFACE_GATE_FILES_V1`, has `status: "verified"`, and both default and `--strict-verified` `scripts/check-council-pi-gate.mjs` checks pass in clean checkout.
-The README and surface artifact state day-one Pi direct support for installed Pi `0.80.10` and `0.80.x`, and unsupported newer minor versions disable Pi direct routes rather than relying on portable fallback.
-Generic clean-checkout checks may pass a current `pending_pi_regeneration` artifact to unblock ordinary edits, but final Phase 4, release tags, and default-branch refs intended for `pi install git:` require `status: "verified"`.
-Pi direct route discovery and execution enforce the strict verified artifact at runtime and keep Pi direct routes unavailable with `pi_surface_not_verified` until that gate passes.
-Pi direct discovery/execution compare live Pi versions to artifact ranges, disable mismatches, and require no-model sanity for in-range non-exact versions.
+Claude council routes never use Anthropic API credentials; subscription-only auth is enforced during discovery and immediately before execution.
+Portable Claude scrubs Anthropic credentials and unclassified `ANTHROPIC_*`, preserves only tested allowlist names, fails token-only envs with `claude_subscription_login_required_after_env_token_scrub`, and keeps `/synthesis` auto behavior unchanged.
+Phase 1 clean-checkout Pi contracts use stubs only; runtime and maintainer drift are caught by `verify:pi-surface`, import isolation, normalized source gates, and runtime version checks.
+Phase 4 Pi model execution requires installed Pi verification, current `PI_SURFACE_GATE_FILES_V1` normalized hashes, strict artifact checks, day-one Pi `0.80.x` support docs, and runtime `pi_surface_not_verified` or version-mismatch disablement when gates fail.
 Exactly-next-minor Pi drift may use Pi direct routes only after per-run user acceptance plus passing no-model sanity, and diagnostics record the accepted risk.
 When Pi drift disables Pi direct routes, the system uses a portable `provider-invoke` route only after no-cost route discovery verifies it is available and authorized and the roster explicitly selects it.
 When no verified authorized portable replacement is selected, Run is blocked with an actionable compatibility error, the selected route is not silently changed, and Pi direct compatibility is not claimed.
 Package creation runs the same strict Pi execution gate through `prepack` when Pi direct execution files exist, but end-user Pi installs are protected by runtime route gates rather than by `prepack`.
 Pi supported efforts are normalized through the exact installed Pi thinking-level table and any unknown or empty raw level list makes the route unavailable until the mapper is updated.
 Pi direct execution maps effort per provider API and never assumes that every model accepts `reasoningEffort`.
-Real Pi effort honoring and concurrent mixed-effort support are claimed only after `npm run verify:pi-effort-live -- --write-artifact` passes against a qualifying real reasoning route and the live-effort artifact matches the end user's Pi package versions.
-Until the live-effort artifact is verified and version-matched, Pi direct model calls run serially even when the global `maxConcurrency` is higher.
+Real Pi effort concurrency is claimed only after `verify:pi-effort-live` passes for the scheduled provider/API family; otherwise Pi direct calls serialize.
 Same-account provider-invoke lanes serialize by default, so the recommended single-route two-member roster does not fire two calls at the same subscription at once.
 Portable execution uses the existing `bin/provider-invoke --effort` flag only after route validation confirms the exact selected effort is supported.
 Portable Claude effort support records wrapper-contract provenance and the current supported list `low`, `medium`, `high`, `xhigh`, and `max` only after the fake argv contract proves pass-through behavior.
