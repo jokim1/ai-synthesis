@@ -150,7 +150,7 @@ The final report will explicitly say that council completion does not authorize 
 Add Pi package resources while keeping the existing Claude Code `/synthesis` skill intact.
 Use the Pi extension as the primary UI and model execution path.
 Use a shared council engine library for state machine, prompt assembly, validation, degradation, recommendation, and report generation.
-Use `extensions/council/lib/validate-roster.ts` as the single source of truth for executable-member computation, unsupported-effort blocking, two-member minimum, composition feedback, and report-strategy validity before the Phase 5 engine exists.
+Use `extensions/council/lib/validate-roster.ts` as the source of truth for executable members, unsupported effort, two-member minimum, composition feedback, and report strategy before Phase 5.
 Use executor implementations to keep route identity separate from provider/model identity.
 Use the existing provider layer only as a model executor behind the shared TS engine for portable CLI routes and non-Pi fallback.
 Do not make the Pi extension shell out to `pi` itself.
@@ -169,15 +169,18 @@ Once Pi files exist, all installed Pi value imports are isolated behind `extensi
 `package.json` scripts `test`, `typecheck`, and `build` are meaningful for the files present in the current phase and stay green when `package.json` is introduced.
 Adding `package.json` is a deliberate repo-wide gate change, not only an optional runtime install detail.
 Track A hard preconditions are confirmed installed Pipelane `/pr`, no shared CI or collaborator Pipelane homes inheriting the npm gate, and owner-accepted rollback.
-If any precondition fails, use the no-package council path and remove package-bootstrap extras from active scope.
+If any precondition fails, use the predefined no-package decision path and remove package-bootstrap extras from active scope.
 Phase 1 step zero must prove the actual Pipelane pre-PR runner can execute the candidate npm bootstrap before `package.json` lands.
-`scripts/verify-pipelane-prepr.mjs --bootstrap-smoke` will create a throwaway checkout with candidate package files, no `node_modules`, and run the exact Pipelane `sh -lc 'npm run test'` shape for active and empty temporary `PIPELANE_HOME`.
+`scripts/verify-pipelane-prepr.mjs --bootstrap-smoke` will create a throwaway checkout, no `node_modules`, and run exact Pipelane `sh -lc 'npm run test'` for active and empty temporary `PIPELANE_HOME`.
 That smoke must record Node, registry, cache, network/cache result, install stamp behavior, and whether `npm ci --prefer-offline --no-audit --fund=false` succeeded outside the interactive task shell.
-Only after that smoke succeeds may Phase 1 commit install-aware npm scripts wiring `pretest`, `pretypecheck`, and `prebuild` to `node scripts/ensure-node-deps.mjs`.
+Only after that smoke succeeds may Phase 1 commit install-aware npm scripts wiring `pretest`, `pretypecheck`, and `prebuild` only to `node scripts/ensure-node-deps.mjs`.
 If registry/cache access fails, Track A must not commit `package.json`; use the no-package recipe with `bash -n` over shell files and `tests/conformance/run.sh unit`.
 Do not add alternate npm tarball or per-home outage mechanisms in MVP; failed package preconditions recover only through the tracked no-package path.
 The no-package fallback must be applied to configurable `${PIPELANE_HOME:-$HOME/.pipelane}` or accepted as the active bypass before Track B or C product code merges.
+`NoPackageTrackCPlanV1` approves type-stripped TS only after `node --help` shows `--experimental-strip-types`; validation is `node --experimental-strip-types --test tests/council/**/*.test.ts`, hermetic conformance, and `bash -n`; rollback deletes Track C files only.
+If that capability probe fails, the captain's choices are package-deferred, package-alternative, or no-package-JS rewrite; implementers must not invent another path inside council implementation.
 The no-package fallback is per-`PIPELANE_HOME` personal customization, not a repo default for fresh clones or shared CI.
+Fresh owner clones restore no-package Pipelane state with `node scripts/apply-pipelane-no-package-prepr.mjs --verify`.
 Before relying on Track A, `scripts/verify-pipelane-prepr.mjs` must record those hard preconditions and fail closed when any are unknown or false.
 After Track A, rerun and recommit it on Pipelane version change, new `PIPELANE_HOME` or collaborator, shared CI addition, or registry/cache policy change.
 Track A owner acceptance includes permanent Pipelane-version and network/cache dependency for all future PRs.
@@ -195,7 +198,7 @@ Phase 1 must not add tracked `.pipelane.json` references to `verify:pi-surface` 
 Phase 1 will add `scripts/check-council-portable-imports.mjs` as a dependency-free check that fails any portable MVP module or clean-checkout runtime test importing `@earendil-works/*` values.
 Phase 3C will add Pi type stubs, `.gitattributes` normalization for Pi gate files, `scripts/verify-pi-surface.mjs`, and `scripts/check-council-pi-gate.mjs`.
 Phase 3C `check-council-pi-gate` may run without a surface artifact while only provider-invoke Pi UI exists.
-Phase 4 activates the strict Pi gate when `extensions/council/lib/executors/pi-complete.ts` is tracked; then `docs/public/council-pi-surface-gate.v1.json` must match normalized `PI_SURFACE_GATE_FILES_V1` and `PI_SURFACE_GATE_STUB_FILES_V1`.
+Phase 4 activates the strict Pi gate when `pi-complete.ts` is tracked; then `docs/public/council-pi-surface-gate.v1.json` must match normalized code and stub files.
 `npm run verify:pi-surface -- --write-artifact` is the only command that writes `status: "verified"`, and `node scripts/check-council-pi-gate.mjs --strict-verified` is required before Phase 4 Pi execution acceptance.
 Owner decision: first ship is portable-first.
 The first shippable MVP is Track A plus Phase 2B, Phase 2C, Phase 5, and minimum Phase 6 docs/skill, with authorized portable provider routes required.
@@ -257,11 +260,11 @@ bin/council-route-probe --json [--auth-policy subscription-only|default]
 ```
 
 The portable CLI execution path will refuse to run without a roster file because it cannot present Pi's native editable menu.
-The portable `--emit-roster <path>` path will parse input, run no-cost route discovery, call Pi-shared recommendations, mint fresh ids, choose a valid strategy, validate through `validateRoster()`, and write atomically without model calls.
+The portable `--emit-roster <path>` path parses input, runs no-cost discovery, recommends, mints ids, chooses a valid strategy, validates, and writes atomically without model calls.
 `--emit-roster` will write runnable roster configs with at least two executable members and a valid strategy; if only one executable route exists, it will emit two entries on that route with distinct recommended roles.
 When no executable route can supply two supported entries, `--emit-roster` will exit `4`, print blocking route/auth/effort diagnostics, and write no file.
 `--emit-roster` will refuse to overwrite an existing file unless `--overwrite` is supplied, will use exit `2` for path or overwrite usage errors, and will emit `{ "ok": true, "path": "...", "roster": ... }` under `--json`.
-`--emit-roster` will refuse any target whose resolved path components end with `ai-synthesis/council/roster.v1.json`, covering Pi user-global, Pi project-local, and portable remembered-roster locations without hardcoded homes.
+`--emit-roster` rejects any target whose resolved path equals a canonical remembered-roster path from active `CouncilConfigRootsV1`, covering `${AISYNTH_CONFIG_HOME:-$HOME/.ai-synthesis}`, Pi roots, overrides, and `.ai-synthesis`.
 `--emit-roster` will never persist remembered-roster state.
 When `--roster-file` exists but fails JSON parsing, schema validation, route reconciliation, supported-effort validation, two-member minimum validation, or report-strategy validation, `bin/council` will exit nonzero before execution.
 The portable CLI will use exit code `2` for usage/input errors, `3` for roster JSON or schema errors, `4` for roster semantic validation failures, and `5` for runtime failures after execution starts.
@@ -296,15 +299,15 @@ The custom Pi session entry must not be the source of roster persistence.
 
 Use TS types as the implementation source of truth and JSON schemas for model outputs.
 Keep config versioned from day one.
-Store user-global roster config under `join(getAgentDir(), "ai-synthesis", "council", "roster.v1.json")` in Pi.
-Store trusted project-local roster config under `join(ctx.cwd, CONFIG_DIR_NAME, "ai-synthesis", "council", "roster.v1.json")` in Pi.
+Pi runtime resolves user-global roster roots with `getAgentDir()` and passes the resulting directory to shared config code.
+Pi runtime resolves trusted project-local roster roots with `ctx.cwd` plus `CONFIG_DIR_NAME` and passes the resulting directory to shared config code.
 Store non-Pi roster config under `${AISYNTH_CONFIG_HOME:-$HOME/.ai-synthesis}/council/roster.v1.json`.
 The portable CLI will treat `--roster-file` as an explicit config scope and never implicitly load Pi global or project-local roster files.
 The portable CLI without `--roster-file` will use the portable global config and `CouncilConfigLocation.source: "portable_user"`.
 Pi config scope is `project` when the current project is trusted and the active council package was installed or configured from trusted project settings, otherwise `user`.
 Detect project package scope from `import.meta.url` against trusted project package resources under `join(ctx.cwd, CONFIG_DIR_NAME)` and settings; otherwise use `user`.
 When `project` scope is active and a valid project-local roster exists, it is the draft source of truth.
-When `project` scope is active and no project-local roster exists, a valid user-global roster may seed the initial draft as a template, but Run will persist to the project-local path and the UI will label the draft as "seeded from user roster".
+When `project` scope is active and no project roster exists, a valid user roster may seed the draft, but Run persists to project scope and labels "seeded from user roster".
 When both user-global and project-local configs exist in a trusted project, do not merge fields; project-local config wins for the draft and user-global config is only advisory evidence for recommendations.
 When the project is untrusted, ignore project-local roster config entirely and load only user-global config.
 When a project-local config is corrupt, quarantine that project-local file and seed from recommendations; user-global config may influence recommendations but never silently replace the corrupt project draft.
@@ -454,6 +457,14 @@ export interface CouncilConfigLocation {
     originalSha256: string;
     originalVersion: number;
   };
+}
+
+export interface CouncilConfigRootsV1 {
+  cwd: string;
+  portableConfigHome?: string;
+  piUserAgentDir?: string;
+  piProjectConfigDir?: string;
+  trustedProject: boolean;
 }
 
 export interface CouncilValidateRosterInputV1 {
@@ -672,8 +683,8 @@ The runtime Pi gate will allow live versions inside range but different from the
 The live-effort gate is Phase 7-only; Phase 4 must serialize Pi direct calls regardless of artifact state.
 
 `routeId` must be a deterministic stable key with the form `v1:<executor>:<provider>:<model>`.
-Portable provider-invoke route discovery will use model id `adapter-default` when no explicit `--model` is configured, pass no `--model` at execution for that route, and never tuple-reconcile that sentinel route with Pi model-specific routes.
-Execution identity will use `{routeId, configuredModel, resolvedModel, modelResolutionSource}` so availability, roster persistence, billing labels, and the final report never confuse the stable route key with the model that actually answered.
+Portable provider-invoke discovery uses model id `adapter-default` when no `--model` is configured, passes no `--model`, and never tuple-reconciles that sentinel with Pi model routes.
+Execution identity uses `{routeId, configuredModel, resolvedModel, modelResolutionSource}` so reports never confuse stable route keys with the model that answered.
 Each component is NFC-normalized UTF-8 and percent-encodes every byte outside `[A-Za-z0-9._~-]`, and `routeId` must never include display name, cost, auth source, billing state, or availability.
 V1 is the first shipped roster format, so both in-memory and on-disk v1 require `routeId`, `reportStrategy`, and no entry-level `chair` boolean.
 The config load pipeline order is parse JSON, resolve location/scope, future-version guard, required-key and shape validation, duplicate or invalid-id quarantine, canonical validation, then route reconciliation.
@@ -827,7 +838,7 @@ The final assembled report schema in `schemas/council-report.json` will require:
 The `implementation_authorized` field will have `const: false`.
 The engine, not any model, will set `implementation_authorized: false` in `assemble_final_report` after chair, deterministic, structured-disagreement, or single-survivor synthesis has produced the substantive fields.
 If a chair emits `implementation_authorized`, drop it, record `implementation_authorized_forced_false`, and validate against `schemas/council-chair-report.json`.
-If the chair draft's only defect is a missing, `true`, or otherwise wrong `implementation_authorized` field, the chair synthesis will remain usable after normalization and the final assembled report will validate with `implementation_authorized: false`.
+If the chair draft's only defect is wrong or missing `implementation_authorized`, synthesis remains usable after normalization and final report validation forces `false`.
 Other chair schema defects after retry degrade to deterministic synthesis with two initial voices, single-survivor reporting with one voice, or failure with no voices.
 Failure of final `schemas/council-report.json` validation after the engine has forced `implementation_authorized: false` will fail the run because that indicates an implementation or deterministic-rendering bug.
 The final markdown report will include frontmatter compatible with existing session habits:
@@ -887,7 +898,7 @@ Portable route-probe, `--emit-roster`, roster validation, and report diagnostics
 No `bin/provider-invoke` parser change is required for `--auth subscription` because the current parser already accepts `--auth` and exports `A_AUTH`.
 Council explicit subscription mode requires a first-party Claude CLI login or Pi OAuth/subscription status, not an environment-token-only `ANTHROPIC_OAUTH_TOKEN` path.
 `extensions/council/lib/executors/provider-invoke.ts` must own Claude child env sanitizing, deleting credentials and unclassified `ANTHROPIC_*`, preserving only allowlisted names, and passing that env to provider shells.
-The portable executor will expose an internal pure helper with the signature `sanitizeProviderInvokeEnv(route: CouncilRoute, baseEnv: NodeJS.ProcessEnv): NodeJS.ProcessEnv` so unit tests can verify Claude scrubbing without spawning a real provider.
+The portable executor exposes pure helper `sanitizeProviderInvokeEnv(route: CouncilRoute, baseEnv: NodeJS.ProcessEnv): NodeJS.ProcessEnv` for Claude scrub tests without spawning a provider.
 The initial Anthropic credential denylist must be `ANTHROPIC_API_KEY`, `ANTHROPIC_OAUTH_TOKEN`, `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_BEARER_TOKEN`, `ANTHROPIC_CONSOLE_API_KEY`, and `ANTHROPIC_CONSOLE_AUTH_TOKEN`.
 The initial explicit-subscription Anthropic allowlist is empty: scrub every `ANTHROPIC_*` name, including `ANTHROPIC_BASE_URL`, before council Claude probe or invoke.
 A future non-credential `ANTHROPIC_*` exception may be added only with source documentation plus a fake executor test that first-party subscription billing remains provable and credentials remain scrubbed.
@@ -914,7 +925,7 @@ Route family is derived deterministically from provider and model identifiers.
 Examples include `claude`, `openai`, `codex`, `gemini`, `mistral`, `deepseek`, `qwen`, `kimi`, `grok`, `local`, and `unknown`.
 Family derivation is advisory only.
 Recommended rosters will prefer distinct families when available but must accept single-family and single-model rosters.
-When route discovery yields exactly one executable route, `recommend_roster` will create two enabled entries on that same route with distinct roles, and their efforts may repeat when the route exposes only one supported effort such as `off`.
+With exactly one executable route, `recommend_roster` creates two enabled same-route entries with distinct roles and may repeat effort when only one value exists.
 Effort values must come from the route, not from generic assumptions.
 For Pi routes, call `getSupportedThinkingLevels(model)` and map the result to `CouncilEffort[]`.
 Pi routes will record `effortSupport.source: "pi_model_registry"`, `confidence: "model_metadata"`, and `verifiedBy` entries for `getSupportedThinkingLevels(model)` and `normalizePiThinkingLevels(model, rawLevels)`.
@@ -964,7 +975,7 @@ If the route context window is unknown, composition feedback will warn `context_
 `confirm_run` re-stats plan input and, on drift, requires Accept Frozen, Re-snapshot, or Cancel; CLI exits `2` with `--accept-stale-input-sha <sha>` and changed metadata.
 `confirm_run` will also compute the scheduler lane plan, expected wall-clock estimate, worst-case deadline, and estimated cost before persistence.
 The expected wall-clock estimate will use route latency metadata when available, otherwise `90000` ms for provider-invoke and `180000` ms for Pi direct, scheduled through the same lane planner and capped at each member timeout.
-If `expectedRunMs > 2700000` or cost exceeds `2.00` USD, Pi shows an acknowledgment modal and CLI exits `2` unless `--ack-long-run <ackToken>` matches `sha256(input_sha256, roster_hash, lane_plan_hash, expected_run_ms, estimated_cost_bucket)`.
+If `expectedRunMs > 2700000` or cost exceeds `2.00` USD, Pi asks acknowledgment and CLI exits `2` unless `--ack-long-run <ackToken>` matches the specified hash inputs.
 `estimated_cost_bucket` is `unknown` if any selected route lacks cost data, otherwise `usd:<ceil(cents)>` from worst-case cost.
 The blocking portable exit must print the exact `--ack-long-run` token and the estimate fields used to derive it.
 If stale-input and long-run gates both block, one exit prints all required flags; choosing re-snapshot recomputes `input_sha256` before deriving `--ack-long-run`.
@@ -1044,7 +1055,7 @@ The run-level abort reason `deadline_exceeded` has higher precedence than every 
 If the computed whole-run deadline fires during `initial_analysis`, the engine will abort active members and route to `write_terminal_report -> failed` even when exactly one initial voice had already succeeded.
 The single-survivor `initial_analysis -> single_survivor_report` edge applies only when initial analysis completes without run deadline, user cancellation, session shutdown, or process abort.
 `single_survivor_report` consumes only the surviving `CouncilVoiceOutputV1` plus failed-member diagnostics; it must not read `CouncilSynthesisBriefV1`, `CouncilAdversaryOutputV1[]`, hidden host state, or configured chair output.
-The one-survivor `single_survivor_report` state will always produce a mechanical report with `status: degraded`, `decision_readiness: not_ready`, `implementation_authorized: false`, and a diagnostics field naming the failed initial members.
+The one-survivor `single_survivor_report` state always produces a mechanical degraded, `not_ready`, `implementation_authorized: false` report naming failed initial members.
 The one-survivor edge will ignore configured strategy, make no chair call, set frontmatter `report_strategy: single_survivor`, preserve `configured_report_strategy`, and record `report_strategy_effective: single_survivor_mechanical`.
 If the configured chair survived as the only initial voice, the report will use that voice once and never ask it to synthesize itself.
 If the configured chair failed and a non-chair survived, the report will use the non-chair survivor once and will record that the chair strategy was unavailable because fewer than two initial voices succeeded.
@@ -1079,7 +1090,7 @@ The first attempt and JSON-only retry are not separate whole-run budget units.
 Each attempt receives provider `timeoutMs` equal to remaining `memberTimeoutMs`; no positive budget skips JSON retry and records `retry_skipped_no_member_budget`.
 Structured validation will use `extractModelJson(rawText)`, `validateModelJson(schemaPath, rawText)`, and `validateModelJsonValue(schemaPath, value)` TS helpers.
 Chair synthesis must use `extractModelJson`, normalize away any `implementation_authorized`, then call `validateModelJsonValue`; raw strict validation is used only after normalization.
-The helper will implement current `bin/lib/json_extract.py` behavior in TS: whole input, one stripped fence, up to `512` starts, shortest complete JSON, last satisfying object preference, object-over-array preference, and the local schema subset.
+The helper mirrors `bin/lib/json_extract.py` in TS: whole input, one stripped fence, `512` starts, shortest complete JSON, last satisfying object, object over array, and local schema subset.
 That supported schema subset is `type`, `const`, `enum`, `required`, `properties`, `additionalProperties: false`, and object `items`.
 The council runtime must not spawn `bin/lib/json_extract.py`; parity is enforced with checked-in fixture cases derived from the existing helper.
 The engine will map `no_json` and `schema_invalid` to voice degradation with one JSON-only retry, and will map `validator_usage_error` to a failed voice plus implementation diagnostic unless every initial voice fails.
@@ -1157,7 +1168,7 @@ Provider malformed output after retry will preserve raw text in diagnostics but 
 Provider rate limit will mark that member failed with a retry-after hint when available.
 Partial degradation will lower decision readiness and show which phases lost voices.
 Failure of an explicit chair will fall back to deterministic synthesis only if at least two initial voices succeeded and the report says the chair failed.
-An explicit chair output whose only authorization-field defect is wrong, true, or missing `implementation_authorized` does not count as chair failure; the engine will drop that field, force `false` in final assembly, and record a diagnostic.
+An explicit chair output with only wrong or missing `implementation_authorized` is not chair failure; the engine drops it, forces `false`, and records a diagnostic.
 An explicit chair output with any other schema defect after its JSON-only retry will count as chair failure and follow the deterministic, single-survivor, or no-survivor fallback rules.
 When only one initial voice succeeds, explicit chair failure will use the single-survivor mechanical report path and never call deterministic multi-voice synthesis or any chair model.
 When `deadline_exceeded` is the run-level abort reason, deadline failure takes precedence over the single-survivor path regardless of how many initial voices succeeded before the abort.
@@ -1216,7 +1227,7 @@ Clean-checkout npm scripts must not require Pi; Pi-present verification stays lo
 Pending Pi surface artifacts are compatibility unblocks only; runtime route discovery and execution must require strict verified artifacts before enabling Pi direct model routes.
 This repo-wide development requirement is separate from runtime installation: existing Claude Code skill users who only symlink the repo never need Node unless they run the new portable `bin/council` fallback or contributor checks.
 Existing session files in `./.ai-synthesis/sessions/` must remain readable by `expand`, `list`, `resume`, `rate`, and `revisit`.
-Council reports will use `./.ai-synthesis/council-sessions/` for MVP because existing `/synthesis` `list`, `expand`, `resume`, and `rate` use the legacy `sessions/*.md` namespace broadly, and `revisit` only specifies skipping `mode: compare`.
+Council reports use `./.ai-synthesis/council-sessions/` for MVP because legacy `/synthesis` session commands scan `sessions/*.md` broadly.
 Do not rely on `mode: council` being ignored by legacy `/synthesis` commands unless a future implementation adds explicit mode filtering there with tests.
 Existing `--solo` and `--compare` never depend on the council roster or route catalog.
 Existing `revisit` can later learn to include council reports from `./.ai-synthesis/council-sessions/`, but initial council implementation does not require changing revisit.
@@ -1238,10 +1249,12 @@ Before product code, generate four force-added reference subplans under `docs/co
 This file remains the governing requirements index, while the subplans are generated review artifacts that link to exact section anchors and may not add, weaken, or reinterpret settled owner decisions.
 Add `docs/public/council-plan-split.v1.json` with the governing plan SHA-256, section ids, decision keys, generated subplan paths, and source-line ranges used to create each subplan.
 Run `scripts/check-council-plan-split.mjs` before product code and on every later plan edit; if this governing plan changes without regenerated subplans and manifest, the check fails with `COUNCIL_PLAN_SPLIT_STALE`.
+The split manifest must enumerate decision keys `first-ship-order`, `pi-registry-mvp-users`, `track-a-product-fallback`, and `claude-525ce69-followups` with exact required text, forbidden text, anchor, snippet hash, and subplan targets.
+The checker performs exact required-text presence, forbidden-text absence, anchor, and snippet-hash checks only; no semantic prose analysis.
 Track A will add package scaffolding, lockfile, Node `>=22.19.0`, TS/schema/test setup, bootstrapped npm scripts, conformance fixtures, and the portable import-isolation check.
 Track A is not a side effect of `/council`; it needs explicit maintainer acceptance, confirmed Pipelane `/pr` merge path, confirmed single-owner/no-shared-CI scope, and a named rollback owner before merge.
 The rollback and mid-plan Pipelane/Pi drift owner is the ai-synthesis maintainer who owns `${PIPELANE_HOME:-$HOME/.pipelane}`; without owner acceptance, Track A must not merge.
-Before Track A, run a toolchain-free usefulness probe using existing `bin/provider-invoke`, temporary `roles/*.md`-style prompts, and a shell-only report template against the fixed usefulness set with at least one plan input and one issue input.
+Before Track A, run a toolchain-free usefulness probe with `bin/provider-invoke`, temporary role prompts, and a shell report template on at least one plan and one issue.
 The probe must add no package metadata, npm scripts, Pipelane config, TS setup, or reusable product code.
 The probe must write `docs/public/council-prompt-reserve-prototype.v1.json` with prompt hashes, schema byte counts, reserve estimates, and worst-case sample prompt sizes used to choose Phase 2C reserves.
 The probe must inspect current `bin/adapters/claude.sh` fake argv and record all six Claude no-tools flags in `docs/public/council-claude-tool-policy.v1.json`; any miss moves flag work into Track B.
@@ -1252,20 +1265,21 @@ The pass threshold applies per sample: all report fields, at least `3` verified 
 The maintainer note on whether planning would change is recorded as evidence only and cannot pass or fail the gate.
 If the toolchain-free probe does not pass the scorecard, abandon council without merging Track A.
 If registry/cache, merge-path, owner, or single-clone preconditions fail, Track A must stop before `package.json` and append `needs-decision [key=no-package-ship-path]`.
-That decision asks the captain whether to approve a separately scoped no-package TS ship path for Track C.
+That decision asks the captain whether to activate `NoPackageTrackCPlanV1`, defer Track C, or choose a package alternative.
 Until that decision is resolved, Track C may continue only on docs, shell, or fake-conformance work that needs no Node package baseline.
 Phase 1 will treat installed Pipelane's effective direct npm checks as the active blocking pre-PR gate and never rely on tracked `.pipelane.json` edits for the current installed Pipelane version.
 Current red-baseline PRs merge only through an explicit recorded plan-review or Pipelane bypass that runs the non-Node checks named in that bypass.
 Shell-only Track B may land before Track A through that same recorded bypass when it changes only shell/provider files and fake conformance, runs `bash -n` plus `tests/conformance/run.sh unit`, and records why npm checks are inapplicable.
 Track C Node/TS product code must not merge through the package-based implementation path before Track A lands and proves that gate green.
-A no-package product-code path is allowed only after the captain resolves `no-package-ship-path` with scope, validation, and rollback rules.
+A no-package product-code path is allowed only after the captain resolves `no-package-ship-path`; default scope, validation, and rollback are `NoPackageTrackCPlanV1`.
 Pre-Track-A docs-only plan changes are exempt only through an explicit recorded plan-review/Pipelane bypass owned outside council implementation.
-Phase 1 is incomplete until hermetic conformance, `npm ci --prefer-offline --no-audit --fund=false`, typecheck, build, test, and effective installed-Pipelane checks pass in clean checkout without Pi, provider CLIs, auth, or model network.
+Phase 1 is incomplete until hermetic conformance, `npm ci`, typecheck, build, test, and installed-Pipelane checks pass in a clean checkout without Pi, provider CLIs, auth, or model network.
 The installed-Pipelane verification must run twice: once against active machine-local config and once with `PIPELANE_HOME` set to an empty temporary directory so `resolveWorkflowContext(cwd)` uses synthesized defaults.
-Phase 1 will write tracked `docs/public/pipelane-prepr-checks.v1.json` recording active and synthesized `prePrChecks`; synthesized checks must be exactly `npm run test`, `npm run typecheck`, and `npm run build` after package scaffolding lands.
+Phase 1 writes `docs/public/pipelane-prepr-checks.v1.json` recording active and synthesized `prePrChecks`; synthesized checks are `npm run test`, `npm run typecheck`, and `npm run build`.
 That artifact must record Pipelane `0.2.0`, resolved package path, derived active config path, and observed `pr.ts`/`runShell()` shape; mismatch fails loudly.
-Every PR after Phase 1 must run dependency-free `node scripts/verify-pipelane-prepr.mjs --assert-shape` before package tests.
-It fails with `PIPELANE_SHAPE_DRIFT` on version/path/shape mismatch and prints the no-package recovery command when npm bootstrap is broken.
+Every PR after Phase 1 must run explicit `npm run verify:pipelane-prepr` or dependency-free `node scripts/verify-pipelane-prepr.mjs --assert-shape` before package tests.
+`--assert-shape` is scoped to that pre-PR verifier, not ordinary local `npm test`, `npm run typecheck`, or `npm run build`.
+It fails with `PIPELANE_SHAPE_DRIFT` on version/path/shape mismatch and prints `--check-drift` plus no-package recovery guidance when npm bootstrap is broken.
 Phase 1 must expose `node scripts/verify-pipelane-prepr.mjs --check-drift`, a dep-free version/path/shape compare that runs no npm or package tests.
 Maintainer docs should run `--check-drift` at session start and before resuming long-lived branches so drift appears before unrelated pre-PR failure.
 Phase 1 also runs `tests/conformance/run.sh all` in a provider-present environment, but generic Pipelane pre-PR checks must not require live sections until they are optional.
@@ -1293,7 +1307,7 @@ Rollback green is scoped to homes where the package baseline remains or the reci
 That recipe will live in `docs/pipelane-no-package-recovery.md` and `docs/public/pipelane-no-package-prepr.v1.json`, name `${PIPELANE_HOME:-$HOME/.pipelane}`, and include exact replacement-check config bytes.
 The rollback target for green package checks is the install-aware npm-script form from Phase 1, not tracked `.pipelane.json`.
 Track A baseline files, hermetic conformance, and needed fake helpers become retained infrastructure after Track A lands.
-The normal Phase 2+ rollback set includes council runtime code, portable skill, roles, schemas, `bin/council`, `bin/council-route-probe`, provider auth edits, conformance fixtures, Phase 2+ tests, unused Pi stubs, and council README additions.
+The normal Phase 2+ rollback set includes runtime code, portable skill, roles, schemas, `bin/council`, route probe, provider edits, fixtures, tests, unused Pi stubs, and docs.
 The normal Phase 2+ rollback set must not remove Phase 1 baseline files while `package.json` scripts or effective Pipelane checks still reference them.
 
 ## Exact File-Level Changes
@@ -1301,24 +1315,25 @@ The normal Phase 2+ rollback set must not remove Phase 1 baseline files while `p
 Add `package.json` in Phase 1 with portable package metadata, Node `>=22.19.0`, runtime loader dependency when needed, TS test dev deps, and the npm scripts listed in this plan.
 Add the Pi `pi` manifest and Pi peers in Phase 3C with the Pi UI package work.
 Add four generated reference docs under `docs/council/` before implementation: `track-a-toolchain.md`, `track-b-provider-hardening.md`, `track-c-portable-mvp.md`, and `post-mvp-pi.md`.
-Add `docs/public/council-plan-split.v1.json` and `scripts/check-council-plan-split.mjs` before product code so plan hash, section links, decision keys, and generated subplan frontmatter stay in sync.
+Add `docs/public/council-plan-split.v1.json` and `scripts/check-council-plan-split.mjs` before product code so plan hash, section links, fixed decision keys, exact required/forbidden text, and generated subplan frontmatter stay in sync.
 `prepack` will run `verify:pi-execution-release` when Pi direct files exist, but it is maintainer-only and must not run live model checks.
 Do not add a `prepare` script for the council package in MVP, because installed Pi git package installs use production dependency installation and runtime route gates provide the end-user protection.
 Add `package-lock.json` in Phase 1 so CI and pre-PR checks can use `npm ci --prefer-offline --no-audit --fund=false` reproducibly.
-Add `.gitattributes` in Phase 3C pinning `PI_SURFACE_GATE_FILES_V1` members to LF-normalized text, and test the same normalizer in the artifact writer and runtime gate.
+Add `.gitattributes` in Phase 3C pinning Pi gate files to LF text, and test the same normalizer in artifact writer and runtime gate.
 Add `tsconfig.json`, `vitest.config.ts`, and `scripts/ensure-node-deps.mjs` in Phase 1 unless an equivalent Node built-in test setup provides the same coverage.
 Add `scripts/verify-pipelane-prepr.mjs` in Phase 1 to inspect active and empty-`PIPELANE_HOME`, assert Pipelane `0.2.0` shape, compare artifacts, and execute through `sh -lc`.
 The same script must expose `--assert-shape` as a dependency-free per-PR check that reads the artifact, runs no network or npm install, and fails with `PIPELANE_SHAPE_DRIFT` plus conformance guidance.
 `scripts/verify-pipelane-prepr.mjs` will also implement `--bootstrap-smoke` for the pre-`package.json` throwaway checkout proof described above.
 Add `docs/public/pipelane-prepr-checks.v1.json` in Phase 1 with active and synthesized `prePrChecks`, derived config paths, Pipelane version/path, observed execution shape, runner npm registry/cache status, and synthesized defaults.
 Add `docs/public/pipelane-no-package-prepr.v1.json` and `docs/pipelane-no-package-recovery.md` in Phase 1 with exact replacement-check config bytes, apply/verify commands, and manual scope.
+Add `scripts/apply-pipelane-no-package-prepr.mjs` in Phase 1 as the one-command fresh-clone recovery wrapper for that recipe.
 Add `docs/public/council-usefulness-set.v1.json` and `docs/public/council-usefulness-scorecard.v1.json` before Track A and reuse both for the Phase 2C and Phase 5 gates.
 Add `docs/public/council-prompt-reserve-prototype.v1.json` from the toolchain-free probe before Track A, and derive Phase 2C context reserve constants from it.
 Add `docs/public/council-claude-tool-policy.v1.json` from the toolchain-free probe before Track A, recording the current adapter argv proof for all six no-tools flags.
 Add `docs/public/council-mvp-symbols.v1.json` in Phase 2C and test that Phase 2C/3C exports only MVP symbols.
 Add `scripts/check-council-governance.mjs` in Phase 2C to validate the MVP symbols manifest, portable import boundaries, and exported surface together.
-`scripts/check-council-plan-split.mjs` will hash this plan, parse the manifest, verify subplan frontmatter, anchors, snippets, and scan for contradictory settled-decision text.
-Configure `vitest.config.ts` so clean-checkout tests include portable `extensions/council/lib/**` tests and exclude Pi-coupled entrypoint, UI, and executor modules from runtime evaluation unless a Pi-present test explicitly opts in.
+`scripts/check-council-plan-split.mjs` will hash this plan, parse the manifest, and verify subplan frontmatter, anchors, snippets, and exact required/forbidden decision strings.
+Configure `vitest.config.ts` so clean-checkout tests include portable `extensions/council/lib/**` and exclude Pi-coupled entrypoint, UI, and executors unless Pi-present tests opt in.
 `npm run build` is a TS compile or emit check that does not bundle or execute Pi-coupled modules; if a future bundler is introduced, `@earendil-works/*` imports must remain external and unevaluated in clean checkout.
 Add `scripts/check-council-portable-imports.mjs` in Phase 1 as the dependency-free import-boundary check for portable MVP modules.
 Add `scripts/verify-pi-package.mjs`, `scripts/verify-pi-surface.mjs`, and `scripts/check-council-pi-gate.mjs` in Phase 3C for Pi UI packaging and surface drift.
@@ -1335,14 +1350,14 @@ Every tracked stub `.d.ts` under that tree is included in `PI_SURFACE_GATE_STUB_
 Do not rely on installed Pi peer dependencies for `npm run typecheck` or `npm run build`.
 Modify `tests/conformance/run.sh` in Phase 1 to add a `hermetic` target that excludes live provider probe and smoke sections and runs only unit plus fake-driven Claude and Codex coverage.
 Do not modify tracked `.pipelane.json` as the active pre-PR mechanism for the installed Pipelane version because `readPackageJsonOverlay()` ignores repo-local config.
-`package.json` will wire pre-scripts to `node scripts/verify-pipelane-prepr.mjs --assert-shape && node scripts/ensure-node-deps.mjs`, and `test` will run the Pi gate, hermetic conformance, and TS suites.
+`package.json` will wire pre-scripts to `node scripts/ensure-node-deps.mjs`; `verify:pipelane-prepr` will run `node scripts/verify-pipelane-prepr.mjs --assert-shape` before `test`, `typecheck`, and `build`.
 Add `extensions/council/index.ts` in Phase 3C for real Pi command registration, and do not expose executable Pi `/council` behavior until the UI and engine dependencies exist.
 `extensions/council/index.ts` will import installed Pi packages only through lazy calls to `extensions/council/lib/pi-runtime.ts`, and clean-checkout runtime tests must not import it.
 In Phase 3C, `extensions/council/index.ts` will call `readPiMvpRuntimeGate()` before registration or UI render and degrade to a portable fallback message when required Pi surfaces are unsupported.
 Add `extensions/council/cli.ts` in Phase 2C as the Node-backed portable entrypoint that parses inputs, route probes, emit-roster, and the thin engine slice.
 Add `extensions/council/lib/types.ts` in Phase 1 for pure types only.
 Add `extensions/council/lib/runtime.ts` in Phase 2C for the `CouncilRuntimeContractReport` startup check over Node, package root, loader, `bin/provider-invoke --auth`, `bin/provider-invoke --effort`, and `bin/provider-probe --auth`.
-Add `extensions/council/lib/config.ts` in Phase 2C for `getAgentDir()` based paths, non-Pi paths, authoritative location scope, stale dogfood quarantine, and atomic writes.
+Add `extensions/council/lib/config.ts` in Phase 2C for injected `CouncilConfigRootsV1`, non-Pi paths, authoritative location scope, remembered-path guards, stale dogfood quarantine, and atomic writes; it must not import Pi values.
 Add `extensions/council/lib/input.ts` in Phase 2C for `/council` argument parsing, `@plan-file` parsing, safe path resolution, plan loading, issue normalization, immutable plan and issue line numbering, and SHA-256 hashing.
 Add `extensions/council/lib/run-intent.ts` in Phase 2C for portable acknowledgment sidecars, intent expiry, atomic mode `0600` writes, and route-catalog revalidation.
 Add `extensions/council/lib/effort.ts` in Phase 2C as the only owner of `COUNCIL_EFFORT_ORDER`, `PI_THINKING_LEVEL_TO_COUNCIL_EFFORT`, `normalizePiThinkingLevels`, supported-effort validation, and nearest-effort replacement suggestions.
@@ -1352,10 +1367,10 @@ Add `extensions/council/lib/validate-roster.ts` in Phase 2C for exported `valida
 Add `extensions/council/lib/recommend.ts` in Phase 2C for issue-versus-plan roster recommendations and composition feedback.
 Add `extensions/council/lib/emit-roster.ts` in Phase 2C for `--emit-roster`: validate input, discover routes, recommend, mint ids, validate, and write atomically without model calls.
 Add `extensions/council/lib/engine.ts` in Phase 2C for the thin deterministic portable slice, then expand it in Phase 5 for critique, steelman, adversary, degradation, cancellation, and phase orchestration.
-Add `extensions/council/lib/pi-runtime.ts` in Phase 3C for lazy Pi value imports; only it and post-MVP `pi-complete.ts` may import `@earendil-works/*` values.
+Add `extensions/council/lib/pi-runtime.ts` in Phase 3C for lazy Pi value imports, `getAgentDir()`, `CONFIG_DIR_NAME`, and injected `CouncilConfigRootsV1`; only it and post-MVP `pi-complete.ts` may import `@earendil-works/*` values.
 Add `extensions/council/lib/executors/pi-complete.ts` in Phase 4 for Pi direct model calls through `complete()` and the `toPiEffortOptions` mapper.
 Phase 4 must add or update `docs/public/council-pi-surface-gate.v1.json` with the first Pi direct file, generated from verified installed Pi.
-Phase 4 must implement `readPiRuntimeGate()` to load the surface artifact, read live Pi versions, compare ranges, run no-model sanity for in-range non-exact versions, and return the Pi gate reasons before executable Pi direct routes are exposed.
+Phase 4 must implement `readPiRuntimeGate()` to load the artifact, read Pi versions, compare ranges, run no-model sanity, and return reasons before Pi direct routes appear.
 Phase 4 must convert Pi drift into unavailable Pi rows plus explicit portable suggestions, never automatic rewrites, with original and candidate route ids in diagnostics.
 Phase 4 must make `extensions/council/lib/routes.ts` and `extensions/council/lib/executors/pi-complete.ts` call `readPiRuntimeGate()` independently so a stale route catalog cannot bypass the executor refusal.
 Phase 4 must implement scheduler support for `pi_concurrency_mode: "serial_pi_direct"` with Pi direct lane width `1`; Phase 7 may add the parallel mode only after a successful live-effort proof.
@@ -1388,7 +1403,7 @@ Add `tests/conformance/council.sh` and source it from `tests/conformance/run.sh`
 Add fake route fixtures under `tests/conformance/fixtures/council/` in Phase 2C.
 Add TS unit tests under `tests/council/` across Phases 2 through 5 for parsing, route reconciliation, effort propagation, phase-role assignment, deterministic synthesis, persistence, cancellation, and report validation.
 Add a Phase 2C `validate-roster` unit test covering duplicate ids, unavailable routes, unsupported efforts, minimum members, strategy, chair, and context overflow.
-Add a Phase 3C UI unit test or fixture that proves roster editor Run-disabled state and chair warning render from `CouncilRosterValidationResultV1`, and that roster-editor/composition lines never exceed narrow `render(width)` values with long labels.
+Add a Phase 3C UI fixture proving Run-disabled state and chair warning come from `CouncilRosterValidationResultV1`, and narrow `render(width)` lines fit.
 Add a Phase 5 engine preflight unit test that proves the engine calls `validateRoster()` and aborts before model execution when semantic roster validation fails.
 Add a Phase 2C TS test proving `--emit-roster` writes a valid `CouncilRosterConfigV1` with two executable members, fresh ids, `scope: "explicit"`, a valid strategy, and no model calls.
 Add a single-route emit-roster test in Phase 2C that one executable route emits two same-route entries with distinct roles, allows repeated effort when the route has only one supported value, and can immediately run.
@@ -1397,7 +1412,7 @@ Add a Phase 2C vertical-slice conformance test that runs `--emit-roster`, then `
 Add a portable emit-roster failure test in Phase 2C that proves insufficient routes, existing output without `--overwrite`, and invalid output paths exit before writing partial files.
 Add a portable executor unit test in Phase 2C that supported efforts reach `bin/provider-invoke --effort`, unsupported efforts block, and missing wrapper support fails loudly.
 Add a Phase 2C provider tool-policy test that Claude council calls use the existing no-tools argv and that unproven Codex routes are unavailable with `tool_policy_unproven`.
-Add a Phase 2C side-effect canary test that snapshots a temp repo, runs a council provider-invoke fake attempting file writes and shell/tool use, and proves no repo file changes unless a route has an explicitly accepted read-only-shell contract.
+Add a Phase 2C side-effect canary: snapshot a temp repo, run fake provider write/shell attempts, and prove no file changes without an accepted read-only-shell contract.
 Add a Phase 2C Claude token-only test expecting `claude_subscription_login_required_after_env_token_scrub` with only `ANTHROPIC_OAUTH_TOKEN`, no first-party session, and no API fallback.
 Add Pi integration fixtures or fakes under `tests/pi/` or `tests/council/pi-fixtures/` in Phase 3C to simulate `ctx.modelRegistry`, `ctx.ui.custom()`, `session_shutdown`, and session replacement without live model calls.
 Add `tests/council/pi-surface-contract.test-d.ts` in Phase 3C to compile-check the exact Pi imports and call signatures used by the package.
@@ -1480,17 +1495,17 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Provider-invoke effort propagation | TS executor unit test plus conformance | The portable executor verifies `--effort`, forwards only supported values, blocks unsupported remembered efforts, and fails if the flag disappears. |
 | Phase-role fallback | TS engine unit test | Rosters without explicit critic, steelman, or adversary roles receive deterministic explicit-member phase assignments recorded in diagnostics. |
 | State-machine guarded transitions | TS engine unit test | Zero, one, and two-plus initial survivors take specified transitions, and later failures degrade without skipping phases. |
-| Synthesis input contracts | TS engine/report unit test | Deterministic, structured disagreement, and chair synthesis consume `CouncilSynthesisBriefV1` plus `CouncilAdversaryOutputV1[]`, include all phase findings, and read no hidden host-model state. |
+| Synthesis input contracts | TS engine/report unit test | Deterministic, disagreement, and chair synthesis consume `CouncilSynthesisBriefV1` plus `CouncilAdversaryOutputV1[]`, include phase findings, and read no hidden host state. |
 | Single-survivor input contract | TS engine/report unit test | `single_survivor_report` consumes only the surviving voice plus failed-member diagnostics and never requires synthesis brief or adversary arrays. |
-| Shared roster validator | TS validator, UI, and engine unit tests | Portable CLI, roster editor, and engine preflight all consume `validateRoster()` and agree on duplicate ids, unavailable routes, efforts, two-member minimum, and chair validity. |
-| Roster entry id uniqueness | TS roster validation and UI unit test | Add and duplicate-row flows mint fresh opaque ids, edit and reorder preserve ids, duplicate loaded ids quarantine or block Run, and `chairEntryId` resolves to exactly one entry. |
+| Shared roster validator | TS validator, UI, and engine tests | Portable CLI, editor, and engine preflight all consume `validateRoster()` and agree on ids, routes, efforts, minimum, and chair validity. |
+| Roster entry id uniqueness | TS roster and UI unit test | Add and duplicate mint fresh opaque ids, edit and reorder preserve ids, duplicates quarantine or block Run, and `chairEntryId` resolves once. |
 | Chair identity authority | TS roster and engine unit test | Only `reportStrategy.chairEntryId` authorizes chair synthesis; the referenced entry must have `role: "chair"`; entry-level `chair` is invalid. |
 | One-survivor chair strategy | TS engine unit test | With a chair strategy and exactly one surviving initial voice, no chair model call occurs and the report is single-survivor mechanical whether the chair survived or failed. |
 | Whole-run deadline budget | TS scheduler unit test | The computed deadline uses `CouncilMvpLanePlanV1`, is at least the sum of scheduled effective lane budgets plus overhead, and never aborts before valid scheduled work exhausts its budget. |
 | Serial Pi deadline budget | TS scheduler unit test | Six serial Pi-direct members with `maxConcurrency: 4` and `memberTimeoutMs: 300000` receive at least `1800000` ms for the initial phase and are not aborted by the old `ceil(6 / 4)` budget. |
 | Long-run acknowledgment | TS state-machine and CLI test | Pi and CLI derive identical `estimated_cost_bucket` and `--ack-long-run`; Pi Cancel leaves config untouched. |
 | Combined portable acknowledgments | TS CLI test | One exit prints stale-input and long-run flags together, and re-snapshot recomputes the long-run token from the new input hash. |
-| Serial Pi global slot accounting | TS scheduler unit test | A serial Pi direct call consumes one global `maxConcurrency` slot; with `maxConcurrency: 4` at most three portable calls overlap, and with `maxConcurrency: 1` no portable call overlaps. |
+| Serial Pi global slot accounting | TS scheduler unit test | A serial Pi direct call consumes one global slot; with `maxConcurrency: 4` at most three portable calls overlap, and with `1` none overlap. |
 | Same-account provider lane | TS scheduler unit test | Two same-route or same-auth provider-invoke members serialize by default, their lane budget is included in the whole-run deadline, and diagnostics identify the non-secret lane key. |
 | Whole-run deadline abort | TS engine/executor unit test | A fake slow member exceeds the computed deadline; active calls abort, unscheduled phases skip, and the report records `deadline_exceeded`. |
 | Evidence-auditor routing | TS engine unit test | A successful `evidence-auditor` roster entry is scheduled in the `critique` phase and emits `assumption_reviews`; no separate evidence-auditor phase is required. |
@@ -1514,7 +1529,7 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Portable invalid roster | `tests/conformance/council.sh` | Parsed but invalid `--roster-file` exits `3` for schema failures or `4` for semantic failures, writes no report, and never falls back silently. |
 | Portable first roster authoring | TS CLI unit test plus conformance | `--emit-roster` writes a runnable many-route or one-route roster, and that file immediately runs. |
 | Portable emit-roster no partial write | TS CLI unit test | Insufficient executable routes, existing output without `--overwrite`, unwritable parent, or invalid input exits before writing a roster file or report. |
-| Portable emit-roster remembered path guard | TS CLI unit test | `--emit-roster` refuses any realpath target ending in `ai-synthesis/council/roster.v1.json` with exit `2`. |
+| Portable emit-roster remembered path guard | TS CLI unit test | `--emit-roster` refuses resolved canonical remembered paths, including `.ai-synthesis/council/roster.v1.json` and `AISYNTH_CONFIG_HOME` overrides, with exit `2`. |
 | Portable roster-file read-only | TS CLI unit test | Successful `--roster-file` execution writes no changes to the supplied file, even when canonical ids, scope, or timestamps differ in memory. |
 | Explicit-scope persistence no-op | TS engine/config unit test | `persist_roster` writes Pi user/project scopes but records `explicit_read_only` and performs no write for `scope: "explicit"` runs. |
 | Portable report-strategy override | TS CLI unit test plus conformance | `--report-strategy` is a one-run override, validates chair executability, records source, and does not rewrite the roster. |
@@ -1553,7 +1568,7 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Node fallback parity | TS CLI unit test plus `tests/conformance/council.sh` | `bin/council` invokes the shared TS engine and does not contain independent shell synthesis logic. |
 | Missing Node fallback dependency | `tests/conformance/council.sh` | Missing Node or runtime loader prints setup instructions and does not create config or reports. |
 | Hermetic conformance target | CI/local script test | `tests/conformance/run.sh hermetic` passes with real `claude` and `codex` absent from `PATH`, no provider auth, and no model-network access. |
-| Plan split reviewability | Scripted governance check | `scripts/check-council-plan-split.mjs` verifies the split manifest, plan hash, anchors, subplan frontmatter, source snippets, and settled-decision text before product code. |
+| Plan split reviewability | Scripted governance check | `scripts/check-council-plan-split.mjs` verifies manifest plan hash, anchors, snippets, and exact required/forbidden decision strings before product code. |
 | Pipelane blocking pre-PR gate | CI/local script test | `scripts/verify-pipelane-prepr.mjs` proves installed `pr.ts` blocks on failed `prePrChecks`, hard preconditions are true, and Track A is first to make them green. |
 | Pipelane version and shape drift | CI/local script test | `--assert-shape` runs no network or npm install on every PR, fails with `PIPELANE_SHAPE_DRIFT`, and prints the no-package recovery command on drift. |
 | Pipelane proactive drift check | Script unit test | `--check-drift` compares installed Pipelane version/path/shape to the artifact without npm or package tests and reports drift before pre-PR execution. |
@@ -1561,6 +1576,8 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Pipelane npm bootstrap | CI/local script test | `--bootstrap-smoke` proves candidate npm scripts install in a no-`node_modules` throwaway checkout through exact Pipelane `sh -lc`; only then may `package.json` land. |
 | Pipelane synthesized defaults | CI/local script test | Active and empty-`PIPELANE_HOME` checks match `docs/public/pipelane-prepr-checks.v1.json` and execute green through `sh -lc`. |
 | Pipelane no-package fallback | Manual plus script gate | Applying `docs/public/pipelane-no-package-prepr.v1.json` makes `bash -n ...` plus `tests/conformance/run.sh unit` green without package metadata. |
+| No-package Track C path | Scripted check plus captain decision | `NoPackageTrackCPlanV1` validates type-stripped TS only when Node exposes `--experimental-strip-types`; otherwise captain chooses defer, package alternative, or JS rewrite. |
+| Fresh-clone no-package recovery | Script unit test | `scripts/apply-pipelane-no-package-prepr.mjs --verify` applies tracked `${PIPELANE_HOME}` config bytes atomically and proves the conformance recipe green. |
 | Pipelane manual-scope rollback | Manual plus script-recorded gate | Fresh empty `PIPELANE_HOME` without package metadata reports recipe required, while recipe-applied homes or retained Track A homes are green. |
 | Pipelane Node version | Script unit test plus artifact check | `ensure-node-deps` fails with `NODE_VERSION_UNSUPPORTED` below Node `22.19.0`, and the Pipelane artifact records the observed runner Node version. |
 | Pipelane changed-surface guard | Script unit test | Docs-only diffs skip Node install/tests, Node/package/extension/schema/bin/conformance/public-governance diffs do not skip, and unresolved base ref fails open to full checks. |
@@ -1643,16 +1660,16 @@ Canceled, failed, and deadline terminal reports validate against `schemas/counci
 Deterministic, structured disagreement, and chair synthesis consume `CouncilSynthesisBriefV1` plus explicit `CouncilAdversaryOutputV1[]`; none may discard successful phase output.
 Existing `/synthesis`, `--solo`, `--compare`, and `revisit` behavior remains compatible.
 Track A toolchain, Track B provider hardening, and Track C council product remain separately reviewable and mergeable, and Track C cannot depend on an unaccepted Track A or Track B gate.
-Track A package scaffolding is the first council implementation merge only after the toolchain-free usefulness probe and Pipelane npm bootstrap smoke pass, otherwise the tracked no-package recovery recipe is the merge gate.
+Track A package scaffolding is first merge after usefulness and bootstrap pass; otherwise `NoPackageTrackCPlanV1` plus no-package recovery are the merge gate after captain activation.
 Shell-only Track B may precede Track A only through the recorded red-gate bypass with `bash -n` and `tests/conformance/run.sh unit`; Track C Node/TS product code remains behind Track A or `no-package-ship-path`.
 Track B provider hardening lands as Phase 2B and portable Track C product lands as Phase 2C/5, so council product code consumes provider auth changes rather than mixing them in one merge.
-A failed Track A package baseline escalates `needs-decision [key=no-package-ship-path]` and does not permanently block TS product delivery.
+A failed Track A package baseline escalates `needs-decision [key=no-package-ship-path]` against predefined `NoPackageTrackCPlanV1` and does not permanently block TS product delivery.
 MVP cannot run with Pi-registry-only auth; it shows `no_executable_provider_cli_routes` and docs explain that authorized portable routes are required.
 Phase 3C TUI starts only after portable first ship, and Phase 4 Pi direct starts only after a refreshed post-ship gate.
 Council reports are written only under `./.ai-synthesis/council-sessions/` in the MVP and do not appear in the legacy `/synthesis` session glob.
 Portable CLI invalid roster files fail before execution with the specified exit codes and without writing config or reports.
 Portable roster-file execution is read-only, `--emit-roster` is the canonical write path for non-Pi users, and `--report-strategy` is a validated one-run override.
-Portable `scope: "explicit"` runs make `persist_roster` a no-op, and `--emit-roster` refuses remembered-config paths ending in `ai-synthesis/council/roster.v1.json`.
+Portable `scope: "explicit"` runs make `persist_roster` a no-op, and `--emit-roster` refuses canonical remembered-config paths derived from `CouncilConfigRootsV1`.
 Portable CLI stale dogfood roster shapes fail with exit `4` until the user edits the roster into canonical v1.
 The input parser uses the specified path-shaped predicate and treats a single bare non-file token as issue text.
 Zero, one, and two-plus initial survivor paths take explicit tested state transitions.
@@ -1674,6 +1691,7 @@ Deterministic readiness uses the specified `materialDissent` predicate and criti
 Structured disagreement synthesis is mechanical and does not call a model; a model-written synthesis requires an explicit chair strategy.
 Repository-wide pre-PR checks become install-aware in the `package.json` commit only after the bootstrap smoke proves the active Pipelane `sh -lc` path, and tracked `.pipelane.json` remains non-authoritative for installed Pipelane.
 `scripts/verify-pipelane-prepr.mjs` records active and empty-`PIPELANE_HOME` checks, version shape, registry/cache state, and fallback status in tracked artifacts.
+`--assert-shape` is an explicit pre-PR verifier step and is not wired into ordinary local npm lifecycle scripts.
 `scripts/verify-pipelane-prepr.mjs --check-drift` reports installed-Pipelane drift proactively without npm install or package tests.
 `npm run test` runs `scripts/check-council-pi-gate.mjs` when present, while missing registry/cache access fails with `DEPENDENCY_INSTALL_UNAVAILABLE` instead of skipping checks.
 Normal rollback keeps Track A green; full removal is green only for retained Track A homes, recipe-applied homes, or an equivalent tracked replacement gate.
