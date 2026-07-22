@@ -259,7 +259,8 @@ The portable `--emit-roster <path>` path will parse input, run no-cost route dis
 `--emit-roster` will write runnable roster configs with at least two executable members and a valid strategy; if only one executable route exists, it will emit two entries on that route with distinct recommended roles.
 When no executable route can supply two supported entries, `--emit-roster` will exit `4`, print blocking route/auth/effort diagnostics, and write no file.
 `--emit-roster` will refuse to overwrite an existing file unless `--overwrite` is supplied, will use exit `2` for path or overwrite usage errors, and will emit `{ "ok": true, "path": "...", "roster": ... }` under `--json`.
-`--emit-roster` will never write Pi user-global or project-local roster config and will never persist remembered-roster state.
+`--emit-roster` will refuse any target whose resolved path components end with `ai-synthesis/council/roster.v1.json`, covering Pi user-global, Pi project-local, and portable remembered-roster locations without hardcoded homes.
+`--emit-roster` will never persist remembered-roster state.
 When `--roster-file` exists but fails JSON parsing, schema validation, route reconciliation, supported-effort validation, two-member minimum validation, or report-strategy validation, `bin/council` will exit nonzero before execution.
 The portable CLI will use exit code `2` for usage/input errors, `3` for roster JSON or schema errors, `4` for roster semantic validation failures, and `5` for runtime failures after execution starts.
 For portable roster validation failures, stdout will contain either human-readable diagnostics or a JSON envelope under `--json`, no roster config is written, no report is written, and no deterministic or chair fallback will run silently.
@@ -754,7 +755,7 @@ The model voice schema in `schemas/council-voice.json` will require:
 
 `derive_position_catalog` will build a model-free `CouncilPositionCatalogV1` before prompt assembly and include it verbatim in every initial prompt.
 For plan input, the catalog will contain `accept_plan`, `revise_plan`, `reject_plan`, and `needs_more_evidence`.
-For issue input, explicit alternatives is extracted only by this grammar.
+For issue input, explicit alternatives are extracted only by this grammar.
 Normalize CRLF to LF, trim outer whitespace, and ignore blank leading and trailing lines.
 List extraction applies when every nonblank line is a bullet `- text` or `* text`, or a numbered item `1. text` or `1) text`, and at least two items remain after normalization.
 Inline extraction applies only when the entire issue is one line of at most 200 characters containing exactly one separator token ` vs `, ` versus `, or ` or ` with ASCII whitespace on both sides.
@@ -895,6 +896,7 @@ The portable Claude executor will pass `--auth subscription` per member call onl
 Only explicit `A_AUTH=subscription` will apply the Anthropic denylist and allowlist sanitizer, preserving `/synthesis` auto behavior while hardening council and direct subscription calls.
 The existing `A_AUTH=auto` path will keep today's behavior, including current credential unsets and pass-through of `ANTHROPIC_OAUTH_TOKEN` plus non-credential `ANTHROPIC_*` config.
 Before changing `_claude_exec`, Phase 2B will characterize `/synthesis` with unset, empty, and explicit `A_AUTH=auto`, and assert fake child env names, values, and Claude argv stay byte-for-byte equal.
+Before changing `adapter_probe` or `bin/provider-probe`, Phase 2B will also characterize `bin/provider-probe claude` with unset, empty, and explicit `A_AUTH=auto`, and assert the envelope stdout/stderr and exit status stay byte-for-byte equal.
 Auth naming is fixed: council `--auth-policy subscription-only|default` maps to JSON/TS `subscription_only|default`; it drives provider `--auth subscription` and `A_AUTH=subscription`; `A_AUTH=auto` remains legacy `/synthesis`.
 The implementation must not add `ANTHROPIC_OAUTH_TOKEN` to the auto-mode unset list unless a separate `/synthesis` compatibility review proves that doing so cannot break subscription-auth environments.
 Add a backward-compatible optional `--auth <auto|subscription|apikey>` flag to `bin/provider-probe`.
@@ -941,6 +943,7 @@ The command starts in `idle`.
 `parse_input` resolves issue text or plan file.
 `validate_input` checks empty input, readable files, trusted roots, symlink escapes, regular file status, maximum size, and NUL or binary-looking content.
 For plan input, `validate_input` must resolve the path, open and read the regular file once, verify size and trust against the bytes read, compute `input_sha256`, collect file metadata, line-number the exact bytes, and freeze a `CouncilInputSnapshotV1`.
+For issue input, `validate_input` must normalize text, line-number `issue:Lx`, compute `input_sha256`, and freeze the same `CouncilInputSnapshotV1` before `confirm_run`.
 No later state will silently re-read the plan file for prompts, catalogs, report text, or `input_sha256`.
 `discover_routes` builds the route catalog without paid calls.
 `load_roster` reads the last confirmed roster config or creates an empty draft.
@@ -968,10 +971,11 @@ Re-invocation with `--intent <id>` will load the frozen input snapshot, route ca
 The CLI will still revalidate no-paid route availability before execution; if route identity or auth availability changed, it will invalidate the intent and print a new diagnostic rather than accepting a stale token.
 Run, Cancel, or expiry will delete the sidecar best-effort, and the sidecar must contain no credentials, model outputs, or raw auth diagnostics.
 Cancel or reload at this acknowledgment step must leave the last confirmed roster untouched.
-`persist_roster` atomically writes the confirmed roster before model execution starts.
+`persist_roster` atomically writes the confirmed roster before model execution starts for Pi user/project scopes.
+For `scope: "explicit"` portable `--roster-file` runs, `persist_roster` is a no-op and records `roster_persistence: explicit_read_only`.
 `prepare_run_context` creates one per-run `AbortController` owned by the engine and consumes the immutable `CouncilInputSnapshotV1`.
 For plan input, `prepare_run_context` reuses frozen `plan.md:Lx` bytes from `validate_input`; later disk changes only set `input_on_disk_changed_after_snapshot`.
-For issue input, `prepare_run_context` will freeze `issue:Lx` line numbers from the normalized issue text after CRLF normalization, outer trim, and blank-edge removal.
+For issue input, `prepare_run_context` reuses frozen `issue:Lx` bytes from `validate_input`; it never re-normalizes or re-hashes issue text.
 `derive_position_catalog` builds the model-free `CouncilPositionCatalogV1` from immutable input text and freezes it for the run.
 `prepare_prompts` builds immutable prompts from the frozen input evidence, frozen position catalog, confirmed roster, and role templates.
 Initial and critique prompts will instruct `plan_line` citations to use `plan.md:Lx-Ly` only for plan input and `issue_text` citations to use `issue:Lx-Ly` only for issue input.
@@ -995,12 +999,12 @@ It must omit recommendation, readiness, strongest dissent, and final evidence fi
 `canceled` aborts active work and reports what was canceled.
 `failed` reports why no council output could be produced.
 
-Phase-role semantics is deterministic and independent of UI ordering except where explicitly stated.
+Phase-role semantics are deterministic and independent of UI ordering except where explicitly stated.
 Every enabled executable roster entry runs `initial_analysis`, including a designated chair.
 Later phases select explicit roster members from the successful initial voices.
 `reportStrategy.chairEntryId` is the only authoritative source of chair synthesis identity.
 `CouncilRosterEntryV1.role === "chair"` is the user-visible role required for the entry named by `reportStrategy.chairEntryId`; it is not enough by itself to authorize a chair synthesis call.
-The roster never store a separate `chair` boolean; any chair badge in the UI is derived from the effective report strategy.
+The roster never stores a separate `chair` boolean; any chair badge in the UI is derived from the effective report strategy.
 When the effective report strategy is not `chair`, entries with `role: "chair"` are ordinary initial voices and do not receive a synthesis call.
 For phase fallback selection, `non-chair` means an entry whose id is not the effective `reportStrategy.chairEntryId`.
 The strategy chair may run only its independent `initial_analysis` and final chair synthesis call; it must not be selected for critique, steelman, or adversary fallback while another successful member is available.
@@ -1151,7 +1155,7 @@ Provider malformed output after retry will preserve raw text in diagnostics but 
 Provider rate limit will mark that member failed with a retry-after hint when available.
 Partial degradation will lower decision readiness and show which phases lost voices.
 Failure of an explicit chair will fall back to deterministic synthesis only if at least two initial voices succeeded and the report says the chair failed.
-An explicit chair output whose only authorization-field defect is wrong, true, or missing `implementation_authorized` never count as chair failure; the engine will drop that field, force `false` in final assembly, and record a diagnostic.
+An explicit chair output whose only authorization-field defect is wrong, true, or missing `implementation_authorized` does not count as chair failure; the engine will drop that field, force `false` in final assembly, and record a diagnostic.
 An explicit chair output with any other schema defect after its JSON-only retry will count as chair failure and follow the deterministic, single-survivor, or no-survivor fallback rules.
 When only one initial voice succeeds, explicit chair failure will use the single-survivor mechanical report path and never call deterministic multi-voice synthesis or any chair model.
 When `deadline_exceeded` is the run-level abort reason, deadline failure takes precedence over the single-survivor path regardless of how many initial voices succeeded before the abort.
@@ -1352,9 +1356,9 @@ Add `extensions/council/lib/executors/provider-invoke.ts` in Phase 2C for portab
 That executor will map provider envelopes to `CouncilExecutionIdentityV1`, with roster model as `configuredModel`, envelope model as `resolvedModel`, and `adapter_default_unreported` for unknown adapter defaults.
 Add `extensions/council/lib/validate-json.ts` in Phase 2C for TS-native tolerant JSON extraction; it must not spawn `bin/lib/json_extract.py` or `python3`.
 Add `extensions/council/lib/report.ts` in Phase 2C for TS-native report validation, markdown rendering, frontmatter, and writes with no `frontmatter_set.py` calls.
-Add `extensions/council/ui/roster-editor.ts` in Phase 3 for the custom TUI component.
-Add `extensions/council/ui/composition.ts` in Phase 3 for composition feedback rendering.
-Add `extensions/council/ui/keymap.ts` in Phase 3 for key handling and `keyHint()` labels.
+Add `extensions/council/ui/roster-editor.ts` in Phase 3C for the custom TUI component.
+Add `extensions/council/ui/composition.ts` in Phase 3C for composition feedback rendering.
+Add `extensions/council/ui/keymap.ts` in Phase 3C for key handling and `keyHint()` labels.
 Add `skills/council/SKILL.md` in Phase 6 only after a Claude Code skill-discovery smoke test proves the symlinked `/synthesis` skill ignores nested skill files; otherwise place it outside the symlinked skill tree and expose it only through Pi/package docs.
 Add `bin/council` in Phase 2C as a thin shell launcher for `extensions/council/cli.ts` that accepts `--issue`, `--plan-file`, `--roster-file`, `--emit-roster`, `--report-strategy`, `--auth-policy`, `--overwrite`, and `--json`.
 Add `bin/council-route-probe` in Phase 2C as a thin shell launcher for `extensions/council/cli.ts route-probe` that emits `CouncilRouteProbeEnvelopeV1`.
@@ -1376,7 +1380,7 @@ Add `tests/conformance/council.sh` and source it from `tests/conformance/run.sh`
 Add fake route fixtures under `tests/conformance/fixtures/council/` in Phase 2C.
 Add TS unit tests under `tests/council/` across Phases 2 through 5 for input parsing, route reconciliation, effort propagation, phase-role assignment, deterministic synthesis, config persistence, cancellation, and report validation as each module lands.
 Add a Phase 2C `validate-roster` unit test covering duplicate ids, unavailable routes, unsupported efforts, minimum members, strategy, chair, and context overflow.
-Add a Phase 3 UI unit test or fixture that proves roster editor Run-disabled state and chair warning render from `CouncilRosterValidationResultV1`, and that roster-editor/composition lines never exceed narrow `render(width)` values with long labels.
+Add a Phase 3C UI unit test or fixture that proves roster editor Run-disabled state and chair warning render from `CouncilRosterValidationResultV1`, and that roster-editor/composition lines never exceed narrow `render(width)` values with long labels.
 Add a Phase 5 engine preflight unit test that proves the engine calls `validateRoster()` and aborts before model execution when semantic roster validation fails.
 Add a TS portable emit-roster unit test in Phase 2C that proves `--emit-roster` writes a valid `CouncilRosterConfigV1` with two executable members, fresh opaque ids, `scope: "explicit"`, and a valid default report strategy without calling any model executor.
 Add a single-route emit-roster test in Phase 2C that one executable route emits two same-route entries with distinct roles, allows repeated effort when the route has only one supported value, and can immediately run.
@@ -1387,7 +1391,7 @@ Add a portable executor unit test in Phase 2C that supported efforts reach `bin/
 Add a Phase 2C provider tool-policy test that Claude council calls use the existing no-tools argv and that unproven Codex routes are unavailable with `tool_policy_unproven`.
 Add a Phase 2C side-effect canary test that snapshots a temp repo, runs a council provider-invoke fake attempting file writes and shell/tool use, and proves no repo file changes unless a route has an explicitly accepted read-only-shell contract.
 Add a Phase 2C Claude token-only test expecting `claude_subscription_login_required_after_env_token_scrub` with only `ANTHROPIC_OAUTH_TOKEN`, no first-party session, and no API fallback.
-Add Pi integration fixtures or fakes under `tests/pi/` or `tests/council/pi-fixtures/` in Phase 3 to simulate `ctx.modelRegistry`, `ctx.ui.custom()`, `session_shutdown`, and session replacement without live model calls.
+Add Pi integration fixtures or fakes under `tests/pi/` or `tests/council/pi-fixtures/` in Phase 3C to simulate `ctx.modelRegistry`, `ctx.ui.custom()`, `session_shutdown`, and session replacement without live model calls.
 Add `tests/council/pi-surface-contract.test-d.ts` in Phase 3C to compile-check the exact Pi imports and call signatures used by the package.
 Add `tests/council/pi-effort-options-contract.test-d.ts` in Phase 4 to compile-check the council-owned `toPiEffortOptions` contract against repo-local stubs.
 Add `tests/council/portable-imports.test.ts` in Phase 1 to import portable CLI/shared entrypoints under clean-checkout conditions and fail on any attempted runtime load of `@earendil-works/*`.
@@ -1496,18 +1500,21 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Structured disagreement strategy | `tests/conformance/council.sh` | Report preserves disagreement mechanically without forcing a recommendation and no model executor is called during synthesis. |
 | Portable Claude effort support | Help-parser, fake argv, and route unit test | Claude exposes `low` through `max` only when provider-invoke help, real Claude help, and argv pass-through prove support; help drift removes values visibly without model calls. |
 | Pi reload during menu | `tests/conformance/council.sh` or Pi integration test | Menu closes, no config write occurs, and stale context is not used. |
-| Pi TUI render width | Phase 3 UI fixture test | Long roster and composition labels render at narrow widths with every emitted line length `<= width`. |
+| Pi TUI render width | Phase 3C UI fixture test | Long roster and composition labels render at narrow widths with every emitted line length `<= width`. |
 | Pi session replacement during run | Pi integration test | Active run aborts and no replacement-session work uses old `ctx`. |
 | Non-Pi fallback | `tests/conformance/council.sh` | Portable skill or `bin/council` reports no native menu and uses JSON roster or clear usage. |
 | Portable invalid roster | `tests/conformance/council.sh` | Parsed but invalid `--roster-file` exits `3` for schema failures or `4` for semantic failures, writes no report, and never falls back silently. |
 | Portable first roster authoring | TS CLI unit test plus conformance | `--emit-roster` writes a runnable many-route or one-route roster, and that file immediately runs. |
 | Portable emit-roster no partial write | TS CLI unit test | Insufficient executable routes, existing output without `--overwrite`, unwritable parent, or invalid input exits before writing a roster file or report. |
+| Portable emit-roster remembered path guard | TS CLI unit test | `--emit-roster` refuses any realpath target ending in `ai-synthesis/council/roster.v1.json` with exit `2`. |
 | Portable roster-file read-only | TS CLI unit test | Successful `--roster-file` execution writes no changes to the supplied file, even when canonical ids, scope, or timestamps differ in memory. |
+| Explicit-scope persistence no-op | TS engine/config unit test | `persist_roster` writes Pi user/project scopes but records `explicit_read_only` and performs no write for `scope: "explicit"` runs. |
 | Portable report-strategy override | TS CLI unit test plus conformance | `--report-strategy` is a one-run override, validates chair executability, records source, and does not rewrite the roster. |
 | Claude subscription-only | `tests/conformance/council.sh` | API-key-only Claude is unavailable for council but existing `/synthesis` probe default remains auto. |
 | Pi complete Claude auth guard | TS executor unit test with fake Pi registry | When `ctx.modelRegistry.isUsingOAuth(model)` is false for a Claude route, the member fails with `auth_policy` and `complete()` is never called. |
 | Claude mixed credentials | TS executor unit test plus fake Claude CLI | OAuth/subscription stays subscription-only with mixed env credentials, and child env scrubs all `ANTHROPIC_*` names for explicit council subscription calls. |
 | Claude auto compatibility | Existing conformance plus fake Claude env test | Unset, empty, and explicit `A_AUTH=auto` keep `/synthesis`; fake child-env names, values, and Claude argv remain byte-for-byte equal. |
+| Claude probe auto compatibility | Existing conformance plus fake Claude env test | `bin/provider-probe claude` and `adapter_probe` keep byte-for-byte stdout, stderr, and exit status for unset, empty, and explicit `A_AUTH=auto`. |
 | Claude explicit subscription sanitizer | Fake Claude env test | Parent `ANTHROPIC_BASE_URL` blocks with `claude_subscription_custom_endpoint_not_allowed`; otherwise `--auth subscription` scrubs Anthropic env before fake logged-in success. |
 | Claude token-only subscription env | Fake Claude env test | With only `ANTHROPIC_OAUTH_TOKEN` and no first-party login, discovery returns `claude_subscription_login_required_after_env_token_scrub` with no API fallback. |
 | Claude no-cost subscription probe | Phase 2B/2C local integration check | When a real logged-in Claude CLI is available, `provider-probe` and `provider-invoke` with `--auth subscription` succeed with scrubbed parent credentials and make no paid probe call. |
@@ -1528,6 +1535,7 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Single-survivor frontmatter | TS report unit test | One-survivor reports emit `report_strategy: single_survivor`, preserve `configured_report_strategy`, and do not claim `chair` when no chair call happened. |
 | Plan immutability | Unit test | Plan file hash and mtime are unchanged after a run. |
 | Plan snapshot TOCTOU | TS input/engine unit test | A changed plan before Run requires Accept Frozen, Re-snapshot, or Cancel; portable CLI prints the required `--accept-stale-input-sha` and proceeds only when it matches. |
+| Issue snapshot acknowledgment | TS input/CLI unit test | Issue input is normalized, line-numbered, hashed, and frozen in `validate_input`; `--ack-long-run` and `CouncilRunIntentV1.inputSnapshot` exist before `prepare_run_context`. |
 | Portable run intent | TS CLI/config unit test | A blocking portable exit writes a secret-free intent sidecar, re-invocation with `--intent` reuses frozen values, changed route availability invalidates it, and expiry cleans it up. |
 | Atomic persistence | Unit test | Interrupted temp write does not corrupt the last good roster, and changed target hash causes a concurrent-write warning instead of clobber. |
 | Canceled terminal report | TS engine unit test | Cancellation after `persist_roster` validates against `schemas/council-terminal-report.json`; cancellation before Run writes no report. |
@@ -1588,6 +1596,7 @@ Unavailable remembered members are visibly preserved with suggestions.
 Cancel never persists the roster draft.
 Run persists the confirmed roster atomically before execution.
 For plan input, the reviewed bytes, citations, and `input_sha256` come from the frozen snapshot, and a source-file change before Run requires Accept Frozen Snapshot, Re-snapshot, or Cancel.
+For issue input, normalized bytes, citations, and `input_sha256` also come from the `validate_input` snapshot before long-run acknowledgment or intent creation.
 With one executable route, `--emit-roster` writes two same-route entries with distinct roles and may repeat the same supported effort.
 Trusted project-local and user-global roster config precedence behaves exactly as specified, with no silent merge.
 Post-MVP Pi first-run seeding may copy the portable global roster into an editable draft only when no Pi roster exists; Pi persists only to its own target after Run and never imports explicit portable roster files.
@@ -1604,6 +1613,7 @@ Council route discovery marks any provider-invoke route without a proven council
 Claude provider-invoke routes must prove the existing no-tools argv before they can execute.
 Codex provider-invoke routes must remain unavailable until a no-tools or accepted read-only-shell contract is proven.
 Claude council routes never use Anthropic API credentials; explicit subscription-only auth, child-env scrubbing, token-only refusal, and unchanged `/synthesis` auto behavior are all tested.
+`adapter_probe` and `bin/provider-probe claude` keep byte-for-byte `/synthesis` auto behavior for unset, empty, and explicit `A_AUTH=auto`.
 Post-MVP Pi direct routes require verified installed Pi surface, normalized code-and-stub freshness, version gates, provider-specific effort mapping, and no silent portable replacement.
 Post-MVP Pi direct concurrency is serial in Phase 4; parallel Pi direct is Phase 7-only after live proof, while same-account provider-invoke lanes serialize by default.
 Portable execution delegates only validated supported efforts to the existing `bin/provider-invoke --effort` surface and never relies on adapter clamps.
@@ -1631,6 +1641,7 @@ Phase 3C TUI starts only after portable first ship, and Phase 4 Pi direct starts
 Council reports are written only under `./.ai-synthesis/council-sessions/` in the MVP and do not appear in the legacy `/synthesis` session glob.
 Portable CLI invalid roster files fail before execution with the specified exit codes and without writing config or reports.
 Portable roster-file execution is read-only, `--emit-roster` is the canonical write path for non-Pi users, and `--report-strategy` is a validated one-run override.
+Portable `scope: "explicit"` runs make `persist_roster` a no-op, and `--emit-roster` refuses remembered-config paths ending in `ai-synthesis/council/roster.v1.json`.
 Portable CLI stale dogfood roster shapes fail with exit `4` until the user edits the roster into canonical v1.
 The input parser uses the specified path-shaped predicate and treats a single bare non-file token as issue text.
 Zero, one, and two-plus initial survivor paths take explicit tested state transitions.
