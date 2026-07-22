@@ -37,7 +37,7 @@ The current `claude` and `codex` suites include live provider probe or smoke sec
 `tests/conformance/fakes.sh` provides fake CLIs for deterministic auth, timeout, malformed, retry, and argv tests.
 `.gitignore` ignores `/docs/*` except `/docs/public/`, so this plan and later non-public implementation docs must be added with `git add -f`.
 `.pipelane.json` declares `prePrChecks` as `npm run test`, `npm run typecheck`, and `npm run build`, but the inspected installed Pipelane version ignores repo-local config through `readPackageJsonOverlay()`.
-Installed Pipelane `src/operator/commands/pr.ts` runs each effective check through `runShell(context.repoRoot, check, ...)`, and `src/operator/state.ts` implements that as `sh -lc <check>` without `npm ci`.
+Installed Pipelane `src/operator/commands/pr.ts` currently runs `prePrChecks` serially with `for (const check of ...) runShell(...)`, and `src/operator/state.ts` implements each check as `sh -lc <check>` without `npm ci`.
 Installed Pipelane `resolveWorkflowContext(cwd)` loads machine-local config or synthesized defaults from `state.ts defaultWorkflowConfig()`, whose hardcoded `prePrChecks` are the three npm checks; `pipelaneHomeDir()` honors `PIPELANE_HOME`.
 The current machine-local config at `/Users/josephkim/.pipelane/repos/243e6e4a17556acb3aa7996c/config.json` has those same three checks, and the current no-`package.json` checkout is a known red baseline for them.
 The task shell reached the npm registry, but Pipelane has no install or network guarantee, so Phase 1 must make `test`, `typecheck`, and `build` install-aware with package metadata.
@@ -358,7 +358,8 @@ When a project-local config is corrupt, quarantine that project-local file and s
 Resolve the `ai-synthesis` package home from `AISYNTH_HOME` when set, otherwise from the package root derived from `import.meta.url` or the directory containing `skills/council/SKILL.md`.
 Never hardcode Firstmate paths.
 Create config files with mode `0600` where the platform supports it.
-Write config atomically by writing `<file>.tmp.<pid>`, fsyncing the file when practical, and renaming it over the target.
+Before ordinary Pi Run persistence, re-stat and hash the loaded target; if it changed, skip the roster write with a concurrent-write warning rather than clobbering.
+Write accepted config atomically by writing `<file>.tmp.<pid>`, fsyncing when practical, and renaming over the target.
 On corrupt config, preserve the corrupt file as `roster.v1.json.corrupt.<timestamp>` and start from recommendations.
 On unwritable config, allow the current run to proceed after Run but warn that the roster could not be remembered.
 
@@ -366,18 +367,6 @@ Core TypeScript interfaces should be:
 
 ```ts
 export type CouncilEffort = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
-
-export const COUNCIL_EFFORT_ORDER: readonly CouncilEffort[] = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
-
-export const PI_THINKING_LEVEL_TO_COUNCIL_EFFORT = {
-  off: "off",
-  minimal: "minimal",
-  low: "low",
-  medium: "medium",
-  high: "high",
-  xhigh: "xhigh",
-  max: "max",
-} as const satisfies Record<CouncilEffort, CouncilEffort>;
 
 export type CouncilExecutorKind = "pi-complete" | "provider-invoke";
 
@@ -679,6 +668,9 @@ export interface CouncilPhaseLanePlanV1 {
   phaseBudgetMs: number;
 }
 ```
+
+`types.ts` should contain pure types only.
+Runtime values `COUNCIL_EFFORT_ORDER` and `PI_THINKING_LEVEL_TO_COUNCIL_EFFORT` live only in `extensions/council/lib/effort.ts`; other modules import their value or `typeof` type from that file.
 
 A `verified` Pi surface gate artifact must include `verifiedBy` and must not include `reason`.
 A `pending_pi_regeneration` artifact must include `reason` and must not include `verifiedBy`.
@@ -1232,7 +1224,8 @@ Configure `vitest.config.ts` so clean-checkout tests include portable `extension
 `npm run build` should be a TypeScript compile or emit check that does not bundle or execute Pi-coupled modules; if a future bundler is introduced, `@earendil-works/*` imports must remain external and unevaluated in clean checkout.
 Add `scripts/check-council-pi-gate.mjs` in Phase 1 as a dependency-free clean-checkout checker for the committed Pi surface gate artifact, with the static `PI_SURFACE_GATE_FILES_V1` list, `--mark-pending --reason <text>`, and `--strict-verified` modes described above.
 Add `scripts/check-council-release-artifacts.mjs` in Phase 4 so release tags and default-branch refs intended for `pi install git:` fail unless the Pi surface artifact is current and `status: "verified"`.
-`scripts/ensure-node-deps.mjs` should run `npm ci --prefer-offline --no-audit --fund=false` only when the dependency install stamp is missing or stale and should print `DEPENDENCY_INSTALL_UNAVAILABLE` with registry/cache diagnostics when npm registry or cache access is unavailable.
+`scripts/ensure-node-deps.mjs` should use an advisory lock plus atomic stamp, run `npm ci --prefer-offline --no-audit --fund=false` only when the stamp is missing or stale, and fail with `DEPENDENCY_INSTALL_UNAVAILABLE` when required registry/cache access is unavailable.
+For non-Node/doc/skill-only diffs, Track A should provide a path-scoped lifecycle guard that skips dependency install and Node tests only when no tracked Node surface changed, with diagnostics proving the changed-file predicate.
 Add `tests/council/pi-fixtures/types/@earendil-works/` in Phase 1 with minimal type stubs for the Pi imports used by council code and contracts.
 Do not rely on installed Pi peer dependencies for `npm run typecheck` or `npm run build`.
 Modify `tests/conformance/run.sh` in Phase 1 to add a `hermetic` target that excludes live provider probe and smoke sections and runs only unit plus fake-driven Claude and Codex coverage.
@@ -1241,11 +1234,11 @@ Do not modify tracked `.pipelane.json` as the active pre-PR mechanism for the in
 Add `extensions/council/index.ts` in Phase 1 as a self-test-only Pi surface spike or in Phase 3 as the real command registration, and do not expose executable `/council` behavior until the UI and engine dependencies exist.
 `extensions/council/index.ts` should import installed Pi packages only through lazy calls to `extensions/council/lib/pi-runtime.ts`, and it should not be imported by clean-checkout runtime tests.
 Add `extensions/council/cli.ts` in Phase 2 as the Node-backed portable entrypoint that parses inputs, route probes, emit-roster, and the thin engine slice.
-Add `extensions/council/lib/types.ts` in Phase 1 for all interfaces listed in this plan.
+Add `extensions/council/lib/types.ts` in Phase 1 for pure types only.
 Add `extensions/council/lib/runtime.ts` in Phase 2 for the `CouncilRuntimeContractReport` startup check over Node, package root, loader, `bin/provider-invoke --auth`, `bin/provider-invoke --effort`, and `bin/provider-probe --auth`.
 Add `extensions/council/lib/config.ts` in Phase 2 for `getAgentDir()` based paths, non-Pi paths, tolerant config migration, authoritative location scope, quarantine, and atomic writes.
 Add `extensions/council/lib/input.ts` in Phase 2 for `/council` argument parsing, `@plan-file` parsing, safe path resolution, plan loading, issue normalization, immutable plan and issue line numbering, and SHA-256 hashing.
-Add `extensions/council/lib/effort.ts` in Phase 2 for `COUNCIL_EFFORT_ORDER`, `PI_THINKING_LEVEL_TO_COUNCIL_EFFORT`, `normalizePiThinkingLevels`, supported-effort validation, and nearest-effort replacement suggestions.
+Add `extensions/council/lib/effort.ts` in Phase 2 as the only owner of `COUNCIL_EFFORT_ORDER`, `PI_THINKING_LEVEL_TO_COUNCIL_EFFORT`, `normalizePiThinkingLevels`, supported-effort validation, and nearest-effort replacement suggestions.
 Add `extensions/council/lib/routes.ts` in Phase 2 for Pi route discovery, family detection, Claude subscription-only filtering, effort normalization through `extensions/council/lib/effort.ts`, and replacement suggestions.
 Add `extensions/council/lib/validate-roster.ts` in Phase 2 for the exported `validateRoster(input: CouncilValidateRosterInputV1): CouncilRosterValidationResultV1` function used by portable CLI semantic validation, portable `--emit-roster`, Pi UI Run gating, and Phase 5 engine preflight.
 Add `extensions/council/lib/recommend.ts` in Phase 2 for issue-versus-plan roster recommendations and composition feedback.
@@ -1282,7 +1275,7 @@ Add `tests/conformance/council.sh` and source it from `tests/conformance/run.sh`
 Add fake route fixtures under `tests/conformance/fixtures/council/` in Phase 2.
 Add TypeScript unit tests under `tests/council/` across Phases 2 through 5 for input parsing, route reconciliation, effort propagation, phase-role assignment, deterministic synthesis, config persistence, cancellation, and report validation as each module lands.
 Add a Phase 2 `validate-roster` TypeScript unit test that proves the same `validateRoster()` result blocks duplicate ids, unavailable routes, unsupported efforts, fewer than two executable members, missing report strategy, invalid chair strategy, and Pi drift requiring route confirmation.
-Add a Phase 3 UI unit test or fixture that proves the roster editor's Run-disabled state and chair strategy warning render from `CouncilRosterValidationResultV1` rather than recomputing gates in the UI component.
+Add a Phase 3 UI unit test or fixture that proves roster editor Run-disabled state and chair warning render from `CouncilRosterValidationResultV1`, and that roster-editor/composition lines never exceed narrow `render(width)` values with long labels.
 Add a Phase 5 engine preflight unit test that proves the engine calls `validateRoster()` and aborts before model execution when semantic roster validation fails.
 Add a TypeScript portable emit-roster unit test in Phase 2 that proves `--emit-roster` writes a valid `CouncilRosterConfigV1` with two executable members, fresh opaque ids, `scope: "explicit"`, and a valid default report strategy without calling any model executor.
 Add a Phase 2 vertical-slice conformance test that runs `--emit-roster`, then `--roster-file` through two fake `provider-invoke` voices and verifies grounded evidence, deterministic synthesis, report write, and read-only roster input.
@@ -1387,6 +1380,7 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Structured disagreement strategy | `tests/conformance/council.sh` | Report preserves disagreement mechanically without forcing a recommendation and no model executor is called during synthesis. |
 | Portable Claude effort passthrough | Fake Claude argv contract plus TypeScript route unit test | Portable Claude routes expose `low`, `medium`, `high`, `xhigh`, and `max` only with wrapper-contract provenance, each supported value reaches `claude --effort` unchanged, and `off`, `minimal`, or unknown remembered efforts block before invocation. |
 | Pi reload during menu | `tests/conformance/council.sh` or Pi integration test | Menu closes, no config write occurs, and stale context is not used. |
+| Pi TUI render width | Phase 3 UI fixture test | Long roster and composition labels render at narrow widths with every emitted line length `<= width`. |
 | Pi session replacement during run | Pi integration test | Active run aborts and no replacement-session work uses old `ctx`. |
 | Non-Pi fallback | `tests/conformance/council.sh` | Portable skill or `bin/council` reports no native menu and uses JSON roster or clear usage. |
 | Portable invalid roster | `tests/conformance/council.sh` | Parsed but invalid `--roster-file` exits `3` for schema failures or `4` for semantic failures, writes no report, and never falls back silently. |
@@ -1414,16 +1408,16 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Chair authorization normalization | TypeScript report unit test | A chair draft that emits `implementation_authorized: true` or omits the field is normalized with a diagnostic, the final assembled report forces `implementation_authorized: false`, and final schema validation still rejects any post-normalization `true`. |
 | Single-survivor frontmatter | TypeScript report unit test | One-survivor reports emit `report_strategy: single_survivor`, preserve `configured_report_strategy`, and do not claim `chair` when no chair call happened. |
 | Plan immutability | Unit test | Plan file hash and mtime are unchanged after a run. |
-| Atomic persistence | Unit test | Interrupted temp write does not corrupt last good roster. |
+| Atomic persistence | Unit test | Interrupted temp write does not corrupt the last good roster, and changed target hash causes a concurrent-write warning instead of clobber. |
 | Canceled terminal report | TypeScript engine unit test | Cancellation after `persist_roster` writes a minimal `status: canceled` report and cancellation before Run writes no report. |
 | Failed terminal report | TypeScript engine unit test | Failure after execution starts writes `status: failed` with diagnostics and `implementation_authorized: false`. |
 | Council report isolation | Existing suites plus fixture | A council report under `./.ai-synthesis/council-sessions/` does not affect `/synthesis list`, `expand`, `resume`, `rate`, or `revisit`; no `mode: council` file is written under legacy `sessions/`. |
 | Node fallback parity | TypeScript CLI unit test plus `tests/conformance/council.sh` | `bin/council` invokes the shared TypeScript engine and does not contain independent shell synthesis logic. |
 | Missing Node fallback dependency | `tests/conformance/council.sh` | Missing Node or runtime loader prints setup instructions and does not create config or reports. |
 | Hermetic conformance target | CI/local script test | `tests/conformance/run.sh hermetic` passes with real `claude` and `codex` absent from `PATH`, no provider auth, and no model-network access. |
-| Pipelane npm bootstrap | CI/local script test | On a clean checkout with no installed Pi runtime and no `node_modules`, installed Pipelane's effective `npm run test`, `npm run typecheck`, and `npm run build` checks pass through `sh -lc` when the runner has npm registry access or a prewarmed npm cache satisfying `package-lock.json`. |
+| Pipelane npm bootstrap | CI/local script test | Empty-`PIPELANE_HOME` checks use serial `pr.ts` order, `ensure-node-deps` locking prevents overlapping `npm ci`, and effective npm checks pass through `sh -lc`. |
 | Pipelane synthesized defaults | CI/local script test | `scripts/verify-pipelane-prepr.mjs` proves active machine-local checks and isolated empty-`PIPELANE_HOME` synthesized checks match `docs/public/pipelane-prepr-checks.v1.json` and execute green through `sh -lc`. |
-| Npm bootstrap offline miss | Script unit test | With no install stamp, unavailable registry, and cache miss, `scripts/ensure-node-deps.mjs` fails fast with `DEPENDENCY_INSTALL_UNAVAILABLE`, prints registry/cache remediation, and does not skip tests or write a fake stamp. |
+| Npm bootstrap offline miss | Script unit test | With Node-surface changes and no cache, `ensure-node-deps` fails with remediation; with only non-Node/doc/skill changes, scoped bypass skips install with changed-file diagnostics. |
 | Package check activation | CI/local script test | On a clean checkout with no installed Pi runtime, `npm ci --prefer-offline --no-audit --fund=false`, `npm run test`, `npm run typecheck`, and `npm run build` pass in the same commit that introduces `package.json` and install-aware lifecycle scripts. |
 | Provider-present conformance | Local integration check | `tests/conformance/run.sh all` remains available for developer machines with configured providers but is not required by generic Pipelane pre-PR checks. |
 | Pi-present surface gate | Local Pi integration check | In an environment with installed Pi, `npm run verify:pi-surface` and `pi -e ./extensions/council/index.ts /council --self-test` pass before Phase 2 starts. |
