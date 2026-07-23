@@ -30,7 +30,8 @@ Installed Pi's `env-api-keys.js` treats `ANTHROPIC_OAUTH_TOKEN` and `ANTHROPIC_A
 The installed Claude CLI help advertises `--effort <level>` values `(low, medium, high, xhigh, max)`, enabling no-paid help parsing plus fake argv pass-through proof.
 `bin/adapters/codex.sh` maps `max` to `xhigh` for `/synthesis`, but `/council` must not silently clamp remembered effort values.
 `bin/lib/json_extract.py` provides the existing provider-layer tolerant JSON extraction algorithm and minimal JSON Schema subset for model text that is not provider-enforced.
-`bin/lib/json_extract.py` is small enough to port to TS, so `/council` avoids a Python runtime dependency.
+`bin/lib/json_extract.py` is small enough to port to TS, so council-owned structured validation avoids a Python runtime dependency.
+The existing Codex adapter still requires `python3` for Codex output parsing; keeping that Codex-only prerequisite without refactoring the adapter is the captain-chosen MVP contract.
 `bin/lib/frontmatter_set.py` remains for existing rating and revisit flows; council report frontmatter must be written TS-natively in `extensions/council/lib/report.ts`.
 `tests/conformance/run.sh` supports the exact current targets `unit`, `claude`, `codex`, and `all`, with `all` running unit, Claude, and Codex suites.
 The current `claude` and `codex` suites include live provider probe or smoke sections before their fake-only branches, so the current `all` target is not a hermetic clean-runner gate when real provider CLIs or auth are absent.
@@ -243,15 +244,18 @@ A future post-proof portable skill, if shipped after `bin/council`, will use rel
 The shell `bin/council` is only a thin launcher that checks for Node, loads the TS CLI through `jiti` or the chosen runtime loader, and exits with clear setup instructions when dependencies are missing.
 The shell `bin/council-route-probe` is only a thin launcher for `extensions/council/cli.ts route-probe --json`.
 Do not create a second shell implementation of roster validation, phase orchestration, synthesis, cancellation, or reporting.
-The council runtime dependency contract is Node `>=22.19.0` plus the package-local Node dependencies; it must not require `python3` in Pi or portable runtime paths.
+The common council runtime dependency contract is Node `>=22.19.0` plus the package-local Node dependencies.
+Portable Claude routes do not require `python3`; portable Codex routes additionally require `python3` because the existing Codex adapter parses output through `bin/lib/json_extract.py`.
+This Codex-only prerequisite is captain-chosen for MVP, and Phase 2C must not refactor the adapter to remove it.
 `extensions/council/lib/runtime.ts` will verify Node, package root, loader, `provider-invoke --auth`, `provider-invoke --effort`, and planned `provider-probe --auth` before route execution.
+It will check `python3` only when cataloging a Codex provider-invoke route, mark that route unavailable with an actionable Codex prerequisite diagnostic when Python is absent, and leave otherwise executable routes runnable.
 It will also verify `CouncilProviderInvokeToolPolicyV1` before any council model call.
 For Claude routes, that policy requires the inspected adapter argv to include `--tools ""`, `--permission-mode dontAsk`, `--no-session-persistence`, `--strict-mcp-config`, `--setting-sources local`, and `--disable-slash-commands`.
 For Codex routes, the current verified surface is `codex exec -s read-only --json --`, which proves no writes but does not prove no shell/tool execution.
 Codex council routes are unavailable with `tool_policy_unproven` until Phase 2C either adds a real tool-less Codex invocation contract or records captain acceptance of read-only-shell risk for council.
 Captain has not accepted Codex read-only-shell risk; if no tool-less Codex contract lands, gates validate a labeled two-role same-route Claude council.
 Missing startup contract requirements will disable Run in Pi TUI or exit `5` from the portable CLI after printing actionable setup diagnostics.
-Do not add a runtime startup check for `bin/lib/json_extract.py` or `python3`, because council structured validation is TS-native.
+Do not add a common startup check for `bin/lib/json_extract.py` or `python3`, because council structured validation is TS-native; the existing adapter's Python check remains a Codex-route prerequisite.
 The shell interface is:
 
 ```sh
@@ -322,7 +326,9 @@ Use `AISYNTH_HOME` only as a fallback for the existing symlinked skill path or w
 Never hardcode Firstmate paths.
 Create config files with mode `0600` where the platform supports it.
 Before post-MVP Pi Run persistence, re-stat and hash the loaded target; if it changed, skip the roster write with a concurrent-write warning rather than clobbering.
-Before portable remembered-roster persistence, re-stat and hash the portable global target when it existed at load time; if it changed, skip the remembered write with `portable_remembered_concurrent_write` rather than clobbering.
+At config load, record each persistence target as guarded state: either `present` with its byte hash or `absent`.
+Before portable remembered-roster persistence, re-stat the portable global target; if a present target changed or an absent target appeared, skip the remembered write with `portable_remembered_concurrent_write` rather than clobbering.
+The absent guard must use exclusive first creation or an equivalent compare-before-commit primitive so two first runs cannot both commit.
 Write accepted config atomically by writing `<file>.tmp.<pid>`, fsyncing when practical, and renaming over the target.
 On corrupt config, preserve the corrupt file as `roster.v1.json.corrupt.<timestamp>` and start from recommendations.
 On unwritable config, allow the current run to proceed after Run but warn that the roster could not be remembered.
@@ -382,10 +388,15 @@ export interface CouncilRoute {
   providerDisplayName: string;
   supportedEfforts: CouncilEffort[];
   effortSupport: {
-    source: "pi_model_registry" | "provider_invoke_help_cli_help_passthrough" | "provider_adapter_static" | "none";
-    confidence: "model_metadata" | "wrapper_contract" | "static_adapter_contract" | "unavailable";
+    source: "provider_invoke_help_cli_help_passthrough" | "provider_adapter_static" | "none";
+    confidence: "wrapper_contract" | "static_adapter_contract" | "unavailable";
     verifiedBy: string[];
     warning?: string;
+  };
+  structuredOutput: {
+    retryOwner: "adapter" | "engine";
+    maxProviderCalls: 1 | 2;
+    verifiedBy: string[];
   };
   auth: {
     configured: boolean;
@@ -641,7 +652,7 @@ export interface CouncilRunIntentV1 {
 ```
 
 `types.ts` will contain pure types only.
-Runtime values `COUNCIL_EFFORT_ORDER` and `PI_THINKING_LEVEL_TO_COUNCIL_EFFORT` live only in `extensions/council/lib/effort.ts`; other modules import their value or `typeof` type from that file.
+Runtime value `COUNCIL_EFFORT_ORDER` lives only in `extensions/council/lib/effort.ts`; other portable modules import its value or `typeof` type from that file.
 
 Pi direct artifact invariants are deferred companion contracts and are not MVP route-discovery inputs.
 
@@ -868,7 +879,8 @@ Auth naming is fixed: council `--auth-policy subscription-only|default` maps to 
 The implementation must not add `ANTHROPIC_OAUTH_TOKEN` to the auto-mode unset list unless a separate `/synthesis` compatibility review proves that doing so cannot break subscription-auth environments.
 Add a backward-compatible optional `--auth <auto|subscription|apikey>` flag to `bin/provider-probe`.
 Leave `bin/provider-probe claude` defaulting to existing `auto` behavior for `/synthesis` compatibility.
-Phase 2B must prove `provider-probe --auth subscription` plus auto characterization, and Phase 2C must prove `provider-invoke --auth subscription` with fake credentials and a logged-in no-paid live probe.
+Phase 2B must prove `provider-probe --auth subscription` plus auto characterization with a logged-in no-cost live probe.
+Phase 2C must prove `provider-invoke --auth subscription` only with fake credentials and fake provider execution; no paid live provider-invoke smoke is an MVP acceptance gate.
 When only `ANTHROPIC_API_KEY` is present, `/council` will show Claude as unavailable with the reason `Claude API key detected, but council requires subscription auth`.
 When only `ANTHROPIC_OAUTH_TOKEN` is apparent and no first-party Claude CLI session remains after scrubbing, mark Claude unavailable with `claude_subscription_login_required_after_env_token_scrub` and the planned Claude CLI login message.
 MVP Codex routes may use Codex CLI auth and will label billing as subscription when the route evidence proves CLI login.
@@ -1037,8 +1049,11 @@ Each member call will receive a `memberSignal` from a per-member `AbortControlle
 Run-level aborts from Escape, Pi `session_shutdown`, process signals, or the computed whole-run deadline will propagate to every active member controller.
 When the computed whole-run deadline fires, the engine will set abort reason `deadline_exceeded`, abort every active member controller, skip unscheduled remaining phases, and proceed directly to terminal failure reporting.
 Per-member timeout handlers will abort only that member's controller or rely on the executor's per-call `timeoutMs`; they must never abort the run-level controller.
-The provider retry count is `0` for transport-level retries so Pi can surface rate limits instead of waiting silently.
-Malformed structured output will get at most one JSON-only retry per voice inside that voice's `memberTimeoutMs` budget.
+The provider retry count is `0` for transport-level retries so rate limits surface instead of waiting silently.
+Each provider-invoke route declares structured-output retry ownership as `adapter` or `engine` plus a maximum provider-call count.
+The existing Codex adapter declares `adapter`, keeps its single retry when `--schema` is supplied, and disables the engine JSON retry for that invocation.
+Routes whose adapters do not retry structured output declare `engine` and may receive at most one engine-owned JSON-only retry per voice inside that voice's `memberTimeoutMs` budget.
+No structured voice or phase question may make more than two provider calls across adapter and engine retry layers.
 The first attempt and JSON-only retry are not separate whole-run budget units.
 Each attempt receives provider `timeoutMs` equal to remaining `memberTimeoutMs`; no positive budget skips JSON retry and records `retry_skipped_no_member_budget`.
 Structured validation will use `extractModelJson(rawText)`, `validateModelJson(schemaPath, rawText)`, and `validateModelJsonValue(schemaPath, value)` TS helpers.
@@ -1046,7 +1061,7 @@ Chair synthesis must use `extractModelJson`, normalize away any `implementation_
 The helper mirrors `bin/lib/json_extract.py` in TS: whole input, one stripped fence, `512` starts, shortest complete JSON, last satisfying object, object over array, and local schema subset.
 That supported schema subset is `type`, `const`, `enum`, `required`, `properties`, `additionalProperties: false`, and object `items`.
 The council runtime must not spawn `bin/lib/json_extract.py`; parity is enforced with checked-in fixture cases derived from the existing helper.
-The engine will map `no_json` and `schema_invalid` to voice degradation with one JSON-only retry, and will map `validator_usage_error` to a failed voice plus implementation diagnostic unless every initial voice fails.
+The engine will map `no_json` and `schema_invalid` to voice degradation after the route's declared retry owner exhausts at most one JSON-only retry, and will map `validator_usage_error` to a failed voice plus implementation diagnostic unless every initial voice fails.
 Auth, timeout, malformed, budget, rate limit, and invocation failures will degrade that voice rather than crash the whole council.
 If no initial voices succeed, the run will fail with no recommendation.
 If exactly one initial voice succeeds after at least one runtime failure, the report is `degraded`, `not_ready`, and clearly label the output as a single surviving voice, not a valid council recommendation.
@@ -1323,9 +1338,9 @@ Add `extensions/council/lib/runtime.ts` in Phase 2C for the `CouncilRuntimeContr
 Add `extensions/council/lib/config.ts` in Phase 2C for injected `CouncilConfigRootsV1`, non-Pi paths, authoritative location scope, remembered-path guards, stale dogfood quarantine, and atomic writes; it must not import Pi values.
 Add `extensions/council/lib/input.ts` in Phase 2C for `/council` argument parsing, `@plan-file` parsing, safe path resolution, plan loading, issue normalization, immutable plan and issue line numbering, and SHA-256 hashing.
 Add `extensions/council/lib/run-intent.ts` in Phase 2C for portable acknowledgment sidecars, intent expiry, atomic mode `0600` writes, and route-catalog revalidation.
-Add `extensions/council/lib/effort.ts` in Phase 2C as the only owner of `COUNCIL_EFFORT_ORDER`, `PI_THINKING_LEVEL_TO_COUNCIL_EFFORT`, `normalizePiThinkingLevels`, supported-effort validation, and nearest-effort replacement suggestions.
+Add `extensions/council/lib/effort.ts` in Phase 2C as the only owner of portable `COUNCIL_EFFORT_ORDER`, supported-effort validation, and nearest-effort replacement suggestions.
 Add `extensions/council/lib/context-fit.ts` in Phase 2C for `COUNCIL_CONTEXT_RESERVE_VERSION = 1`, fixed prompt reserve constants, and context-window estimates reused by `validateRoster()`.
-Add `extensions/council/lib/routes.ts` in Phase 2C for shared provider-invoke discovery, Pi-visible direct route discovery, family detection, Claude subscription-only filtering, effort normalization, and replacement suggestions.
+Add `extensions/council/lib/routes.ts` in Phase 2C for portable provider-invoke discovery, family detection, Claude subscription-only filtering, portable effort validation, and replacement suggestions.
 Add `extensions/council/lib/validate-roster.ts` in Phase 2C for exported `validateRoster(input: CouncilValidateRosterInputV1): CouncilRosterValidationResultV1` shared by CLI, `--emit-roster`, Pi UI gating, and engine preflight.
 Add `extensions/council/lib/recommend.ts` in Phase 2C for issue-versus-plan roster recommendations and composition feedback.
 Add `extensions/council/lib/emit-roster.ts` in Phase 2C for `--emit-roster`: validate input, discover routes, recommend, mint ids, validate, and write atomically without model calls.
@@ -1369,11 +1384,13 @@ Add a Phase 2C vertical-slice conformance test that runs `--emit-roster`, then `
 Add a portable emit-roster failure test in Phase 2C that proves insufficient routes, existing output without `--overwrite`, and invalid output paths exit before writing partial files.
 Add a portable executor unit test in Phase 2C that supported efforts reach `bin/provider-invoke --effort`, unsupported efforts block, and missing wrapper support fails loudly.
 Add a Phase 2C provider tool-policy test that Claude council calls use the existing no-tools argv and that unproven Codex routes are unavailable with `tool_policy_unproven`.
+Add a Phase 2C Codex runtime prerequisite test that a missing `python3` marks only Codex routes unavailable, emits the setup diagnostic, and leaves other executable routes runnable.
 Add a Phase 2C side-effect canary: snapshot a temp repo, run fake provider write/shell attempts, and prove no file changes without an accepted read-only-shell contract.
 Add a Phase 2C Claude token-only test expecting `claude_subscription_login_required_after_env_token_scrub` with only `ANTHROPIC_OAUTH_TOKEN`, no first-party session, and no API fallback.
 Add `tests/council/portable-imports.test.ts` in Phase 1 to import portable CLI/shared entrypoints under clean-checkout conditions and fail on any attempted runtime load of `@earendil-works/*`.
 Add a clean-checkout import-scan test in Phase 1 that `scripts/check-council-portable-imports.mjs` fails any portable MVP module importing `@earendil-works/*` values.
 Add a Phase 2C scheduler test that two same-account provider-invoke members serialize by default, use separate retry budgets, and get serial deadline budget.
+Add a structured retry-ownership test that the Codex adapter's single `--schema` retry disables the engine retry and that every structured voice or phase question makes at most two total provider calls.
 Add a Phase 2C scheduler test that `maxConcurrencyGlobalCeiling: 4` with one shared provider lane yields `effectiveConcurrency: 1`, serial wall-clock estimates, and serial long-run acknowledgment thresholds.
 Add a portable Claude effort contract test in Phase 2C covering provider-invoke help, real `claude --help`, fake `claude --effort` pass-through, help drift, and blocking for `off`, `minimal`, and unknown values.
 Add a Phase 2C portable Claude env test that parent `ANTHROPIC_BASE_URL` blocks the route, while credentials and unclassified `ANTHROPIC_*` are absent before any allowed probe/invoke.
@@ -1386,7 +1403,7 @@ Add a phase-output validation unit test in Phase 5 that rejects critique, steelm
 Add a readiness unit test in Phase 5 that a load-bearing assumption cited with a nonexistent evidence id or only ungrounded evidence cannot reach `decision_readiness: ready`.
 Add a readiness unit test in Phase 5 that duplicate normalized assumption keys receive suffixes and every load-bearing assumption remains in the catalog.
 Add deterministic catch-all tests that `propose_alternative`, `defer_for_evidence`, and `needs_more_evidence` pluralities produce the no-recommendation sentinel.
-Add an engine retry-budget unit test in Phase 5 that proves a malformed first attempt and JSON-only retry share one `memberTimeoutMs` budget and cannot extend the whole-run deadline.
+Add an engine retry-budget unit test in Phase 5 that proves an engine-owned malformed first attempt and JSON-only retry share one `memberTimeoutMs` budget and cannot extend the whole-run deadline.
 Add a Phase 5 synthesis-contract test that all strategies consume brief plus adversary outputs, preserve phase findings, and never read hidden host-model state.
 Add a Phase 5 deterministic readiness test proving two agreeing same-route or same-lane voices cannot emit `decision_readiness: ready` and must record the correlation cap.
 Add a single-survivor input contract unit test in Phase 5 that proves `single_survivor_report` consumes only the surviving voice and failed-member diagnostics, never `CouncilSynthesisBriefV1` or `CouncilAdversaryOutputV1[]`.
@@ -1394,7 +1411,7 @@ Add a Phase 5 deadline-precedence test that a run-level deadline during `initial
 Add a Phase 5 usefulness-gate comparison test that same-route samples fail with `correlated_no_added_value` unless the council report uses a material dissent, evidence, assumption, or next-action delta absent from the solo baseline.
 Add a Phase 5 correlated-exit test proving two failed same-route revision attempts plus no independent authorized route produce `same_route_added_value: not_demonstrated`, cap readiness at `conditional`, disclose the solo-baseline miss, and still allow first ship.
 Update `bin/README.md` in Phase 2B or Phase 2C with the council route probe and subscription-only Claude behavior matching the code that has landed.
-Update `README.md` in Phase 6 with optional Pi package install instructions and a short warning that the native `/council` menu is Pi-only.
+Update `README.md` in Phase 6 with portable `bin/council` installation and usage only; Pi package installation and native-menu documentation remain deferred to the governed companion.
 Force-add any non-public docs under `docs/` because `.gitignore` intentionally ignores them.
 
 ## Test Matrix
@@ -1470,7 +1487,7 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Portable emit-roster remembered path guard | TS CLI unit test | `--emit-roster` refuses resolved canonical remembered paths, including `.ai-synthesis/council/roster.v1.json` and `AISYNTH_CONFIG_HOME` overrides, with exit `2`. |
 | Portable roster-file read-only | TS CLI unit test | Successful `--roster-file` execution writes no changes to the supplied file, even when canonical ids, scope, or timestamps differ in memory. |
 | Portable remembered persistence | TS engine/config unit test | A confirmed `--roster-file` run writes the canonical roster to `${AISYNTH_CONFIG_HOME:-$HOME/.ai-synthesis}/council/roster.v1.json`, leaves the supplied file untouched, and later runs without `--roster-file` load that remembered roster. |
-| Portable remembered concurrency | TS config unit test | If the remembered target changed after load, persistence skips with `portable_remembered_concurrent_write` and execution proceeds with `remembered_roster_written: false`. |
+| Portable remembered concurrency | TS config unit test | If the remembered target changed after load or appeared after guarded absence was recorded, persistence skips with `portable_remembered_concurrent_write`, two first runs cannot overwrite each other, and execution proceeds with `remembered_roster_written: false`. |
 | Portable report-strategy override | TS CLI unit test plus conformance | `--report-strategy` is a one-run override, validates chair executability, records source, and does not rewrite the roster. |
 | Claude subscription-only | `tests/conformance/council.sh` | API-key-only Claude is unavailable for council but existing `/synthesis` probe default remains auto. |
 | Claude mixed credentials | TS executor unit test plus fake Claude CLI | OAuth/subscription stays subscription-only with mixed env credentials, and child env scrubs all `ANTHROPIC_*` names for explicit council subscription calls. |
@@ -1479,7 +1496,7 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Claude council subscription sanitizer | Fake Claude env test | Parent `ANTHROPIC_BASE_URL` blocks council-marked subscription routes with `claude_subscription_custom_endpoint_not_allowed`; otherwise `AISYNTH_COUNCIL=1 --auth subscription` scrubs Anthropic env before fake logged-in success. |
 | Claude non-council subscription compatibility | Fake Claude env test | `bin/provider-invoke claude --auth subscription` without `AISYNTH_COUNCIL=1` keeps pre-existing `ANTHROPIC_BASE_URL` behavior and does not run the council scrub. |
 | Claude token-only subscription env | Fake Claude env test | With only `ANTHROPIC_OAUTH_TOKEN` and no first-party login, discovery returns `claude_subscription_login_required_after_env_token_scrub` with no API fallback. |
-| Claude no-cost subscription probe | Phase 2B/2C local check | Logged-in Claude CLI makes `provider-probe` and `provider-invoke --auth subscription` succeed with scrubbed env and no paid probe call. |
+| Claude no-cost subscription probe | Phase 2B local check plus Phase 2C fake invoke | A logged-in Claude CLI makes `provider-probe --auth subscription` succeed after scrubbed-env setup without a model call; fake `provider-invoke --auth subscription` coverage proves invocation behavior with no paid live smoke. |
 | Provider-invoke auth surface | TS executor test plus shell fixture | The executor verifies `bin/provider-invoke --auth`, passes subscription for Claude, and fails if the flag disappears. |
 | Provider-probe auth surface | TS runtime unit test plus shell fixture | Startup verifies planned `provider-probe --auth` before probing and fails if the flag disappears. |
 | Provider-invoke tool policy | Fake argv and side-effect canary tests | Claude routes prove no-tools argv, unproven Codex routes stay unavailable, and fake write/shell attempts leave the repo unchanged. |
@@ -1488,6 +1505,7 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Stable route IDs | TS route unit test | Display/auth/cost changes do not change `routeId`; provider-invoke defaults use `adapter-default`; tuple fallback never maps that sentinel to Pi model routes. |
 | Adapter-default execution identity | TS executor/report test | Reports preserve `adapter-default`, record resolved models when present, and mark unknown defaults without counting them as family diversity. |
 | Structured output validation | Unit test with fixtures | TS-native validation rejects `ok:false`, extra keys, wrong types, and prose-only responses, then retries once inside the same member budget. |
+| Structured retry ownership | TS executor test plus Codex fake call counter | Codex declares adapter ownership and keeps its single `--schema` retry, the engine does not retry that invocation, and total provider calls are at most two per structured voice or phase question. |
 | JSON extractor parity | TS validator fixture test | TS validation matches extractor fixtures for JSON, fences, arrays, schema failures, prose-only text, and scan caps without Python. |
 | Per-voice validation mapping | TS engine unit test | `validateModelJson` returns `kind`, malformed voice output degrades only that member, and validator failures never become portable CLI process exit codes. |
 | Engine-owned grounding | TS evidence-ledger unit test | Valid plan/issue locators ground evidence; theory, prior knowledge, malformed locators, and model `grounded` claims do not. |
@@ -1500,7 +1518,7 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Plan snapshot TOCTOU | TS input/engine unit test | A changed plan before Run requires Accept Frozen, Re-snapshot, or Cancel; portable CLI prints the required `--accept-stale-input-sha` and proceeds only when it matches. |
 | Issue snapshot acknowledgment | TS input/CLI unit test | Issue input is normalized, line-numbered, hashed, and frozen in `validate_input`; `--ack-long-run` and `CouncilRunIntentV1.inputSnapshot` exist before `prepare_run_context`. |
 | Portable run intent | TS CLI/config unit test | A blocking portable exit writes a secret-free intent sidecar, re-invocation with `--intent` reuses frozen values, changed route availability invalidates it, and expiry cleans it up. |
-| Atomic persistence | Unit test | Interrupted temp write does not corrupt the last good roster, and changed target hash causes a concurrent-write warning instead of clobber. |
+| Atomic persistence | Unit test | Interrupted temp write does not corrupt the last good roster; a changed target hash or a target appearing after guarded absence causes a concurrent-write warning instead of clobber. |
 | Canceled terminal report | TS engine unit test | Cancellation after `persist_roster` validates against `schemas/council-terminal-report.json`; cancellation before Run writes no report. |
 | Failed terminal report | TS engine unit test | Failure after execution starts validates a terminal report with diagnostics and `implementation_authorized: false`. |
 | Council report isolation | Existing suites plus fixture | Council reports stay under `./.ai-synthesis/council-sessions/` and do not affect legacy session commands. |
@@ -1571,7 +1589,7 @@ Claude council routes never use Anthropic API credentials; explicit subscription
 Post-MVP Pi direct route, surface, drift, effort, and concurrency acceptance is deferred companion scope.
 Same-account provider-invoke lanes serialize by default in the MVP, and the user-facing estimate is based on `CouncilMvpLanePlanV1.effectiveConcurrency`.
 Portable execution delegates only validated supported efforts to the existing `bin/provider-invoke --effort` surface and never relies on adapter clamps.
-Council structured validation is TS-native and does not require `python3` or spawn `bin/lib/json_extract.py` at runtime.
+Council structured validation is TS-native and does not require `python3` or spawn `bin/lib/json_extract.py` at runtime; the unchanged Codex adapter retains its captain-chosen Codex-only Python prerequisite.
 Only the engine may set ledger `grounded`; model outputs cannot self-certify grounding, and every critique, steelman, or adversary `evidenceIds` reference must resolve to the ledger.
 Decision readiness `ready` requires grounded ledger evidence, not model-provided locator prose or fabricated ids.
 Issue input is normalized, line-numbered, and prompt-addressable as immutable `issue:Lx-Ly` evidence so issue councils can produce grounded ledger evidence.
@@ -1607,7 +1625,7 @@ Single-survivor frontmatter sets `report_strategy_effective: single_survivor_mec
 The whole-run deadline is computed from scheduled phase budgets and cannot abort before valid scheduled work exhausts its budget.
 Runs whose computed deadline or cost estimate exceeds the configured acknowledgment thresholds require an explicit Run-time acknowledgment before roster persistence.
 The MVP deadline, scheduler, long-run acknowledgment, and diagnostics share `CouncilMvpLanePlanV1`; deferred Pi-direct work must extend that plan only in companion-governed post-MVP work.
-Each malformed-output JSON retry shares the member's `memberTimeoutMs` budget and cannot extend either the member timeout or the whole-run deadline.
+Each malformed-output JSON retry is owned by either the adapter or engine, shares the member's `memberTimeoutMs` budget, cannot extend either deadline, and never raises the total above two provider calls per structured voice or phase question.
 When the whole-run deadline expires, active calls abort, the terminal report records `deadline_exceeded`, and that failure beats single-survivor reporting.
 Issue-input position catalogs are generated by the specified marker-token grammar and covered by fixtures for ordinary prose, explicit alternatives, and checklist bullets.
 Usefulness gates are pass/fail only on objective scorecard fields; maintainer notes are recorded evidence, not gate operands.
@@ -1650,7 +1668,7 @@ Record recommendation edits, canceled menus, failed runs, and degradation counts
 
 ## Documentation
 
-Update `README.md` with portable-first `/council` install, MVP authorized-route requirements, Pi-registry-only exclusion, install/remove commands, report retention, and Node and no-Python prerequisites.
+Update `README.md` with portable-first `bin/council` install, MVP authorized-route requirements, Pi-registry-only exclusion, install/remove commands, report retention, Node requirements, and the captain-chosen Codex-only `python3` prerequisite.
 Document Pipelane gates, per-home recovery, homes/config scope, stale dogfood quarantine, future-version backup, and atomic writes.
 Document that portable and Pi roster stores are separate, with one-way first-run Pi draft seeding from portable global config only when no Pi roster exists.
 Document invocation examples, two-member minimum, non-gating family diversity, chair identity, shared `validateRoster()`, context-fit diagnostics, effort/routing provenance, billing labels, and no paid probes.

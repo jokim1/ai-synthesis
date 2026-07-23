@@ -16,6 +16,7 @@ No Phase 3C, Phase 4, Phase 7, or `skills/council/SKILL.md` work starts until po
 ## Phase 3C Pi Package And TUI
 
 Phase 3C adds the Pi `pi` manifest, Pi peers, repo-local Pi type stubs, `.gitattributes` normalization for Pi gate files, `extensions/council/index.ts`, `extensions/council/lib/pi-runtime.ts`, and Pi UI files.
+Phase 3C adds the Pi package install and removal instructions plus the native `/council` menu warning to `README.md`; none of those instructions are first-MVP Phase 6 work.
 Pi value imports must be lazy and isolated behind `extensions/council/lib/pi-runtime.ts`.
 `readPiMvpRuntimeGate()` must verify command registration, `ctx.ui.custom`, mode/cwd, trust, `getAgentDir`, `CONFIG_DIR_NAME`, model registry access, and `session_shutdown` before registration or render.
 If installed Pi is unsupported or lacks required surfaces, package load must not crash.
@@ -29,7 +30,10 @@ Pi must never import an explicit portable `--roster-file` and must never mutate 
 ## Phase 4 Pi Direct Execution
 
 Phase 4 adds `extensions/council/lib/executors/pi-complete.ts` only after a verified installed Pi surface artifact exists.
+Phase 4 adds `PI_THINKING_LEVEL_TO_COUNCIL_EFFORT` and `normalizePiThinkingLevels` in a Pi-only module while reusing the portable `COUNCIL_EFFORT_ORDER`, supported-effort validation, and replacement suggestions.
+Phase 4 extends the portable effort-support source and confidence types with Pi model-registry metadata without adding those variants to first-MVP interfaces.
 Pi route discovery uses `ctx.modelRegistry.refresh()`, `getAll()`, `getAvailable()`, `hasConfiguredAuth()`, `getProviderAuthStatus()`, and `isUsingOAuth()`.
+Pi-visible direct-route discovery is implemented only in this companion phase and does not enter the portable MVP route catalog.
 Pi execution resolves `ctx.modelRegistry.getApiKeyAndHeaders(model)` only after Run and immediately before a selected route executes.
 Resolving keys or headers is not a paid probe call, but it is sensitive and may execute user-configured commands.
 Pi Claude routes require OAuth or another Pi subscription route and must never run from Anthropic API-key-only auth.
