@@ -44,29 +44,7 @@ Machine-local config `/Users/josephkim/.pipelane/repos/243e6e4a17556acb3aa7996c/
 Because `runShell()` throws on failed `prePrChecks`, those checks block if installed Pipelane `/pr` is the merge path; Track A follows only after that path is confirmed.
 The task shell reached npm, but Pipelane has no install or network guarantee, so Phase 1 must make `test`, `typecheck`, and `build` install-aware.
 Inspected Pipelane source version is `0.2.0`; treat observed private execution shape as version-pinned, not an API.
-Pi documentation under `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/` supports the required optional package path.
-Verified Pi surface: `@earendil-works/pi-coding-agent` `0.81.1`, nested `pi-ai` and `pi-tui` `0.81.1`, Node `>=22.19.0`.
-Installed Pi `0.81.1` clones git packages and runs `npm install --omit=dev`, so `/council` must not use `prepack` or `prepare` as an install gate.
-Pi package resources use a `package.json` `pi` key or conventional `extensions/`, `skills/`, `prompts/`, and `themes/` directories.
-Pi extension commands use `pi.registerCommand(name, { description, handler, getArgumentCompletions })` and outrank input events, skills, and prompts.
-Native Pi `/council ...` will therefore be an extension command.
-Pi native UI belongs behind `ctx.mode === "tui"` because `ctx.ui.custom()` is not available in RPC, JSON, or print modes.
-Pi provides `ctx.ui.custom()`, `SelectList`, `SettingsList`, `BorderedLoader`, `DynamicBorder`, `keyHint`, `getSettingsListTheme()`, and width utilities.
-Pi requires custom component `render(width)` output lines not to exceed `width`.
-Pi state that will survive reloads inside a session can be appended with `pi.appendEntry(customType, data)` and restored by scanning `ctx.sessionManager.getBranch()`.
-Pi user-global config locations must be derived with `getAgentDir()` and project config directory names with `CONFIG_DIR_NAME`, not hardcoded as `~/.pi/agent` or `.pi`.
-Pi model discovery uses `ctx.modelRegistry.getAll()`, `getAvailable()`, `find()`, `hasConfiguredAuth()`, `getProviderAuthStatus()`, `getApiKeyAndHeaders()`, and `isUsingOAuth()`.
-Pi model effort support is exposed by `getSupportedThinkingLevels(model)` from `@earendil-works/pi-ai`.
-Installed Pi `0.81.1` defines CLI thinking levels as `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, and `max`.
-Installed `@earendil-works/pi-ai` `0.81.1` defines `ModelThinkingLevel`, returns `["off"]` for non-reasoning models, filters levels, and has `clampThinkingLevel()`.
-Council must normalize thinking levels itself and never clamp remembered efforts.
-Pi direct model execution can use `complete(model, context, options)` from `@earendil-works/pi-ai/compat` after resolving auth with `ctx.modelRegistry.getApiKeyAndHeaders(model)`.
-The installed `complete()` declaration accepts open `ProviderStreamOptions`, so compiling `complete(..., { reasoningEffort })` does not prove a provider honors that option.
-Installed Pi option types expose `reasoningEffort` for OpenAI Responses/Codex and `effort` for Anthropic, so the Pi executor needs provider/API-specific effort mapping.
-Pi session replacement and reload invalidate old contexts, so council must abort active work on `session_shutdown` and use replacement contexts in `withSession`.
-The installed Pi extension loader in `dist/core/extensions/loader.js` creates `jiti` with Pi-owned aliases for `@earendil-works/*` packages rather than relying on the caller repository's `tsconfig.json` path mappings.
-A Pi `0.81.1` loader probe with fake `tsconfig` aliases still resolved installed modules and `.pi`, so `pi -e` did not let repo-local stubs shadow Pi.
-The `pi -e` self-test remains a hard gate because an installed Pi loader or packaging behavior change could still alter runtime resolution later.
+The governed companion owns the [installed Pi 0.81.1 grounding](council-command-post-mvp-pi-companion.md#installed-pi-0811-grounding) used by deferred Pi package, TUI, and direct-execution work.
 
 ## Goals
 
@@ -911,7 +889,7 @@ When only `ANTHROPIC_API_KEY` is present, `/council` will show Claude as unavail
 When only `ANTHROPIC_OAUTH_TOKEN` is apparent and no first-party Claude CLI session remains after scrubbing, mark Claude unavailable with `claude_subscription_login_required_after_env_token_scrub` and the planned Claude CLI login message.
 MVP Codex routes may use Codex CLI auth and will label billing as subscription when the route evidence proves CLI login.
 Post-MVP Pi may add registry routes as companion-governed availability rows with honest billing labels and cost estimates.
-Local model routes with dummy keys is labeled local or unknown rather than free unless the provider metadata clearly says zero cost.
+Local model routes with dummy keys are labeled local or unknown rather than free unless the provider metadata clearly says zero cost.
 Route family is derived deterministically from provider and model identifiers.
 Examples include `claude`, `openai`, `codex`, `gemini`, `mistral`, `deepseek`, `qwen`, `kimi`, `grok`, `local`, and `unknown`.
 Family derivation is advisory only.
@@ -1030,9 +1008,9 @@ If no successful non-chair steelman exists, `steelman` fallback will select the 
 `adversary` will run all successful members with role `adversary`; if none exist, select a successful non-chair `risk-critic`, otherwise the highest-effort non-chair successful member.
 `chair` is a report strategy role and does not satisfy critique, steelman, or adversary selection.
 Phase fallback selection must be recorded in the report diagnostics so users can see when a member was reused outside its preferred role.
-If a selected later-phase member fails, that phase degrades; the engine never silently substitute an unrecorded member after the phase starts.
+If a selected later-phase member fails, that phase degrades; the engine never silently substitutes an unrecorded member after the phase starts.
 
-Allowed transitions is:
+Allowed transitions are:
 
 ```text
 idle -> parse_input -> validate_input -> discover_routes -> load_roster -> recommend_roster -> edit_roster
@@ -1100,12 +1078,12 @@ Adapter-owned retries receive the original adapter timeout internally, but the o
 Structured validation will use `extractModelJson(rawText)`, `validateModelJson(schemaPath, rawText)`, and `validateModelJsonValue(schemaPath, value)` TS helpers.
 Chair synthesis must use `extractModelJson`, normalize away any `implementation_authorized`, then call `validateModelJsonValue`; raw strict validation is used only after normalization.
 The helper mirrors `bin/lib/json_extract.py` in TS: whole input, one stripped fence, `512` starts, shortest complete JSON, last satisfying object, object over array, and local schema subset.
-That supported schema subset is `type`, `const`, `enum`, `required`, `properties`, `additionalProperties: false`, and object `items`.
+That supported schema subset is `type`, `const`, `enum`, `required`, `properties`, `additionalProperties: false`, and array `items`.
 The council runtime must not spawn `bin/lib/json_extract.py`; parity is enforced with checked-in fixture cases derived from the existing helper.
 The engine will map `no_json` and `schema_invalid` to voice degradation after the route's declared retry owner exhausts at most one JSON-only retry, and will map `validator_usage_error` to a failed voice plus implementation diagnostic unless every initial voice fails.
 Auth, timeout, malformed, budget, rate limit, and invocation failures will degrade that voice rather than crash the whole council.
 If no initial voices succeed, the run will fail with no recommendation.
-If exactly one initial voice succeeds after at least one runtime failure, the report is `degraded`, `not_ready`, and clearly label the output as a single surviving voice, not a valid council recommendation.
+If exactly one initial voice succeeds after at least one runtime failure, the report is `degraded` and `not_ready` and clearly labels the output as a single surviving voice, not a valid council recommendation.
 If at least two initial voices succeed, the report may complete as a council even when later critique, steelman, adversary, or chair phases degrade.
 A designated chair must be a roster entry with `role: "chair"` and must also run an independent initial analysis before the synthesis phase.
 A deterministic strategy must not call any model for synthesis.
@@ -1142,15 +1120,15 @@ A structured disagreement strategy will group exact `canonicalPositionId` values
 Structured disagreement reports will populate `phase_findings.critique`, `phase_findings.steelman`, and `phase_findings.adversary` directly from the successful phase outputs.
 If the user wants a model-written synthesis, the only MVP path is a `chair` report strategy whose `chairEntryId` references an enabled executable roster member with `role: "chair"`.
 A chair prompt will receive only immutable input, roster metadata, position catalog, ledger, successful phase outputs, adversary outputs, and `CouncilSynthesisBriefV1`.
-A chair synthesis prompt never receive hidden host-model context, stale UI state, unvalidated failed-member prose, raw provider credentials, or mutable config files.
+A chair synthesis prompt never receives hidden host-model context, stale UI state, unvalidated failed-member prose, raw provider credentials, or mutable config files.
 A chair-written draft will still preserve the report's `phase_findings` sections so critique, steelman, and adversary outputs remain visible even when the chair writes the narrative synthesis.
 The current Pi host model must never be used for a model call unless its provider/model route is present as an enabled roster entry.
 The engine will create one `runId` per Run using timestamp, input hash, and random suffix.
-The Run button iscome inactive after `confirm_run` to prevent duplicate starts.
+The Run button becomes inactive after `confirm_run` to prevent duplicate starts.
 Escape, Pi `session_shutdown`, process signals in the portable CLI, and the computed whole-run deadline will abort the per-run `AbortController`.
 Member timeout handlers will never abort the per-run `AbortController`.
 The computed whole-run deadline is a failure, not a user cancellation, so reports written after that abort will use `status: failed` and `reason: deadline_exceeded`.
-Report writes is idempotent by writing only to the `runId` report path.
+Report writes are idempotent because each run writes only to its `runId` report path.
 If a report path already exists for a `runId`, the writer will fail rather than overwrite.
 
 ## Failure Modes And Recovery
@@ -1160,8 +1138,8 @@ Untrusted or out-of-root plan path will fail before route discovery unless the P
 Multiple explicit plan files will fail with a one-plan-at-a-time message.
 Oversized plan files are rejected above a default `512 KiB` limit, with a config option to raise the limit to `2 MiB`.
 Binary-looking plan files are rejected by checking for NUL bytes.
-Corrupt roster config is quarantined and recommendations is used.
-Unwritable roster config will warn and allow one current run, but the next invocation never pretend the roster was remembered.
+Corrupt roster config is quarantined and recommendations are used.
+Unwritable roster config will warn and allow one current run, but the next invocation never pretends the roster was remembered.
 Portable CLI roster JSON parse or schema failure will exit `3` before route discovery when possible, write no report, and print the offending path plus schema error summary.
 Portable roster semantic failure exits `4`, writes no report, and lists blockers including unsupported efforts, unavailable routes, invalid member count, strategy errors, legacy `chair`, and stale dogfood shape.
 Portable CLI `--json` validation failures will emit `{ "ok": false, "status": "validation_failed", "exitCode": 3 | 4, "diagnostics": [...] }` and never include secrets or raw auth headers.
@@ -1189,7 +1167,7 @@ If cancellation or failure happens after `persist_roster`, `write_terminal_repor
 If the computed whole-run deadline fires after `persist_roster`, `write_terminal_report` will write `status: failed`, `reason: deadline_exceeded`, and the aborted member diagnostics under that terminal schema.
 Pi `/reload`, `/new`, `/resume`, `/fork`, `/clone`, or process shutdown during a run will trigger `session_shutdown`, abort active work, and avoid using stale `ctx` objects.
 After reload, the next `/council` invocation will resolve the active config scope again and load the last confirmed roster from that scope, not from stale memory.
-Session replacement never resume a half-finished council automatically.
+Session replacement never resumes a half-finished council automatically.
 
 ## Security And Privacy
 
@@ -1199,8 +1177,8 @@ The extension must read a plan file once during `validate_input`, hash those exa
 If the source file changes before Run, the council still reviews the frozen snapshot and records the post-snapshot change as diagnostics rather than mixing validation bytes with execution bytes.
 The extension must normalize issue text once, hash it, and pass immutable line-numbered issue text to model calls.
 The extension will include `input_sha256`, input kind, and file metadata when present in the report so the user can tell what was reviewed.
-All file paths is resolved with `realpath`.
-Default allowed roots is the current `ctx.cwd` and any configured `council.allowedRoots`.
+All file paths are resolved with `realpath`.
+Default allowed roots are the current `ctx.cwd` and any configured `council.allowedRoots`.
 Symlinks escaping allowed roots are rejected.
 Relative paths will resolve against `ctx.cwd`.
 Absolute paths outside allowed roots are rejected unless `council.allowedRoots` permits them.
@@ -1213,7 +1191,7 @@ Model prompts must state that council completion does not authorize implementati
 Claude council routes must not use Anthropic API keys.
 Portable Claude council children must receive an environment with Anthropic credential variables and unclassified `ANTHROPIC_*` variables removed before either `bin/provider-probe` or `bin/provider-invoke` starts.
 Only explicitly allowlisted verified non-credential Anthropic variables may remain in those child environments.
-Other provider auth paths is labeled honestly as subscription, OAuth, API key, gateway billing, local, or unknown.
+Other provider auth paths are labeled honestly as subscription, OAuth, API key, gateway billing, local, or unknown.
 API keys and headers must never be logged, stored in reports, stored in roster config, or included in custom Pi entries.
 The existing `aisynth_redact` behavior in `bin/lib/common.sh` will remain in the portable provider-invoke executor.
 Post-MVP Pi direct redaction requirements live in the companion.
@@ -1346,7 +1324,7 @@ When Track A preconditions pass, keep the no-package fallback to a short conting
 Add `docs/public/council-usefulness-set.v1.json` and `docs/public/council-usefulness-scorecard.v1.json` before Track A and reuse both for the Phase 2C and Phase 5 gates.
 Add `docs/public/council-prompt-reserve-prototype.v1.json` from the toolchain-free probe before Track A, and derive Phase 2C context reserve constants from near-final prompt drafts plus explicit headroom.
 Add `docs/public/council-claude-tool-policy.v1.json` from the toolchain-free probe before Track A, recording the current adapter argv proof for all six no-tools flags.
-Add `docs/public/council-mvp-symbols.v1.json` in Phase 2C and test that Phase 2C/3C exports only MVP symbols.
+Add `docs/public/council-mvp-symbols.v1.json` in Phase 2C and test that Phase 2C and Phase 5 export only MVP symbols.
 Add `scripts/check-council-governance.mjs` in Phase 2C to validate the MVP symbols manifest, portable import boundaries, and exported surface together.
 `scripts/check-council-plan-split.mjs` will hash this plan, parse the manifest, and verify subplan frontmatter, anchors, snippets, and exact required/forbidden decision strings.
 Configure `vitest.config.ts` so clean-checkout tests include portable `extensions/council/lib/**` and exclude Pi-coupled entrypoint, UI, and executors unless Pi-present tests opt in.

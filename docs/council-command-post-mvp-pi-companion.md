@@ -13,6 +13,32 @@ No Phase 3C, Phase 4, Phase 7, or `skills/council/SKILL.md` work starts until po
 | Phase 7 parallel Pi direct proof | Deferred | Phase 4 serial Pi direct accepted and a live no-secret effort proof succeeds. |
 | `skills/council/SKILL.md` | Deferred | Pinned Claude Code nested-skill smoke test proves coexistence with symlinked `/synthesis`. |
 
+## Installed Pi 0.81.1 Grounding
+
+Pi documentation under `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/` supports the required optional package path.
+The verified surface is `@earendil-works/pi-coding-agent` `0.81.1`, nested `pi-ai` and `pi-tui` `0.81.1`, and Node `>=22.19.0`.
+Installed Pi clones git packages and runs `npm install --omit=dev`, so `/council` must not use `prepack` or `prepare` as an install gate.
+Pi package resources use a `package.json` `pi` key or conventional `extensions/`, `skills/`, `prompts/`, and `themes/` directories.
+Pi extension commands use `pi.registerCommand(name, { description, handler, getArgumentCompletions })` and outrank input events, skills, and prompts.
+Native Pi `/council ...` will therefore be an extension command.
+Pi native UI belongs behind `ctx.mode === "tui"` because `ctx.ui.custom()` is not available in RPC, JSON, or print modes.
+Pi provides `ctx.ui.custom()`, `SelectList`, `SettingsList`, `BorderedLoader`, `DynamicBorder`, `keyHint`, `getSettingsListTheme()`, and width utilities.
+Pi requires custom component `render(width)` output lines not to exceed `width`.
+Pi state that will survive reloads inside a session can be appended with `pi.appendEntry(customType, data)` and restored by scanning `ctx.sessionManager.getBranch()`.
+Pi user-global config locations must be derived with `getAgentDir()` and project config directory names with `CONFIG_DIR_NAME`, not hardcoded as `~/.pi/agent` or `.pi`.
+Pi model discovery uses `ctx.modelRegistry.getAll()`, `getAvailable()`, `find()`, `hasConfiguredAuth()`, `getProviderAuthStatus()`, `getApiKeyAndHeaders()`, and `isUsingOAuth()`.
+Pi model effort support is exposed by `getSupportedThinkingLevels(model)` from `@earendil-works/pi-ai`.
+Pi defines CLI thinking levels as `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, and `max`.
+Installed `@earendil-works/pi-ai` defines `ModelThinkingLevel`, returns `["off"]` for non-reasoning models, filters levels, and has `clampThinkingLevel()`.
+Council must normalize thinking levels itself and never clamp remembered efforts.
+Pi direct model execution can use `complete(model, context, options)` from `@earendil-works/pi-ai/compat` after resolving auth with `ctx.modelRegistry.getApiKeyAndHeaders(model)`.
+The installed `complete()` declaration accepts open `ProviderStreamOptions`, so compiling `complete(..., { reasoningEffort })` does not prove a provider honors that option.
+Installed Pi option types expose `reasoningEffort` for OpenAI Responses/Codex and `effort` for Anthropic, so the Pi executor needs provider/API-specific effort mapping.
+Pi session replacement and reload invalidate old contexts, so council must abort active work on `session_shutdown` and use replacement contexts in `withSession`.
+The installed Pi extension loader in `dist/core/extensions/loader.js` creates `jiti` with Pi-owned aliases for `@earendil-works/*` packages rather than relying on the caller repository's `tsconfig.json` path mappings.
+A loader probe with fake `tsconfig` aliases still resolved installed modules and `.pi`, so `pi -e` did not let repo-local stubs shadow Pi.
+The `pi -e` self-test remains a hard gate because an installed Pi loader or packaging behavior change could still alter runtime resolution later.
+
 ## Phase 3C Pi Package And TUI
 
 Phase 3C adds the Pi `pi` manifest, Pi peers, repo-local Pi type stubs, `.gitattributes` normalization for Pi gate files, `extensions/council/index.ts`, `extensions/council/lib/pi-runtime.ts`, and Pi UI files.
@@ -57,7 +83,7 @@ Pending artifacts omit installed Pi claims and include a reason.
 Out-of-range Pi versions disable Pi direct with `pi_runtime_version_mismatch`.
 In-range but non-exact versions require no-model sanity before enabling Pi direct.
 Missing, pending, stale, source-hash-mismatched, out-of-range, or sanity-failed artifacts keep Pi direct routes visible but unavailable and must never call `complete()`.
-Pi direct support is per minor line; the refreshed installed surface is Pi `0.81.1`, day one targets `0.81.x`, and each new minor needs a regenerated verified artifact before support is claimed.
+Pi direct support is per minor line; day one targets the grounded `0.81.x` line above, and each new minor needs a regenerated verified artifact before support is claimed.
 When drift disables a selected route, suggestions may include only verified authorized portable replacements and must never rewrite the selection silently.
 
 ## Phase 7 Parallel Pi Direct Proof
