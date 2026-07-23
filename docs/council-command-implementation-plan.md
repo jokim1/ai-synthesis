@@ -238,7 +238,7 @@ If `NoPackageTrackCPlanV1` cannot run because the Node type-strip capability pro
 If council stalls after `package.json`, rollback removes Phase 2+ feature files but keeps the Phase 1 package baseline green.
 Full abandonment may remove Track A only when the ai-synthesis maintainer applies the tracked no-package recovery recipe or keeps an equivalent tracked replacement gate green.
 Users who only symlink the existing Claude Code `/synthesis` skill are unaffected at runtime because `SKILL.md` and the provider shell scripts must not require Node for existing flows.
-The portable skill will use relative paths from its `SKILL.md` and never require Pi APIs.
+A future post-proof portable skill, if shipped after `bin/council`, will use relative paths from its `SKILL.md` and never require Pi APIs.
 `extensions/council/cli.ts` is the non-Pi entrypoint and will call the same input parser, config loader, route catalog, engine, and report writer as the Pi extension.
 The shell `bin/council` is only a thin launcher that checks for Node, loads the TS CLI through `jiti` or the chosen runtime loader, and exits with clear setup instructions when dependencies are missing.
 The shell `bin/council-route-probe` is only a thin launcher for `extensions/council/cli.ts route-probe --json`.
@@ -1269,7 +1269,7 @@ Rollback green is scoped to homes where the package baseline remains or the reci
 That recipe will live in `docs/pipelane-no-package-recovery.md` and `docs/public/pipelane-no-package-prepr.v1.json`, name `${PIPELANE_HOME:-$HOME/.pipelane}`, and include exact replacement-check config bytes.
 The rollback target for green package checks is the install-aware npm-script form from Phase 1, not tracked `.pipelane.json`.
 Track A baseline files, hermetic conformance, and needed fake helpers become retained infrastructure after Track A lands.
-The normal Phase 2+ rollback set includes runtime code, portable skill, roles, schemas, `bin/council`, route probe, provider edits, fixtures, tests, unused Pi stubs, and docs.
+The normal Phase 2+ rollback set includes runtime code, any future post-proof portable skill, roles, schemas, `bin/council`, route probe, provider edits, fixtures, tests, unused Pi stubs, and docs.
 The normal Phase 2+ rollback set must not remove Phase 1 baseline files while `package.json` scripts or effective Pipelane checks still reference them.
 
 ## Exact File-Level Changes
@@ -1462,7 +1462,7 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Structured disagreement strategy | `tests/conformance/council.sh` | Report preserves disagreement mechanically without forcing a recommendation and no model executor is called during synthesis. |
 | Portable Claude effort support | Help parser, fake argv, and route unit test | Claude exposes `low` through `max` only when help and argv pass-through prove support; help drift removes values without model calls. |
 | Deferred Pi UI lifecycle | Companion test index | Pi reload, session replacement, TUI render width, and registry-only fallback tests are specified in the companion and are not first-MVP gates. |
-| Non-Pi fallback | `tests/conformance/council.sh` | Portable skill or `bin/council` reports no native menu and uses JSON roster or clear usage. |
+| Non-Pi fallback | `tests/conformance/council.sh` | `bin/council`, and any future post-proof portable skill, reports no native menu and uses JSON roster or clear usage. |
 | Portable invalid roster | `tests/conformance/council.sh` | Parsed but invalid `--roster-file` exits `3` for schema failures or `4` for semantic failures, writes no report, and never falls back silently. |
 | Portable first roster authoring | TS CLI unit test plus conformance | `--emit-roster` writes a runnable many-route or one-route roster, and that file immediately runs. |
 | Portable self-test | TS CLI unit test plus conformance | `bin/council --self-test --json` emits `CouncilRuntimeContractReport`, makes no model calls, exits `0` when runtime checks pass, and exits `5` when required surfaces fail. |
