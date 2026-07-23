@@ -623,7 +623,16 @@ export interface CouncilMvpLanePlanV1 {
   maxConcurrencyGlobalCeiling: number;
   providerInvokeLanePolicy: "serial_same_account_by_default";
   providerInvokeLanes: Array<{ laneKey: string; memberCount: number; maxConcurrency: number; budgetMs: number }>;
+  retryCostInputs: Array<{
+    routeId: string;
+    structuredQuestionCount: number;
+    maxProviderCalls: 1 | 2;
+    worstCaseProviderCalls: number;
+  }>;
   portableProviderInvokeMemberCount: number;
+  worstCaseProviderCallCount: number;
+  retryAdjustedCostUpperBoundUsd?: number;
+  retryAdjustedCostKnown: boolean;
   phaseBudgetMs: number;
   effectiveConcurrency: number;
 }
@@ -645,6 +654,9 @@ export interface CouncilRunIntentV1 {
   routeCatalogHash: string;
   lanePlanHash: string;
   expectedRunMs: number;
+  worstCaseDeadlineMs: number;
+  retryAdjustedCostHash: string;
+  retryAdjustedCostUpperBoundUsd?: number;
   estimatedCostBucket: string;
   acceptStaleInputSha?: string;
   ackLongRunToken?: string;
@@ -934,11 +946,16 @@ The estimator will use provider metadata token counts when available, otherwise 
 If an enabled route has a known context window and the worst-case prompt estimate exceeds 85 percent of it, the member becomes unavailable with `input_context_overflow` and a suggested smaller-input or larger-context replacement.
 If the route context window is unknown, composition feedback will warn `context_window_unknown` but not block Run.
 `confirm_run` re-stats plan input and, on drift, requires Accept Frozen, Re-snapshot, or Cancel; CLI exits `2` with `--accept-stale-input-sha <sha>` and changed metadata.
-`confirm_run` will also compute the scheduler lane plan, expected wall-clock estimate, worst-case deadline, and estimated cost before persistence.
+`confirm_run` will also compute the scheduler lane plan, expected wall-clock estimate, worst-case deadline, and retry-adjusted cost upper bound before persistence.
 The expected wall-clock estimate will use route latency metadata when available, otherwise `90000` ms for provider-invoke, scheduled through the same lane planner and capped at each member timeout.
-If `expectedRunMs > 2700000` or cost exceeds `2.00` USD, the portable CLI exits `2` unless `--ack-long-run <ackToken>` matches the specified hash inputs.
+For each selected structured phase question, the cost upper bound is the per-attempt ceiling from the reserved input-token ceiling including retry-instruction overhead, configured output-token cap, and route prices, multiplied by that route's `maxProviderCalls`.
+The run cost upper bound is the sum of those retry-adjusted question ceilings across initial, critique, steelman, adversary, and any configured chair call.
+`CouncilMvpLanePlanV1.retryCostInputs` records `worstCaseProviderCalls = structuredQuestionCount * maxProviderCalls` for each route, `worstCaseProviderCallCount` records their sum, and `retryAdjustedCostHash` hashes their canonical JSON representation.
+If any selected route lacks prices or an output-token cap, `retryAdjustedCostKnown` is `false`, `estimated_cost_bucket` is `unknown`, and long-run acknowledgment is required rather than treating unknown cost as below threshold.
+If `expectedRunMs > 2700000`, retry-adjusted cost exceeds `2.00` USD, or retry-adjusted cost is unknown, the portable CLI exits `2` unless `--ack-long-run <ackToken>` matches the specified hash inputs.
 Post-MVP Pi acknowledgment UI must use the same lane plan and token inputs.
-`estimated_cost_bucket` is `unknown` if any selected route lacks cost data, otherwise `usd:<ceil(cents)>` from worst-case cost.
+`estimated_cost_bucket` is `unknown` if the retry-adjusted upper bound is unknown, otherwise `usd:<ceil(cents)>` from that upper bound.
+The acknowledgment token is SHA-256 over canonical JSON containing token version, `inputSnapshot.sha256`, `rosterHash`, `routeCatalogHash`, `lanePlanHash`, `expectedRunMs`, `worstCaseDeadlineMs`, `retryAdjustedCostHash`, `retryAdjustedCostUpperBoundUsd` when known, and `estimatedCostBucket`.
 The blocking portable exit must print the exact `--ack-long-run` token and the estimate fields used to derive it.
 If stale-input and long-run gates both block, one exit prints all required flags; choosing re-snapshot recomputes `input_sha256` before deriving `--ack-long-run`.
 When either portable acknowledgment is required, the CLI atomically writes a mode `0600` `CouncilRunIntentV1` sidecar under `./.ai-synthesis/council-intents/<id>.json`, prints `--intent <id>`, and expires it after `30` minutes.
@@ -1055,7 +1072,11 @@ The existing Codex adapter declares `adapter`, keeps its single retry when `--sc
 Routes whose adapters do not retry structured output declare `engine` and may receive at most one engine-owned JSON-only retry per voice inside that voice's `memberTimeoutMs` budget.
 No structured voice or phase question may make more than two provider calls across adapter and engine retry layers.
 The first attempt and JSON-only retry are not separate whole-run budget units.
-Each attempt receives provider `timeoutMs` equal to remaining `memberTimeoutMs`; no positive budget skips JSON retry and records `retry_skipped_no_member_budget`.
+The portable executor starts each `bin/provider-invoke` wrapper in an isolated process group under an outer deadline equal to the member's remaining `memberTimeoutMs`.
+Deadline expiry sends `SIGKILL` to the whole process group immediately; earlier user or run cancellation may send `SIGTERM` and escalate to `SIGKILL` within the still-remaining member budget.
+An adapter-owned second call therefore cannot outlive the shared member budget even when the adapter reapplies the original `A_TIMEOUT`.
+Engine-owned attempts receive provider `timeoutMs` equal to remaining `memberTimeoutMs`; no positive budget skips JSON retry and records `retry_skipped_no_member_budget`.
+Adapter-owned retries receive the original adapter timeout internally, but the outer executor deadline remains authoritative for the complete wrapper process.
 Structured validation will use `extractModelJson(rawText)`, `validateModelJson(schemaPath, rawText)`, and `validateModelJsonValue(schemaPath, value)` TS helpers.
 Chair synthesis must use `extractModelJson`, normalize away any `implementation_authorized`, then call `validateModelJsonValue`; raw strict validation is used only after normalization.
 The helper mirrors `bin/lib/json_extract.py` in TS: whole input, one stripped fence, `512` starts, shortest complete JSON, last satisfying object, object over array, and local schema subset.
@@ -1391,7 +1412,9 @@ Add `tests/council/portable-imports.test.ts` in Phase 1 to import portable CLI/s
 Add a clean-checkout import-scan test in Phase 1 that `scripts/check-council-portable-imports.mjs` fails any portable MVP module importing `@earendil-works/*` values.
 Add a Phase 2C scheduler test that two same-account provider-invoke members serialize by default, use separate retry budgets, and get serial deadline budget.
 Add a structured retry-ownership test that the Codex adapter's single `--schema` retry disables the engine retry and that every structured voice or phase question makes at most two total provider calls.
+Add a slow adapter-retry test whose first Codex fake nearly consumes `memberTimeoutMs` and whose second attempt blocks; the outer executor deadline must terminate the provider-invoke process group within the original member budget and report member timeout.
 Add a Phase 2C scheduler test that `maxConcurrencyGlobalCeiling: 4` with one shared provider lane yields `effectiveConcurrency: 1`, serial wall-clock estimates, and serial long-run acknowledgment thresholds.
+Add a retry-adjusted cost test that multiplies every structured question's per-attempt ceiling by `maxProviderCalls`, includes the canonical multiplication hash in the acknowledgment token, crosses the `2.00` USD gate when retry amplification does, and requires acknowledgment for unknown cost.
 Add a portable Claude effort contract test in Phase 2C covering provider-invoke help, real `claude --help`, fake `claude --effort` pass-through, help drift, and blocking for `off`, `minimal`, and unknown values.
 Add a Phase 2C portable Claude env test that parent `ANTHROPIC_BASE_URL` blocks the route, while credentials and unclassified `ANTHROPIC_*` are absent before any allowed probe/invoke.
 Add a Phase 2B non-council subscription compatibility test proving `bin/provider-invoke claude --auth subscription` without `AISYNTH_COUNCIL=1` preserves current `ANTHROPIC_BASE_URL` behavior and does not run the council scrub.
@@ -1443,7 +1466,7 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Empty input | `tests/conformance/council.sh` | TUI opens input flow and non-TUI prints usage. |
 | Provider failure | `tests/conformance/council.sh` | Failed member is recorded and remaining members continue. |
 | Member timeout scope | TS engine/executor unit test | One member timeout aborts only that member controller; other concurrent members continue unless the run-level signal is aborted. |
-| Retry shares member timeout | TS scheduler/executor unit test | Malformed output and retry share `memberTimeoutMs`; no retry extends member or whole-run deadline. |
+| Retry shares member timeout | TS scheduler/executor unit test | Engine-owned retries use remaining time; a slow Codex adapter-owned second attempt is killed with its process group by the outer executor deadline; no retry extends member or whole-run deadline. |
 | Deadline beats single survivor | TS engine unit test | A run-level deadline during `initial_analysis` aborts active calls and writes `deadline_exceeded`, not a single-survivor report. |
 | Partial council degradation | `tests/conformance/council.sh` | One surviving voice yields degraded `not_ready`; two surviving voices yield degraded council report. |
 | Hidden-host-vote prevention | `tests/conformance/council.sh` | No model call occurs for `ctx.model` unless it appears in roster. |
@@ -1459,7 +1482,7 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Chair identity authority | TS roster and engine unit test | Only `reportStrategy.chairEntryId` authorizes chair synthesis; the referenced entry must have `role: "chair"`; entry-level `chair` is invalid. |
 | One-survivor chair strategy | TS engine unit test | With a chair strategy and exactly one surviving initial voice, no chair model call occurs and the report is single-survivor mechanical whether the chair survived or failed. |
 | Whole-run deadline budget | TS scheduler unit test | The computed deadline uses `CouncilMvpLanePlanV1`, is at least the sum of scheduled effective lane budgets plus overhead, and never aborts before valid scheduled work exhausts its budget. |
-| Long-run acknowledgment | TS state-machine and CLI test | Portable CLI derives `estimated_cost_bucket` and `--ack-long-run` from `CouncilMvpLanePlanV1`; post-MVP Pi must reuse the same token inputs. |
+| Long-run acknowledgment | TS state-machine and CLI test | Portable CLI derives `estimated_cost_bucket` and `--ack-long-run` from `CouncilMvpLanePlanV1`, including each structured question's `maxProviderCalls` multiplication; retry-amplified cost above `2.00` USD and unknown cost require acknowledgment, and post-MVP Pi must reuse the same token inputs. |
 | Combined portable acknowledgments | TS CLI test | One exit prints stale-input and long-run flags together, and re-snapshot recomputes the long-run token from the new input hash. |
 | Same-account provider lane | TS scheduler unit test | Two same-route or same-auth provider-invoke members serialize by default, their lane budget is included in the whole-run deadline, diagnostics identify the non-secret lane key, and `effectiveConcurrency` is `1` when one lane is active. |
 | Whole-run deadline abort | TS engine/executor unit test | A fake slow member exceeds the computed deadline; active calls abort, unscheduled phases skip, and the report records `deadline_exceeded`. |
@@ -1625,7 +1648,8 @@ Single-survivor frontmatter sets `report_strategy_effective: single_survivor_mec
 The whole-run deadline is computed from scheduled phase budgets and cannot abort before valid scheduled work exhausts its budget.
 Runs whose computed deadline or cost estimate exceeds the configured acknowledgment thresholds require an explicit Run-time acknowledgment before roster persistence.
 The MVP deadline, scheduler, long-run acknowledgment, and diagnostics share `CouncilMvpLanePlanV1`; deferred Pi-direct work must extend that plan only in companion-governed post-MVP work.
-Each malformed-output JSON retry is owned by either the adapter or engine, shares the member's `memberTimeoutMs` budget, cannot extend either deadline, and never raises the total above two provider calls per structured voice or phase question.
+Each malformed-output JSON retry is owned by either the adapter or engine, shares the member's `memberTimeoutMs` budget through the outer executor deadline, cannot extend either deadline, and never raises the total above two provider calls per structured voice or phase question.
+Pre-Run cost and acknowledgment inputs multiply every structured question's per-attempt ceiling by `maxProviderCalls`; unknown or retry-amplified cost cannot bypass informed consent.
 When the whole-run deadline expires, active calls abort, the terminal report records `deadline_exceeded`, and that failure beats single-survivor reporting.
 Issue-input position catalogs are generated by the specified marker-token grammar and covered by fixtures for ordinary prose, explicit alternatives, and checklist bullets.
 Usefulness gates are pass/fail only on objective scorecard fields; maintainer notes are recorded evidence, not gate operands.
