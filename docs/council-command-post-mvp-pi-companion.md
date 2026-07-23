@@ -57,7 +57,7 @@ Pending artifacts omit installed Pi claims and include a reason.
 Out-of-range Pi versions disable Pi direct with `pi_runtime_version_mismatch`.
 In-range but non-exact versions require no-model sanity before enabling Pi direct.
 Missing, pending, stale, source-hash-mismatched, out-of-range, or sanity-failed artifacts keep Pi direct routes visible but unavailable and must never call `complete()`.
-Pi direct support is per minor line; day one targets Pi `0.80.10` and `0.80.x`, and each new minor needs a regenerated verified artifact before support is claimed.
+Pi direct support is per minor line; the refreshed installed surface is Pi `0.81.1`, day one targets `0.81.x`, and each new minor needs a regenerated verified artifact before support is claimed.
 When drift disables a selected route, suggestions may include only verified authorized portable replacements and must never rewrite the selection silently.
 
 ## Phase 7 Parallel Pi Direct Proof
