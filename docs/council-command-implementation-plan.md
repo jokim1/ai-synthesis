@@ -173,6 +173,16 @@ Noted design choices from the stop-loss review:
 | Portable remembered roster | The portable remembered roster lives at `${AISYNTH_CONFIG_HOME:-$HOME/.ai-synthesis}/council/roster.v1.json`; a confirmed portable Run writes a canonical copy there atomically, while any supplied `--roster-file` remains read-only. |
 | Same-route no-added-value exit | After two prompt or recommendation revisions, repeated `correlated_no_added_value` on same-route-only samples becomes a disclosed correlated-council condition rather than an implementation blocker when no authorized independent route is available. |
 
+Final Claude stop-loss residual notes:
+
+| Residual | Recorded implementation disposition |
+|---|---|
+| Correlated runtime readiness | Engine-level synthesis must cap all single-route or single-lane councils at `conditional`, not only the ship gate. |
+| Subscription env scrub blast radius | Full `ANTHROPIC_*` scrubbing is council-scoped through an explicit council marker; non-council `provider-invoke --auth subscription` behavior is characterized and preserved unless separately reviewed. |
+| Package classifier fail-open | Docs-only and legacy shell-only paths get a base-independent allowlist path before npm install, and unresolved or suspicious base refs fall back to full checks only for Node-surface uncertainty. |
+| Phase 2C scope | Phase 2C is split into green sub-slices that can merge independently. |
+| `bin/council --self-test` | `--self-test` is a no-model runtime contract command returning `CouncilRuntimeContractReport`. |
+
 Phase 1 `package.json` is a portable toolchain baseline for the `ai-synthesis` repository's own implementation and review workflow, not an installation requirement for user repositories.
 The council package may review arbitrary project repos without creating or editing their package metadata.
 Phase 1 `package.json` must omit the Pi `pi` manifest and Pi peers until deferred Phase 3C.
@@ -249,9 +259,11 @@ bin/council --issue <text> --roster-file <path> [--report-strategy deterministic
 bin/council --plan-file <path> --roster-file <path> [--report-strategy deterministic|structured_disagreement|chair:<member-id>] [--json]
 bin/council --issue <text> --emit-roster <path> [--auth-policy subscription-only|default] [--overwrite] [--json]
 bin/council --plan-file <path> --emit-roster <path> [--auth-policy subscription-only|default] [--overwrite] [--json]
+bin/council --self-test [--json]
 bin/council-route-probe --json [--auth-policy subscription-only|default]
 ```
 
+`bin/council --self-test` performs no model calls, runs `CouncilRuntimeContractReport`, validates Node/package/loader/provider flag surfaces, exits `0` when `ok:true`, exits `5` when runtime requirements fail, and prints the report as JSON under `--json`.
 The portable CLI execution path will load `--roster-file <path>` when supplied, otherwise it will load the portable remembered roster at `${AISYNTH_CONFIG_HOME:-$HOME/.ai-synthesis}/council/roster.v1.json`.
 If neither a supplied roster file nor the portable remembered roster exists, execution exits `4` with `no_portable_roster` and prints the matching `--emit-roster <path>` command; it must not pretend to offer Pi's native editable menu.
 The portable `--emit-roster <path>` path parses input, runs no-cost discovery, recommends, mints ids, chooses a valid strategy, validates, and writes atomically without model calls.
@@ -838,20 +850,21 @@ Portable Claude Code routes will call `bin/provider-probe claude --auth subscrip
 Portable route-probe, `--emit-roster`, roster validation, and report diagnostics must all use the same `adapter-default` model derivation unless a future explicit model config is added.
 No `bin/provider-invoke` parser change is required for `--auth subscription` because the current parser already accepts `--auth` and exports `A_AUTH`.
 Council explicit subscription mode requires a first-party Claude CLI login or Pi OAuth/subscription status, not an environment-token-only `ANTHROPIC_OAUTH_TOKEN` path.
-`extensions/council/lib/executors/provider-invoke.ts` must own Claude child env sanitizing, deleting credentials and unclassified `ANTHROPIC_*`, preserving only allowlisted names, and passing that env to provider shells.
+`extensions/council/lib/executors/provider-invoke.ts` must own council Claude child env sanitizing, deleting credentials and unclassified `ANTHROPIC_*`, preserving only allowlisted names, setting `AISYNTH_COUNCIL=1`, and passing that env to provider shells.
 The portable executor exposes pure helper `sanitizeProviderInvokeEnv(route: CouncilRoute, baseEnv: NodeJS.ProcessEnv): NodeJS.ProcessEnv` for Claude scrub tests without spawning a provider.
 The initial Anthropic credential denylist must be `ANTHROPIC_API_KEY`, `ANTHROPIC_OAUTH_TOKEN`, `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_BEARER_TOKEN`, `ANTHROPIC_CONSOLE_API_KEY`, and `ANTHROPIC_CONSOLE_AUTH_TOKEN`.
 The initial explicit-subscription Anthropic allowlist is empty: scrub every `ANTHROPIC_*` name, including `ANTHROPIC_BASE_URL`, before council Claude probe or invoke.
 A future non-credential `ANTHROPIC_*` exception may be added only with source documentation plus a fake executor test that first-party subscription billing remains provable and credentials remain scrubbed.
 If parent env contains `ANTHROPIC_BASE_URL`, the explicit subscription route is unavailable with `claude_subscription_custom_endpoint_not_allowed`; it must not run as unknown billing or silently ignore the endpoint.
 The sanitizer will record a diagnostic listing deleted unclassified `ANTHROPIC_*` names without logging values.
-The portable Claude executor will pass `--auth subscription` per member call only after that environment scrub has been applied.
-`bin/adapters/claude.sh` will also distinguish explicit `A_AUTH=subscription` from `A_AUTH=auto` that happens to find a subscription session.
-Only explicit `A_AUTH=subscription` will apply the Anthropic denylist and allowlist sanitizer, preserving `/synthesis` auto behavior while hardening council and direct subscription calls.
+The portable Claude executor will pass `AISYNTH_COUNCIL=1` and `--auth subscription` per member call only after that environment scrub has been applied.
+`bin/adapters/claude.sh` will distinguish council-marked explicit `A_AUTH=subscription` from ordinary explicit `A_AUTH=subscription` and from `A_AUTH=auto`.
+Only `AISYNTH_COUNCIL=1` plus explicit `A_AUTH=subscription` will apply the full Anthropic denylist and allowlist sanitizer, preserving `/synthesis` auto behavior and existing non-council explicit-subscription behavior.
 The existing `A_AUTH=auto` path will keep today's behavior, including current credential unsets and pass-through of `ANTHROPIC_OAUTH_TOKEN` plus non-credential `ANTHROPIC_*` config.
+Before changing `_claude_exec`, Phase 2B will also characterize non-council `bin/provider-invoke claude --auth subscription` with and without `ANTHROPIC_BASE_URL`, pinning behavior byte-for-byte unless a separate compatibility review changes that public surface.
 Before changing `_claude_exec`, Phase 2B will characterize `/synthesis` across unset, empty, and explicit `A_AUTH=auto` crossed with session-present and session-absent fakes, and pin child env plus argv byte-for-byte.
 Before changing `adapter_probe` or `bin/provider-probe`, Phase 2B will characterize `bin/provider-probe claude` across the same auth/session matrix and pin stdout, stderr, and exit status.
-Auth naming is fixed: council `--auth-policy subscription-only|default` maps to JSON/TS `subscription_only|default`; it drives provider `--auth subscription` and `A_AUTH=subscription`; `A_AUTH=auto` remains legacy `/synthesis`.
+Auth naming is fixed: council `--auth-policy subscription-only|default` maps to JSON/TS `subscription_only|default`; it drives `AISYNTH_COUNCIL=1`, provider `--auth subscription`, and `A_AUTH=subscription`; `A_AUTH=auto` remains legacy `/synthesis`.
 The implementation must not add `ANTHROPIC_OAUTH_TOKEN` to the auto-mode unset list unless a separate `/synthesis` compatibility review proves that doing so cannot break subscription-auth environments.
 Add a backward-compatible optional `--auth <auto|subscription|apikey>` flag to `bin/provider-probe`.
 Leave `bin/provider-probe claude` defaulting to existing `auto` behavior for `/synthesis` compatibility.
@@ -1059,7 +1072,9 @@ A deterministic strategy will compute `materialDissent` mechanically before read
 `materialDissent` is also true when the maximum grounded ledger-item count cited by any single non-winning supporter for that position is greater than or equal to the same count for any single winning supporter.
 `materialDissent` is also true when any winning-position load-bearing assumption in `CouncilAssumptionReviewCatalogV1` is contradicted or not verified by the critique contract.
 Deterministic mode will treat any `materialDissent` as unresolved because no synthesizer model is called to resolve it.
-A deterministic strategy will set `decision_readiness` to `ready` only when two voices support the winner, every critical phase is clean, load-bearing assumptions are verified, and `materialDissent` is false.
+A deterministic strategy will compute route correlation before readiness.
+When all successful executable initial voices share one `routeId` or one `executionLaneKey`, the engine records `route_correlation: single_route | single_lane`, emits no family-diversity credit, and caps `decision_readiness` at `conditional`.
+A deterministic strategy will set `decision_readiness` to `ready` only when two voices support the winner, every critical phase is clean, load-bearing assumptions are verified, `materialDissent` is false, and the route-correlation cap does not apply.
 A deterministic strategy will set `decision_readiness` to `conditional` when there is a winning position but unresolved assumptions, partial degradation, or `materialDissent` is true.
 A deterministic strategy will set `decision_readiness` to `not_ready` when the recommendation is the no-recommendation sentinel, only one initial voice survived, or validation failed.
 A deterministic strategy will set `next_action` to the highest-ranked assumption verification when readiness is conditional or not ready, otherwise to the smallest concrete next step named by the winning position.
@@ -1220,11 +1235,17 @@ Every PR after Phase 1 must run explicit `npm run verify:pipelane-prepr` or depe
 It fails with `PIPELANE_SHAPE_DRIFT` on version/path/shape mismatch and prints `--check-drift` plus no-package recovery guidance when npm bootstrap is broken.
 Phase 1 must expose `node scripts/verify-pipelane-prepr.mjs --check-drift`, a dep-free version/path/shape compare that runs no npm or package tests.
 Maintainer docs should run `--check-drift` at session start and before resuming long-lived branches so drift appears before unrelated pre-PR failure.
+After Track A lands, a benign docs-only or legacy shell-only PR blocked by runner drift, offline npm, or unresolved-base ambiguity may use the same recorded manual bypass style as the red-baseline bypass: record the reason, run the dependency-free checks named by the changed-surface classifier, and explicitly accept or block the PR.
 Phase 1 also runs `tests/conformance/run.sh all` in a provider-present environment, but generic Pipelane pre-PR checks must not require live sections until they are optional.
 Phase 2B will implement only Track B provider hardening: `provider-probe --auth`, explicit subscription sanitizer, `A_AUTH=auto` preservation, and fake/no-paid subscription tests.
 Phase 2B must merge before Phase 2C because Phase 2C route discovery and runtime checks call the new provider `--auth` surfaces.
-Phase 2C will implement input parsing, immutable plan loading, routes, effort support, provider-invoke execution, roster persistence, validation, and deterministic reports.
-The Phase 2C slice will exercise validation, grounding, deterministic synthesis, report writing, fake executors, and provider-invoke without Pi direct or Pi UI.
+Phase 2C is split into green sub-slices rather than one mega-merge.
+Phase 2C-a implements config, input parsing, immutable plan loading, route catalog loading, effort support, and `validateRoster()`.
+Phase 2C-b implements provider-invoke executor plumbing, council-scoped Claude env scrub, provider tool-policy checks, and fake executor coverage.
+Phase 2C-c implements `--emit-roster`, portable remembered-roster persistence, run intent, and long-run/stale-input acknowledgment.
+Phase 2C-d implements deterministic engine execution, report validation, terminal reports, and fake two-voice vertical conformance.
+Each 2C sub-slice must leave the repository green and may merge independently.
+The Phase 2C slices exercise validation, grounding, deterministic synthesis, report writing, fake executors, and provider-invoke without Pi direct or Pi UI.
 Phase 2C will call the deterministic function with empty critique, steelman, and adversary inputs, cap readiness at `conditional` or `not_ready`, and serve only as a continuation gate.
 Immediately after Phase 2C, run every fixed usefulness-set sample; failure abandons or revises the engine before Phase 5, but does not authorize TUI work.
 Phase 5 will expand the portable engine to full critique, steelman, adversary, degradation, and report strategies before any polished Pi roster UI is built.
@@ -1278,11 +1299,14 @@ Add `scripts/check-council-portable-imports.mjs` in Phase 1 as the dependency-fr
 `scripts/ensure-node-deps.mjs` will first fail with `NODE_VERSION_UNSUPPORTED` when `process.version < 22.19.0`, then use an advisory lock/stamp and run `npm ci` only when needed.
 Add `scripts/run-package-check.mjs` in Phase 1 as the only entrypoint used by npm `test`, `typecheck`, and `build`.
 `scripts/run-package-check.mjs <test|typecheck|build>` resolves the changed-surface base ref in order from `PIPELANE_BASE_REF`, `git symbolic-ref refs/remotes/origin/HEAD --short`, `origin/main`, `origin/master`, `main`, then `master`.
+Before trusting any base ref, it builds a base-independent path list from unstaged files, staged files, and optional newline-delimited `PIPELANE_CHANGED_FILES`.
+If every base-independent path is docs-only, plan-only, or legacy shell-only, the wrapper may take the documented skip or shell-check path without npm install.
 It computes `mergeBase = git merge-base HEAD "$baseRef"` and unions changed files from committed, unstaged, and staged `git diff --name-only --diff-filter=ACMRTUXB` calls.
 If no base ref or merge base can be resolved, the wrapper fails open to dependency install and full checks rather than skipping.
 When `gh pr view --json baseRefName` is available, the resolved base must match that PR target or the wrapper fails open to full checks.
 If `PIPELANE_BASE_REF` is supplied, diagnostics must record it as user-specified and still fail open when the computed diff is empty but `git rev-list --count "$mergeBase"..HEAD` is greater than `0`.
 If the changed-file union is empty while HEAD differs from the merge base, or if the base ref cannot be proven to name the intended target, the wrapper fails open to full checks.
+If base resolution is unavailable and no base-independent path list exists, committed-diff classification is ambiguous and the wrapper fails open to full checks.
 It may skip Node install only when that union excludes tracked Node, package, council extension, council schema, council role, TypeScript test, conformance, and council-public-governance surfaces.
 On a skip it prints `CHECK_SKIPPED_NON_NODE_SURFACE`, exits `0`, and writes no install stamp.
 On a legacy shell-only diff, `test` runs dependency-free shell checks and unit conformance without npm install, while `typecheck` and `build` skip with `CHECK_SKIPPED_NON_NODE_SURFACE`.
@@ -1317,11 +1341,12 @@ Add `bin/council` in Phase 2C as a thin shell launcher for `extensions/council/c
 Add `bin/council-route-probe` in Phase 2C as a thin shell launcher for `extensions/council/cli.ts route-probe` that emits `CouncilRouteProbeEnvelopeV1`.
 Modify `bin/provider-probe` in Phase 2B to accept optional `--auth <auto|subscription|apikey>` while retaining `provider-probe <claude|codex>`.
 Modify `bin/adapters/claude.sh` `adapter_probe` in Phase 2B to honor `A_AUTH=subscription` by refusing API-key-only auth.
-Modify `bin/adapters/claude.sh` `_claude_exec` in Phase 2B so only explicit `A_AUTH=subscription` applies the Anthropic credential-denylist plus empty initial `ANTHROPIC_*` allowlist before running Claude CLI.
+Modify `bin/adapters/claude.sh` `_claude_exec` in Phase 2B so only `AISYNTH_COUNCIL=1` plus explicit `A_AUTH=subscription` applies the Anthropic credential-denylist plus empty initial `ANTHROPIC_*` allowlist before running Claude CLI.
 Add a private shell helper named `_claude_unset_anthropic_credentials` in `bin/adapters/claude.sh` that unsets the current auto-mode credential list without adding `ANTHROPIC_OAUTH_TOKEN`.
 Add `_claude_unset_anthropic_subscription_credentials` in `bin/adapters/claude.sh` to unset known Anthropic API, OAuth, auth, bearer, and console credential variables.
-Add `_claude_sanitize_subscription_env` in `bin/adapters/claude.sh` to call `_claude_unset_anthropic_subscription_credentials`, remove every `ANTHROPIC_*` name in MVP, and never log values.
+Add `_claude_sanitize_subscription_env` in `bin/adapters/claude.sh` to call `_claude_unset_anthropic_subscription_credentials`, remove every `ANTHROPIC_*` name in MVP only for council-marked subscription calls, and never log values.
 Keep `A_AUTH=auto` behavior backward compatible for `/synthesis`: when a first-party session exists, unset only the current known credential variables and preserve `ANTHROPIC_OAUTH_TOKEN` and non-credential `ANTHROPIC_*` variables.
+Keep non-council `A_AUTH=subscription` behavior backward compatible unless a separate compatibility review explicitly changes that public provider-invoke surface.
 Do not modify `bin/provider-invoke` default auth behavior, `--auth` parsing, or `--effort` parsing for MVP; the existing flags are sufficient, and council-owned validation prevents unsupported values from reaching adapter clamps.
 Add `roles/council/initial.md`, `roles/council/critique.md`, `roles/council/steelman.md`, `roles/council/adversary.md`, and `roles/council/chair.md` in Phase 5.
 Phase 5 must add a prompt-reserve test that those role prompts still fit Phase 2C reserves.
@@ -1352,6 +1377,7 @@ Add a Phase 2C scheduler test that two same-account provider-invoke members seri
 Add a Phase 2C scheduler test that `maxConcurrencyGlobalCeiling: 4` with one shared provider lane yields `effectiveConcurrency: 1`, serial wall-clock estimates, and serial long-run acknowledgment thresholds.
 Add a portable Claude effort contract test in Phase 2C covering provider-invoke help, real `claude --help`, fake `claude --effort` pass-through, help drift, and blocking for `off`, `minimal`, and unknown values.
 Add a Phase 2C portable Claude env test that parent `ANTHROPIC_BASE_URL` blocks the route, while credentials and unclassified `ANTHROPIC_*` are absent before any allowed probe/invoke.
+Add a Phase 2B non-council subscription compatibility test proving `bin/provider-invoke claude --auth subscription` without `AISYNTH_COUNCIL=1` preserves current `ANTHROPIC_BASE_URL` behavior and does not run the council scrub.
 Add a TS validator unit test in Phase 2C that proves `extensions/council/lib/validate-json.ts` matches checked-in `bin/lib/json_extract.py` fixture expectations without requiring Python at runtime.
 Add a Phase 5 chair validation test that a parsed chair draft containing `implementation_authorized:true` is normalized before schema validation and remains usable.
 Add a Phase 5 evidence-ledger test that valid plan/issue locators ground, invalid/theory/prior locators do not, and models cannot self-certify grounding.
@@ -1362,6 +1388,7 @@ Add a readiness unit test in Phase 5 that duplicate normalized assumption keys r
 Add deterministic catch-all tests that `propose_alternative`, `defer_for_evidence`, and `needs_more_evidence` pluralities produce the no-recommendation sentinel.
 Add an engine retry-budget unit test in Phase 5 that proves a malformed first attempt and JSON-only retry share one `memberTimeoutMs` budget and cannot extend the whole-run deadline.
 Add a Phase 5 synthesis-contract test that all strategies consume brief plus adversary outputs, preserve phase findings, and never read hidden host-model state.
+Add a Phase 5 deterministic readiness test proving two agreeing same-route or same-lane voices cannot emit `decision_readiness: ready` and must record the correlation cap.
 Add a single-survivor input contract unit test in Phase 5 that proves `single_survivor_report` consumes only the surviving voice and failed-member diagnostics, never `CouncilSynthesisBriefV1` or `CouncilAdversaryOutputV1[]`.
 Add a Phase 5 deadline-precedence test that a run-level deadline during `initial_analysis` writes `deadline_exceeded`, not a single-survivor report.
 Add a Phase 5 usefulness-gate comparison test that same-route samples fail with `correlated_no_added_value` unless the council report uses a material dissent, evidence, assumption, or next-action delta absent from the solo baseline.
@@ -1429,6 +1456,7 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Prompt catalog ordering | TS prompt assembly unit test | `derive_position_catalog` runs before `prepare_prompts`, every initial prompt contains identical catalog bytes, and prompt hashes cover those bytes. |
 | Issue prompt grounding | TS prompt and ledger tests | Issue input is immutable `issue:Lx` text, prompts require citations, and valid locators become grounded evidence. |
 | Deterministic synthesis algorithm | TS engine unit test | Majority, plurality, catch-all plurality, tie, no-grounded-evidence, one-survivor, degraded phase, assumption, and dissent cases produce specified readiness and recommendation fields. |
+| Correlated readiness cap | TS deterministic synthesis unit test | A same-route or same-lane council with agreeing voices and no material dissent is capped at `conditional` and records `route_correlation`. |
 | Chair report strategy | `tests/conformance/council.sh` | Chair route is an explicit roster member and has its own call record. |
 | Invalid chair strategy | TS roster validation test | `chair:<member-id>` blocks Run when the member is disabled, unavailable, missing, or has unsupported effort. |
 | Structured disagreement strategy | `tests/conformance/council.sh` | Report preserves disagreement mechanically without forcing a recommendation and no model executor is called during synthesis. |
@@ -1437,6 +1465,7 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Non-Pi fallback | `tests/conformance/council.sh` | Portable skill or `bin/council` reports no native menu and uses JSON roster or clear usage. |
 | Portable invalid roster | `tests/conformance/council.sh` | Parsed but invalid `--roster-file` exits `3` for schema failures or `4` for semantic failures, writes no report, and never falls back silently. |
 | Portable first roster authoring | TS CLI unit test plus conformance | `--emit-roster` writes a runnable many-route or one-route roster, and that file immediately runs. |
+| Portable self-test | TS CLI unit test plus conformance | `bin/council --self-test --json` emits `CouncilRuntimeContractReport`, makes no model calls, exits `0` when runtime checks pass, and exits `5` when required surfaces fail. |
 | Portable emit-roster no partial write | TS CLI unit test | Insufficient executable routes, existing output without `--overwrite`, unwritable parent, or invalid input exits before writing a roster file or report. |
 | Portable emit-roster remembered path guard | TS CLI unit test | `--emit-roster` refuses resolved canonical remembered paths, including `.ai-synthesis/council/roster.v1.json` and `AISYNTH_CONFIG_HOME` overrides, with exit `2`. |
 | Portable roster-file read-only | TS CLI unit test | Successful `--roster-file` execution writes no changes to the supplied file, even when canonical ids, scope, or timestamps differ in memory. |
@@ -1447,7 +1476,8 @@ Force-add any non-public docs under `docs/` because `.gitignore` intentionally i
 | Claude mixed credentials | TS executor unit test plus fake Claude CLI | OAuth/subscription stays subscription-only with mixed env credentials, and child env scrubs all `ANTHROPIC_*` names for explicit council subscription calls. |
 | Claude auto compatibility | Existing conformance plus fake Claude env test | Unset, empty, and explicit `A_AUTH=auto` crossed with session-present/absent fakes keep `/synthesis` child env and argv byte-for-byte equal. |
 | Claude probe auto compatibility | Existing conformance plus fake Claude env test | `bin/provider-probe claude` and `adapter_probe` keep byte-for-byte stdout, stderr, and exit status for the same auth/session matrix. |
-| Claude explicit subscription sanitizer | Fake Claude env test | Parent `ANTHROPIC_BASE_URL` blocks with `claude_subscription_custom_endpoint_not_allowed`; otherwise `--auth subscription` scrubs Anthropic env before fake logged-in success. |
+| Claude council subscription sanitizer | Fake Claude env test | Parent `ANTHROPIC_BASE_URL` blocks council-marked subscription routes with `claude_subscription_custom_endpoint_not_allowed`; otherwise `AISYNTH_COUNCIL=1 --auth subscription` scrubs Anthropic env before fake logged-in success. |
+| Claude non-council subscription compatibility | Fake Claude env test | `bin/provider-invoke claude --auth subscription` without `AISYNTH_COUNCIL=1` keeps pre-existing `ANTHROPIC_BASE_URL` behavior and does not run the council scrub. |
 | Claude token-only subscription env | Fake Claude env test | With only `ANTHROPIC_OAUTH_TOKEN` and no first-party login, discovery returns `claude_subscription_login_required_after_env_token_scrub` with no API fallback. |
 | Claude no-cost subscription probe | Phase 2B/2C local check | Logged-in Claude CLI makes `provider-probe` and `provider-invoke --auth subscription` succeed with scrubbed env and no paid probe call. |
 | Provider-invoke auth surface | TS executor test plus shell fixture | The executor verifies `bin/provider-invoke --auth`, passes subscription for Claude, and fails if the flag disappears. |
