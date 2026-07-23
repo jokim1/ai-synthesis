@@ -1657,3 +1657,16 @@ Document invocation examples, two-member minimum, non-gating family diversity, c
 Document Claude subscription-only behavior, no Anthropic API fallback, child-env policy, token-only failure, `/synthesis` auto preservation, and Pi direct OAuth/subscription guards.
 Document post-MVP Pi surface gates, strict release checks, Phase 7 live-effort proof, and Pi TUI lifecycle in the companion rather than as MVP user instructions.
 Document execution cancellation/reload/deadline/retry/report semantics, adapter-default model resolution, no authorization, and deterministic synthesis contracts in the MVP docs.
+
+## GSTACK REVIEW REPORT
+
+| Review | Trigger | Why | Runs | Status | Findings |
+|--------|---------|-----|------|--------|----------|
+| CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | not run | Not requested for this stop-loss pass. |
+| Codex Review | `/codex review` | Independent 2nd opinion | 0 | not run | Hardened Claude challenge was the outside challenge path for this plan. |
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 3 | CLEAR | 1 wording ambiguity found in this pass and fixed in `e661cb5`; 0 unresolved decisions and 0 critical gaps. |
+| Design Review | `/plan-design-review` | UI/UX gaps | 0 | not run | Pi TUI work is deferred to the companion and is not first-MVP scope. |
+| DX Review | `/plan-devex-review` | Developer experience gaps | 0 | not run | Not requested for this plan-only phase. |
+
+- **VERDICT:** ENG CLEARED - ready to begin implementation of the portable-first MVP when firstmate starts the implementation phase.
+NO UNRESOLVED DECISIONS
