@@ -205,10 +205,7 @@ for (const sample of set.samples.filter((candidate) => !sampleFilter || candidat
     { kind: "deterministic" as const }
   ];
   let evaluation = evaluateRuns(primary.result.report, [], solo.value);
-  while (
-    sample.id === "issue-freeform"
-    && needsRevision(evaluation, revisions.length, scorecard.sameRouteExit.maxRevisionAttempts)
-  ) {
+  while (needsRevision(evaluation, revisions.length, scorecard.sameRouteExit.maxRevisionAttempts)) {
     const attempt = revisions.length;
     revisions.push(await captureRun(sample, `revision-${attempt + 1}`, revisionStrategies[attempt]));
     evaluation = evaluateRuns(primary.result.report, revisions.map((revision) => revision.result.report), solo.value);
@@ -220,8 +217,7 @@ for (const sample of set.samples.filter((candidate) => !sampleFilter || candidat
   const report = evaluation.selectedReport;
   const locators = verifiedLocators(report, sample);
   const deltas = evaluation.selectedDeltas;
-  const correlatedExit = sample.id === "issue-freeform"
-    && evaluation.primaryDeltas.length === 0
+  const correlatedExit = evaluation.primaryDeltas.length === 0
     && revisionEvaluations.length === scorecard.sameRouteExit.maxRevisionAttempts
     && revisionEvaluations.every((evaluation) => evaluation.deltas.length === 0);
   const councilResult = {
