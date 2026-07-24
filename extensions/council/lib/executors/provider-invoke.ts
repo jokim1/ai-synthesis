@@ -12,6 +12,18 @@ export interface ProviderInvokeResult {
   attempts?: number;
 }
 
+export interface ProviderInvocationCapture {
+  bin: string;
+  args: string[];
+  prompt: string;
+  schemaPath: string;
+  routeId: string;
+  entryId: string;
+  effort: string;
+  stdout: string;
+  stderr: string;
+}
+
 export function sanitizeProviderInvokeEnv(route: CouncilRoute, baseEnv: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...baseEnv, AISYNTH_COUNCIL: "1" };
   if (route.ref.provider === "claude" && route.auth.policy === "subscription_only") {
@@ -30,7 +42,8 @@ export function invokeProvider(
   schemaPath: string,
   timeoutMs: number,
   env: NodeJS.ProcessEnv = process.env,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  onCapture?: (capture: ProviderInvocationCapture) => void
 ): Promise<ProviderInvokeResult> {
   const bin = env.AISYNTH_COUNCIL_PROVIDER_INVOKE ?? join(packageRoot, "bin/provider-invoke");
   const args = [
@@ -89,6 +102,17 @@ export function invokeProvider(
       finish({ ok: false, status: "invocation_failed", text: stdout, error: error.message });
     });
     child.on("close", () => {
+      onCapture?.({
+        bin,
+        args,
+        prompt,
+        schemaPath,
+        routeId: route.ref.routeId,
+        entryId: entry.id,
+        effort: entry.effort,
+        stdout,
+        stderr
+      });
       if (aborted) {
         finish({ ok: false, status: "canceled", text: stdout, error: String(signal?.reason ?? "canceled") });
         return;

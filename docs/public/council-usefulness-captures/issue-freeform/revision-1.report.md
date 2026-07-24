@@ -1,0 +1,148 @@
+---
+id: "council_20260724T044559_e6ce9aec_9beca776c0"
+mode: "council"
+input_kind: "issue"
+input_locator: null
+input_sha256: "84cd5ab1dcf87ef33352a9f7307d358b40c125b2642beb0624767d3792dec5a4"
+date: "2026-07-24T04:48:02.345Z"
+status: "complete"
+roster_version: 1
+config_scope: "explicit"
+report_strategy: "structured_disagreement"
+report_strategy_effective: "structured_disagreement"
+configured_report_strategy: "deterministic"
+report_strategy_source: "cli"
+chair_entry_id: null
+members_total: 2
+members_executed: 2
+providers: ["claude"]
+configured_models: ["claude/adapter-default"]
+resolved_models: ["v1:provider-invoke:claude:adapter-default:unknown"]
+initial_prompt_hashes: ["entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:139332ff2434ebf5abe47b7c3fe54a10a3218610d5cada2cd7effd552f8a9eb8", "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:00403a9fdea671a2e98f9ca87bf5f7cc2d11f37e5e3ca01e834e2be7a953ae1d"]
+position_catalog_sha256: "d481c32fb21e149b9b3980d672a61f8b3e85e37a3147b4efec576f2e09e34316"
+critique_prompt_hashes: ["entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:5426673ee24c5fcc7afd06b4c085db6befbd6fc3c9300fc7bc9db1fac294151b"]
+assumption_review_catalog_sha256: "371a1802950c5116894bffb3bd919356521d5eda74700bdce32650be2cb48819"
+families: ["claude"]
+decision_readiness: "not_ready"
+readiness_basis: "internal_input_grounded"
+implementation_authorized: false
+remembered_roster_written: false
+---
+
+# Council Report
+
+Council completion does not authorize project implementation.
+
+## Recommendation
+
+No deterministic recommendation; see structured disagreement
+
+## Decision Readiness
+
+not_ready
+
+MVP readiness is internal-input grounded. Repo context and web claims were not independently verified.
+
+## Evidence
+
+- Primary objective is to reduce deployment risk, which canary addresses by bounding blast radius (issue:L1)
+- Delivery speed must be preserved, which favors automated promotion over manual gates (issue:L2)
+- The question asks which single rollout policy balances risk and speed, inviting a concrete policy proposal (issue:L3)
+- Issue states two objectives that can trade off against each other: reduce deployment risk and preserve delivery speed. (issue:L1-L2)
+- The issue asks which rollout policy balances both, but provides no metrics, baselines, or constraints to evaluate candidates against. (issue:L3)
+
+## Strongest Dissent
+
+entry_aaaaaaaaaaaaaaaaaaaaaaaaaa: Adopt progressive delivery (canary) with automated, metric-gated rollback rather than an all-at-once or purely manual staged rollout. Canary directly serves the stated goal of reducing deployment risk (issue:L1) by limiting blast radius to a small traffic slice before full exposure, while preserving delivery speed (issue:L2) because promotion is automatic when health metrics stay green — no human gate slows the common success path. This balances both sides of the question (issue:L3): risk is bounded by exposure percentage and fast rollback, speed is retained by automation rather than manual approvals. Concretely: 1–5% canary → automated SLO/error-rate check → progressive ramp → auto-rollback on breach. This is a recommendation only; council completion does not authorize implementation.
+
+## Assumptions
+
+- entry_aaaaaaaaaaaaaaaaaaaaaaaaaa: The deployment target can serve two versions simultaneously and split traffic by percentage.
+- entry_aaaaaaaaaaaaaaaaaaaaaaaaaa: Health/error-rate/latency signals exist and are reliable enough to gate automated promotion and rollback.
+- entry_aaaaaaaaaaaaaaaaaaaaaaaaaa: Rolling back a canary is fast and low-cost (no irreversible migrations at canary stage).
+- entry_bbbbbbbbbbbbbbbbbbbbbbbbbb: No current deployment failure-rate or lead-time baseline is available beyond the three issue lines.
+- entry_bbbbbbbbbbbbbbbbbbbbbbbbbb: "Delivery speed" refers to release throughput/lead time and can be quantified.
+
+## Risks
+
+- entry_aaaaaaaaaaaaaaaaaaaaaaaaaa: Issue provides no deployment frequency, failure rate, or topology, so the recommended canary parameters (percent, bake time) are unvalidated defaults.
+- entry_aaaaaaaaaaaaaaaaaaaaaaaaaa: Canary adds pipeline and observability complexity that may not pay off for low-frequency or low-blast-radius services.
+- entry_aaaaaaaaaaaaaaaaaaaaaaaaaa: Automated rollback can mask a flaky metric as a real failure, causing thrash if gates are poorly tuned.
+- entry_aaaaaaaaaaaaaaaaaaaaaaaaaa: Stateful releases (DB migrations) are not addressed by canary alone and could reintroduce risk.
+- entry_bbbbbbbbbbbbbbbbbbbbbbbbbb: Choosing a policy without baseline data risks optimizing the wrong dimension (e.g., adding canary stages that slow delivery with no measurable risk reduction).
+- entry_bbbbbbbbbbbbbbbbbbbbbbbbbb: Deferring too long is itself a risk if the current all-at-once process is already causing incidents; deferral must be time-boxed.
+- entry_bbbbbbbbbbbbbbbbbbbbbbbbbb: Undefined 'delivery speed' metric could lead to a policy that satisfies risk goals while silently violating the speed constraint.
+- {"canonicalPositionId":"propose_alternative","axis":"evidence","objection":"The canary policy is load-bearing on traffic-splittable and observable-slos, but the only grounded evidence (ev_1, ev_2, ev_3) is issue goal text; the pattern justification rests on ev_4, which the engine marked unverified prior_knowledge. No cited evidence establishes that the platform can weighted-split traffic or emit reliable per-version SLOs, so the specific policy is asserted beyond what the evidence supports.","wouldChangeRecommendation":"Grounded evidence inspecting the load balancer/service-mesh routing capability and an SLO metric inventory with per-version attribution would move this from unverified-assumption to supportable.","evidenceIds":["ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4","ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"]}
+
+## What Would Change The Recommendation
+
+- Evidence that the platform cannot split traffic, which would shift me toward blue-green.
+- Data showing very low deployment frequency or trivial blast radius, where canary overhead outweighs benefit and staged manual rollout suffices.
+- Evidence that releases are dominated by irreversible data migrations, making expand-contract the primary lever rather than traffic-based canary.
+- Presence of a concrete change-failure-rate and lead-time baseline for the current process.
+- A stated hard constraint (e.g., max acceptable added latency per release) that lets a specific policy be scored.
+- Evidence that the current process is actively causing incidents, which would justify adopting progressive delivery immediately rather than deferring.
+- {"canonicalPositionId":"propose_alternative","challenge":"The canary recommendation with concrete ramp/gate parameters is load-bearing on traffic-splittable and observable-slos, yet the only grounded evidence is issue text stating goals (ev_1, ev_2, ev_3). The pattern justification rests on ev_4, which the engine marked unverified (prior_knowledge, not resolvable against frozen input). No cited evidence establishes that the platform can weighted-split traffic or emit reliable per-version SLOs, so the specific policy is asserted beyond what the evidence supports.","evidenceIds":["ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4","ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"]}
+- {"canonicalPositionId":"propose_alternative","challenge":"Preserving delivery speed via automated promotion (ev_2) is only a speed win if the SLO gates are trustworthy; the same voice lists gate flakiness and unaddressed stateful migrations as risks. Since observable-slos and rollback-cheap are not backed by any capability evidence, the claimed risk-plus-speed balance could invert into thrash or an unbounded stateful blast radius.","evidenceIds":["ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2","ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4"]}
+
+## Position Groups
+
+### propose_alternative
+
+- Supporters: entry_aaaaaaaaaaaaaaaaaaaaaaaaaa
+- Evidence: ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1, ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2, ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3
+- Assumptions: entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:traffic-splittable, entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:observable-slos, entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:rollback-cheap
+- Steelmans: Progressive delivery (canary with automated, metric-gated rollback) is the policy that most directly satisfies both stated objectives without inventing facts. It reduces deployment risk (issue:L1) structurally by bounding blast radius to a small traffic slice before full exposure, and it preserves delivery speed (issue:L2) by promoting automatically on green health signals rather than serializing releases behind manual approval gates — thereby answering the single-policy question posed (issue:L3). The strongest form of the case does not assert platform capabilities as facts: it frames traffic-splittability and per-version SLO observability as explicit, load-bearing preconditions to verify, with a defined fallback (blue-green or staged rollout) if weighted splitting is unavailable, and expand-contract handling layered on if releases carry irreversible migrations. Presented this way, canary is the default hypothesis that dominates all-at-once on risk and dominates manual staging on speed, conditioned on cheap-to-check preconditions rather than assumed ones.
+- Objections: The canary policy is load-bearing on traffic-splittable and observable-slos, but the only grounded evidence (ev_1, ev_2, ev_3) is issue goal text; the pattern justification rests on ev_4, which the engine marked unverified prior_knowledge. No cited evidence establishes that the platform can weighted-split traffic or emit reliable per-version SLOs, so the specific policy is asserted beyond what the evidence supports.; The claimed speed benefit depends on automated promotion (ev_2) being gated by trustworthy SLOs, yet observable-slos and rollback-cheap have no capability evidence. If gates are flaky the automated rollback can misread noise as failure and cause release thrash, and unaddressed stateful/irreversible migrations reintroduce unbounded blast radius, inverting the risk-plus-speed balance the position claims.
+- Opposition: entry_bbbbbbbbbbbbbbbbbbbbbbbbbb
+
+### defer_for_evidence
+
+- Supporters: entry_bbbbbbbbbbbbbbbbbbbbbbbbbb
+- Evidence: ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2
+- Assumptions: entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:no-hidden-baseline, entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:speed-measurable
+- Steelmans: Deferral is the disciplined move precisely because the issue names two goals that can trade off (issue:L1-L2) yet supplies no metrics, baselines, or constraints to weigh candidates against — a claim engine-verified by ev_bbbb_2 and the strongest verified assumption in play (no-hidden-baseline). Without a change-failure-rate and lead-time baseline, any policy choice optimizes an unknown dimension and cannot be scored against the speed constraint. The improved case is not open-ended deferral: it commits to the smallest defensible step — instrument the pipeline for change-failure rate and lead-time-to-deploy — and it explicitly time-boxes the wait so deferral cannot itself become a source of deployment risk. It also names progressive delivery as the leading hypothesis to validate once numbers exist, so the position advances the decision rather than stalling it.
+- Objections: Deferral is defensible only while no-hidden-baseline holds and the incumbent process is not actively harmful. The cited evidence (ev_bbbb_1, ev_bbbb_2) confirms absence of data but says nothing about the current incident rate, so an unbounded defer could itself increase deployment risk (issue:L1) if the existing all-at-once process is already failing. Without an explicit time-box the position trades one risk for another.
+- Opposition: entry_aaaaaaaaaaaaaaaaaaaaaaaaaa
+
+## Phase Findings
+
+### Critique
+- {"canonicalPositionId":"propose_alternative","challenge":"The canary recommendation with concrete ramp/gate parameters is load-bearing on traffic-splittable and observable-slos, yet the only grounded evidence is issue text stating goals (ev_1, ev_2, ev_3). The pattern justification rests on ev_4, which the engine marked unverified (prior_knowledge, not resolvable against frozen input). No cited evidence establishes that the platform can weighted-split traffic or emit reliable per-version SLOs, so the specific policy is asserted beyond what the evidence supports.","evidenceIds":["ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4","ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"]}
+- {"canonicalPositionId":"propose_alternative","challenge":"Preserving delivery speed via automated promotion (ev_2) is only a speed win if the SLO gates are trustworthy; the same voice lists gate flakiness and unaddressed stateful migrations as risks. Since observable-slos and rollback-cheap are not backed by any capability evidence, the claimed risk-plus-speed balance could invert into thrash or an unbounded stateful blast radius.","evidenceIds":["ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2","ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4"]}
+- {"canonicalPositionId":"defer_for_evidence","challenge":"Deferral is defensible only while no-hidden-baseline holds and the current process is not actively harmful. The cited evidence (ev_bbbb_1, ev_bbbb_2) confirms the absence of data but says nothing about incident rate, so an unbounded defer could itself increase deployment risk (issue:L1) if the incumbent all-at-once process is already failing. The position needs an explicit time-box to avoid trading one risk for another.","evidenceIds":["ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1","ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"]}
+- {"assumptionId":"entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:traffic-splittable","status":"unverified","rationale":"Cited evidence is limited to issue goal statements (ev_1-ev_3) and an engine-unverified prior-knowledge claim (ev_4). None inspects the load balancer, service mesh, or platform routing, so the platform's weighted-split capability is neither confirmed nor contradicted.","evidenceIds":["ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1","ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4"]}
+- {"assumptionId":"entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:observable-slos","status":"unverified","rationale":"No cited evidence inventories SLO metrics or their per-version attribution; ev_1-ev_3 are issue text and ev_4 is ungrounded prior knowledge. The reliability of automated promotion/rollback gates remains unestablished.","evidenceIds":["ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2","ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4"]}
+- {"assumptionId":"entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:rollback-cheap","status":"unverified","rationale":"Whether releases include schema/data migrations is not addressed by any cited evidence; all supporting ids are issue goals or ungrounded practice. Flagged non-load-bearing but still unverified.","evidenceIds":["ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1","ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4"]}
+- {"assumptionId":"entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:no-hidden-baseline","status":"verified_by_cited_evidence","rationale":"ev_bbbb_2 (engine_verified, issue:L3) states the issue provides no metrics, baselines, or constraints, directly confirming that no failure-rate or lead-time baseline is available beyond the issue lines.","evidenceIds":["ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"]}
+- {"assumptionId":"entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:speed-measurable","status":"unverified","rationale":"No cited evidence confirms the metric definition of 'delivery speed'; ev_bbbb_1 only names it as an objective. Whether it maps to quantifiable throughput/lead time versus a subjective constraint is unresolved.","evidenceIds":["ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1"]}
+
+### Steelman
+- {"canonicalPositionId":"propose_alternative","improvedCase":"Progressive delivery (canary with automated, metric-gated rollback) is the policy that most directly satisfies both stated objectives without inventing facts. It reduces deployment risk (issue:L1) structurally by bounding blast radius to a small traffic slice before full exposure, and it preserves delivery speed (issue:L2) by promoting automatically on green health signals rather than serializing releases behind manual approval gates — thereby answering the single-policy question posed (issue:L3). The strongest form of the case does not assert platform capabilities as facts: it frames traffic-splittability and per-version SLO observability as explicit, load-bearing preconditions to verify, with a defined fallback (blue-green or staged rollout) if weighted splitting is unavailable, and expand-contract handling layered on if releases carry irreversible migrations. Presented this way, canary is the default hypothesis that dominates all-at-once on risk and dominates manual staging on speed, conditioned on cheap-to-check preconditions rather than assumed ones.","evidenceIds":["ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1","ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2","ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3","ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4"],"concededRisks":["Platform weighted-split capability and reliable per-version SLOs are load-bearing but unverified against frozen input (traffic-splittable, observable-slos rest only on issue text and ungrounded prior knowledge ev_4).","With no deployment frequency, failure rate, or topology data (confirmed by ev_bbbb_2), concrete ramp percentages and bake times are unvalidated defaults.","If SLO gates are flaky, automated rollback can misread noise as failure and cause release thrash, inverting the claimed speed benefit.","Stateful releases with irreversible migrations are not addressed by canary alone and can reintroduce unbounded blast radius unless expand-contract is added."]}
+- {"canonicalPositionId":"defer_for_evidence","improvedCase":"Deferral is the disciplined move precisely because the issue names two goals that can trade off (issue:L1-L2) yet supplies no metrics, baselines, or constraints to weigh candidates against — a claim engine-verified by ev_bbbb_2 and the strongest verified assumption in play (no-hidden-baseline). Without a change-failure-rate and lead-time baseline, any policy choice optimizes an unknown dimension and cannot be scored against the speed constraint. The improved case is not open-ended deferral: it commits to the smallest defensible step — instrument the pipeline for change-failure rate and lead-time-to-deploy — and it explicitly time-boxes the wait so deferral cannot itself become a source of deployment risk. It also names progressive delivery as the leading hypothesis to validate once numbers exist, so the position advances the decision rather than stalling it.","evidenceIds":["ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1","ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"],"concededRisks":["If the incumbent all-at-once process is already causing incidents, an unbounded defer increases deployment risk (issue:L1); the cited evidence confirms absent data but says nothing about current incident rate, so the time-box is essential.","The 'delivery speed' metric definition is unverified (speed-measurable is unconfirmed), so a policy chosen post-instrumentation could satisfy risk goals while silently violating an undefined speed constraint.","Instrumentation adds its own lead time before any risk-reduction is realized."]}
+
+### Adversary
+- {"canonicalPositionId":"propose_alternative","axis":"evidence","objection":"The canary policy is load-bearing on traffic-splittable and observable-slos, but the only grounded evidence (ev_1, ev_2, ev_3) is issue goal text; the pattern justification rests on ev_4, which the engine marked unverified prior_knowledge. No cited evidence establishes that the platform can weighted-split traffic or emit reliable per-version SLOs, so the specific policy is asserted beyond what the evidence supports.","wouldChangeRecommendation":"Grounded evidence inspecting the load balancer/service-mesh routing capability and an SLO metric inventory with per-version attribution would move this from unverified-assumption to supportable.","evidenceIds":["ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4","ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"]}
+- {"canonicalPositionId":"propose_alternative","axis":"recommendation_logic","objection":"The claimed speed benefit depends on automated promotion (ev_2) being gated by trustworthy SLOs, yet observable-slos and rollback-cheap have no capability evidence. If gates are flaky the automated rollback can misread noise as failure and cause release thrash, and unaddressed stateful/irreversible migrations reintroduce unbounded blast radius, inverting the risk-plus-speed balance the position claims.","wouldChangeRecommendation":"Evidence that SLO gates are reliable enough to gate promotion and that canary-stage releases carry no irreversible migrations (or an explicit expand-contract fallback) would restore the recommendation logic.","evidenceIds":["ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2","ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4"]}
+- {"canonicalPositionId":"defer_for_evidence","axis":"framing","objection":"Deferral is defensible only while no-hidden-baseline holds and the incumbent process is not actively harmful. The cited evidence (ev_bbbb_1, ev_bbbb_2) confirms absence of data but says nothing about the current incident rate, so an unbounded defer could itself increase deployment risk (issue:L1) if the existing all-at-once process is already failing. Without an explicit time-box the position trades one risk for another.","wouldChangeRecommendation":"An explicit time-box on the deferral plus evidence of the incumbent process's current failure rate would make deferral safe to recommend.","evidenceIds":["ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1","ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"]}
+
+## Next Action
+
+Gather more grounded evidence before implementation.
+
+## Diagnostics
+
+- same-route council: outputs are correlated; readiness is capped at conditional
+- initial_prompt_hash: entry_aaaaaaaaaaaaaaaaaaaaaaaaaa=139332ff2434ebf5abe47b7c3fe54a10a3218610d5cada2cd7effd552f8a9eb8 position_catalog=d481c32fb21e149b9b3980d672a61f8b3e85e37a3147b4efec576f2e09e34316
+- initial_prompt_hash: entry_bbbbbbbbbbbbbbbbbbbbbbbbbb=00403a9fdea671a2e98f9ca87bf5f7cc2d11f37e5e3ca01e834e2be7a953ae1d position_catalog=d481c32fb21e149b9b3980d672a61f8b3e85e37a3147b4efec576f2e09e34316
+- phase_lane_plan: initial_analysis concurrency=1 batches=2 lanes=[provider-invoke:claude:subscription(width=1,members=2)]
+- critique_prompt_hash: entry_bbbbbbbbbbbbbbbbbbbbbbbbbb=5426673ee24c5fcc7afd06b4c085db6befbd6fc3c9300fc7bc9db1fac294151b assumption_catalog=371a1802950c5116894bffb3bd919356521d5eda74700bdce32650be2cb48819
+- phase_lane_plan: critique concurrency=1 batches=1 lanes=[provider-invoke:claude:subscription(width=1,members=1)]
+- steelman fallback: entry_aaaaaaaaaaaaaaaaaaaaaaaaaa
+- phase_lane_plan: steelman concurrency=1 batches=1 lanes=[provider-invoke:claude:subscription(width=1,members=1)]
+- adversary fallback: entry_bbbbbbbbbbbbbbbbbbbbbbbbbb
+- phase_lane_plan: adversary concurrency=1 batches=1 lanes=[provider-invoke:claude:subscription(width=1,members=1)]
+- route_correlation: single_route; readiness capped at conditional
+- material_dissent: unresolved
+- resolved_model: v1:provider-invoke:claude:adapter-default=unknown (adapter_default_unreported)
+- worst_case_provider_calls: 10

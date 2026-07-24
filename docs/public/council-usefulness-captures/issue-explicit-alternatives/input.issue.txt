@@ -1,0 +1,4 @@
+Choose between these options:
+- Option A: Ship immediately
+- Option B: Run a staged rollout
+- Option C: Defer pending load tests

@@ -1,0 +1,71 @@
+{
+  "ok": true,
+  "status": "ok",
+  "provider": "claude",
+  "model": "",
+  "structured": {
+    "ok": true,
+    "member_id": "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "role": "architect",
+    "position_key": "issue_option_2",
+    "recommendation": "Run a staged rollout (Option B). The issue asks for a choice among three options but supplies no context on blast radius, load profile, or rollback path. A staged rollout is the architecturally safest of the offered options: it lets change reach production while bounding exposure, and it can absorb the load-test concern raised by Option C incrementally rather than blocking entirely. \"Ship immediately\" carries unbounded risk given the absent evidence, and full deferral forgoes progress when a gated rollout can gather the same signal. This choice is provisional pending the missing operational context.",
+    "evidence": [
+      {
+        "claim": "The issue is a forced choice among exactly three mutually exclusive options.",
+        "source_type": "issue_text",
+        "locator": "issue:L1-L1"
+      },
+      {
+        "claim": "Option A proposes shipping immediately, which maximizes exposure with no stated safeguards.",
+        "source_type": "issue_text",
+        "locator": "issue:L2-L2"
+      },
+      {
+        "claim": "Option B proposes a staged rollout, bounding risk while still delivering.",
+        "source_type": "issue_text",
+        "locator": "issue:L3-L3"
+      },
+      {
+        "claim": "Option C defers pending load tests, addressing a specific risk but blocking all progress.",
+        "source_type": "issue_text",
+        "locator": "issue:L4-L4"
+      }
+    ],
+    "assumptions": [
+      {
+        "assumption_key": "staged_supported",
+        "statement": "The system under change technically supports incremental/gated rollout (feature flags, canary, or percentage ramp).",
+        "load_bearing": true,
+        "if_false_then": "If no staging mechanism exists, Option B is not viable and Option C (defer for load tests) becomes the safer choice.",
+        "how_to_verify": "Confirm deployment tooling supports canary or flagged rollout in the target environment."
+      },
+      {
+        "assumption_key": "load_concern_real",
+        "statement": "The load-test concern in Option C reflects a genuine capacity risk, not a formality.",
+        "load_bearing": false,
+        "if_false_then": "If load risk is negligible, Option A becomes acceptable and staging is unnecessary overhead.",
+        "how_to_verify": "Review the change's expected traffic delta against current headroom."
+      }
+    ],
+    "risks": [
+      "Issue provides no context on what is being shipped, so any recommendation is provisional.",
+      "Staged rollout may not surface load ceilings if the ramp never reaches peak traffic.",
+      "If rollback is not automated, even a staged rollout can cause a partial outage."
+    ],
+    "what_would_change_my_view": [
+      "Evidence that no canary/flag mechanism exists would push me toward Option C.",
+      "A load model showing the change stays well within headroom would make Option A defensible.",
+      "A hard deadline or contractual ship date could reweigh the tradeoff toward Option A."
+    ],
+    "next_action": "Confirm the target system supports a gated/canary rollout, and define the ramp stages plus the load metric and threshold that gates promotion to 100%."
+  },
+  "text": "{\"ok\":true,\"member_id\":\"entry_aaaaaaaaaaaaaaaaaaaaaaaaaa\",\"role\":\"architect\",\"position_key\":\"issue_option_2\",\"recommendation\":\"Run a staged rollout (Option B). The issue asks for a choice among three options but supplies no context on blast radius, load profile, or rollback path. A staged rollout is the architecturally safest of the offered options: it lets change reach production while bounding exposure, and it can absorb the load-test concern raised by Option C incrementally rather than blocking entirely. \\\"Ship immediately\\\" carries unbounded risk given the absent evidence, and full deferral forgoes progress when a gated rollout can gather the same signal. This choice is provisional pending the missing operational context.\",\"evidence\":[{\"claim\":\"The issue is a forced choice among exactly three mutually exclusive options.\",\"source_type\":\"issue_text\",\"locator\":\"issue:L1-L1\"},{\"claim\":\"Option A proposes shipping immediately, which maximizes exposure with no stated safeguards.\",\"source_type\":\"issue_text\",\"locator\":\"issue:L2-L2\"},{\"claim\":\"Option B proposes a staged rollout, bounding risk while still delivering.\",\"source_type\":\"issue_text\",\"locator\":\"issue:L3-L3\"},{\"claim\":\"Option C defers pending load tests, addressing a specific risk but blocking all progress.\",\"source_type\":\"issue_text\",\"locator\":\"issue:L4-L4\"}],\"assumptions\":[{\"assumption_key\":\"staged_supported\",\"statement\":\"The system under change technically supports incremental/gated rollout (feature flags, canary, or percentage ramp).\",\"load_bearing\":true,\"if_false_then\":\"If no staging mechanism exists, Option B is not viable and Option C (defer for load tests) becomes the safer choice.\",\"how_to_verify\":\"Confirm deployment tooling supports canary or flagged rollout in the target environment.\"},{\"assumption_key\":\"load_concern_real\",\"statement\":\"The load-test concern in Option C reflects a genuine capacity risk, not a formality.\",\"load_bearing\":false,\"if_false_then\":\"If load risk is negligible, Option A becomes acceptable and staging is unnecessary overhead.\",\"how_to_verify\":\"Review the change's expected traffic delta against current headroom.\"}],\"risks\":[\"Issue provides no context on what is being shipped, so any recommendation is provisional.\",\"Staged rollout may not surface load ceilings if the ramp never reaches peak traffic.\",\"If rollback is not automated, even a staged rollout can cause a partial outage.\"],\"what_would_change_my_view\":[\"Evidence that no canary/flag mechanism exists would push me toward Option C.\",\"A load model showing the change stays well within headroom would make Option A defensible.\",\"A hard deadline or contractual ship date could reweigh the tradeoff toward Option A.\"],\"next_action\":\"Confirm the target system supports a gated/canary rollout, and define the ramp stages plus the load metric and threshold that gates promotion to 100%.\"}",
+  "error": null,
+  "meta": {
+    "parsed": "schema",
+    "timed_out": false,
+    "attempts": 1,
+    "tokens": 1405,
+    "cost_usd": 0.07013
+  }
+}

@@ -111,5 +111,8 @@ if (schema === "council-voice.json") {
   if (process.env.AISYNTH_FAKE_CHAIR_UNGROUNDED === "1") {
     structured.evidence_summary = ["An invented production incident proves the decision (issue:L1)"];
   }
+  if (process.env.AISYNTH_FAKE_CHAIR_EMPTY_EVIDENCE === "1") {
+    structured.evidence_summary = [];
+  }
 }
 console.log(JSON.stringify({ ok: true, status: "ok", structured, text: "", model: process.env.AISYNTH_FAKE_RESOLVED_MODEL ?? "claude-fixture-resolved", meta: { attempts: 1 } }));

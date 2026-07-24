@@ -1,0 +1,66 @@
+{
+  "ok": true,
+  "status": "ok",
+  "provider": "claude",
+  "model": "",
+  "structured": {
+    "ok": true,
+    "member_id": "entry_cccccccccccccccccccccccccc",
+    "role": "product-operator",
+    "position_key": "revise_plan",
+    "recommendation": "Revise the plan. The three-step outline is directionally sound for a safe rollout — validate inputs, ship behind a flag, and roll back on regression — but it is not operable as written. It omits the concrete decision criteria an operator needs at each gate: (1) what \"request validation\" must cover (which fields/endpoints, reject vs. sanitize behavior, and how validation failures are surfaced to callers); (2) the feature-flag rollout mechanics (initial audience, ramp stages/percentages, and who owns flip decisions); and (3) a quantified rollback trigger — \"error-rate regression\" needs a baseline, a threshold, a measurement window, and an owner authorized to execute the rollback. Add these specifics and the plan becomes acceptable; the sequence itself does not need to change.",
+    "evidence": [
+      {
+        "claim": "Step 1 specifies adding request validation but gives no scope, target endpoints, or failure-handling behavior.",
+        "source_type": "plan_line",
+        "locator": "plan.md:L1-L1"
+      },
+      {
+        "claim": "Step 2 mandates deploying behind a feature flag but defines no rollout stages, initial audience, or ramp criteria.",
+        "source_type": "plan_line",
+        "locator": "plan.md:L2-L2"
+      },
+      {
+        "claim": "Step 3 conditions rollback on 'error-rate regression' without a baseline, numeric threshold, measurement window, or named owner.",
+        "source_type": "plan_line",
+        "locator": "plan.md:L3-L3"
+      }
+    ],
+    "assumptions": [
+      {
+        "assumption_key": "immutable_sequence",
+        "statement": "The plan is immutable in ordering but may be supplemented with operational detail during revision.",
+        "load_bearing": true,
+        "if_false_then": "If no detail can be added at all, the correct position shifts to needs_more_evidence rather than revise_plan.",
+        "how_to_verify": "Confirm with the plan owner whether 'immutable' forbids elaboration or only reordering/removal of steps."
+      },
+      {
+        "assumption_key": "regression_measurable",
+        "statement": "An error-rate baseline exists or can be established before the flagged deploy so regression is measurable.",
+        "load_bearing": true,
+        "if_false_then": "If no baseline is obtainable, step 3's rollback trigger cannot fire reliably and the rollout is unsafe.",
+        "how_to_verify": "Check monitoring/observability for an existing error-rate metric on the affected endpoints."
+      }
+    ],
+    "risks": [
+      "Ambiguous 'error-rate regression' could be interpreted differently by on-call, delaying or missing a rollback.",
+      "Feature flag without defined ramp stages risks a full-population exposure before regression signal accumulates.",
+      "Validation added without specified failure behavior may reject legitimate traffic and be misread as a regression."
+    ],
+    "what_would_change_my_view": [
+      "A quantified rollback threshold, measurement window, and named owner attached to step 3.",
+      "A defined flag rollout schedule (audience and ramp percentages) for step 2.",
+      "An explicit validation scope and failure-mode spec for step 1."
+    ],
+    "next_action": "Return the plan to its author with the three gaps (validation scope, flag ramp stages, quantified rollback trigger + owner) and request supplementary operational detail before execution."
+  },
+  "text": "{\"ok\":true,\"member_id\":\"entry_cccccccccccccccccccccccccc\",\"role\":\"product-operator\",\"position_key\":\"revise_plan\",\"recommendation\":\"Revise the plan. The three-step outline is directionally sound for a safe rollout — validate inputs, ship behind a flag, and roll back on regression — but it is not operable as written. It omits the concrete decision criteria an operator needs at each gate: (1) what \\\"request validation\\\" must cover (which fields/endpoints, reject vs. sanitize behavior, and how validation failures are surfaced to callers); (2) the feature-flag rollout mechanics (initial audience, ramp stages/percentages, and who owns flip decisions); and (3) a quantified rollback trigger — \\\"error-rate regression\\\" needs a baseline, a threshold, a measurement window, and an owner authorized to execute the rollback. Add these specifics and the plan becomes acceptable; the sequence itself does not need to change.\",\"evidence\":[{\"claim\":\"Step 1 specifies adding request validation but gives no scope, target endpoints, or failure-handling behavior.\",\"source_type\":\"plan_line\",\"locator\":\"plan.md:L1-L1\"},{\"claim\":\"Step 2 mandates deploying behind a feature flag but defines no rollout stages, initial audience, or ramp criteria.\",\"source_type\":\"plan_line\",\"locator\":\"plan.md:L2-L2\"},{\"claim\":\"Step 3 conditions rollback on 'error-rate regression' without a baseline, numeric threshold, measurement window, or named owner.\",\"source_type\":\"plan_line\",\"locator\":\"plan.md:L3-L3\"}],\"assumptions\":[{\"assumption_key\":\"immutable_sequence\",\"statement\":\"The plan is immutable in ordering but may be supplemented with operational detail during revision.\",\"load_bearing\":true,\"if_false_then\":\"If no detail can be added at all, the correct position shifts to needs_more_evidence rather than revise_plan.\",\"how_to_verify\":\"Confirm with the plan owner whether 'immutable' forbids elaboration or only reordering/removal of steps.\"},{\"assumption_key\":\"regression_measurable\",\"statement\":\"An error-rate baseline exists or can be established before the flagged deploy so regression is measurable.\",\"load_bearing\":true,\"if_false_then\":\"If no baseline is obtainable, step 3's rollback trigger cannot fire reliably and the rollout is unsafe.\",\"how_to_verify\":\"Check monitoring/observability for an existing error-rate metric on the affected endpoints.\"}],\"risks\":[\"Ambiguous 'error-rate regression' could be interpreted differently by on-call, delaying or missing a rollback.\",\"Feature flag without defined ramp stages risks a full-population exposure before regression signal accumulates.\",\"Validation added without specified failure behavior may reject legitimate traffic and be misread as a regression.\"],\"what_would_change_my_view\":[\"A quantified rollback threshold, measurement window, and named owner attached to step 3.\",\"A defined flag rollout schedule (audience and ramp percentages) for step 2.\",\"An explicit validation scope and failure-mode spec for step 1.\"],\"next_action\":\"Return the plan to its author with the three gaps (validation scope, flag ramp stages, quantified rollback trigger + owner) and request supplementary operational detail before execution.\"}",
+  "error": null,
+  "meta": {
+    "parsed": "schema",
+    "timed_out": false,
+    "attempts": 1,
+    "tokens": 1445,
+    "cost_usd": 0.06614400000000001
+  }
+}

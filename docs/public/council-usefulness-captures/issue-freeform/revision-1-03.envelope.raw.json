@@ -1,0 +1,89 @@
+{
+  "ok": true,
+  "status": "ok",
+  "provider": "claude",
+  "model": "",
+  "structured": {
+    "memberId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "targetedChallenges": [
+      {
+        "canonicalPositionId": "propose_alternative",
+        "challenge": "The canary recommendation with concrete ramp/gate parameters is load-bearing on traffic-splittable and observable-slos, yet the only grounded evidence is issue text stating goals (ev_1, ev_2, ev_3). The pattern justification rests on ev_4, which the engine marked unverified (prior_knowledge, not resolvable against frozen input). No cited evidence establishes that the platform can weighted-split traffic or emit reliable per-version SLOs, so the specific policy is asserted beyond what the evidence supports.",
+        "evidenceIds": [
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"
+        ]
+      },
+      {
+        "canonicalPositionId": "propose_alternative",
+        "challenge": "Preserving delivery speed via automated promotion (ev_2) is only a speed win if the SLO gates are trustworthy; the same voice lists gate flakiness and unaddressed stateful migrations as risks. Since observable-slos and rollback-cheap are not backed by any capability evidence, the claimed risk-plus-speed balance could invert into thrash or an unbounded stateful blast radius.",
+        "evidenceIds": [
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4"
+        ]
+      },
+      {
+        "canonicalPositionId": "defer_for_evidence",
+        "challenge": "Deferral is defensible only while no-hidden-baseline holds and the current process is not actively harmful. The cited evidence (ev_bbbb_1, ev_bbbb_2) confirms the absence of data but says nothing about incident rate, so an unbounded defer could itself increase deployment risk (issue:L1) if the incumbent all-at-once process is already failing. The position needs an explicit time-box to avoid trading one risk for another.",
+        "evidenceIds": [
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"
+        ]
+      }
+    ],
+    "assumptionReviews": [
+      {
+        "assumptionId": "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:traffic-splittable",
+        "status": "unverified",
+        "rationale": "Cited evidence is limited to issue goal statements (ev_1-ev_3) and an engine-unverified prior-knowledge claim (ev_4). None inspects the load balancer, service mesh, or platform routing, so the platform's weighted-split capability is neither confirmed nor contradicted.",
+        "evidenceIds": [
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4"
+        ]
+      },
+      {
+        "assumptionId": "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:observable-slos",
+        "status": "unverified",
+        "rationale": "No cited evidence inventories SLO metrics or their per-version attribution; ev_1-ev_3 are issue text and ev_4 is ungrounded prior knowledge. The reliability of automated promotion/rollback gates remains unestablished.",
+        "evidenceIds": [
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4"
+        ]
+      },
+      {
+        "assumptionId": "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:rollback-cheap",
+        "status": "unverified",
+        "rationale": "Whether releases include schema/data migrations is not addressed by any cited evidence; all supporting ids are issue goals or ungrounded practice. Flagged non-load-bearing but still unverified.",
+        "evidenceIds": [
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4"
+        ]
+      },
+      {
+        "assumptionId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:no-hidden-baseline",
+        "status": "verified_by_cited_evidence",
+        "rationale": "ev_bbbb_2 (engine_verified, issue:L3) states the issue provides no metrics, baselines, or constraints, directly confirming that no failure-rate or lead-time baseline is available beyond the issue lines.",
+        "evidenceIds": [
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"
+        ]
+      },
+      {
+        "assumptionId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:speed-measurable",
+        "status": "unverified",
+        "rationale": "No cited evidence confirms the metric definition of 'delivery speed'; ev_bbbb_1 only names it as an objective. Whether it maps to quantifiable throughput/lead time versus a subjective constraint is unresolved.",
+        "evidenceIds": [
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1"
+        ]
+      }
+    ]
+  },
+  "text": "{\"memberId\":\"entry_bbbbbbbbbbbbbbbbbbbbbbbbbb\",\"targetedChallenges\":[{\"canonicalPositionId\":\"propose_alternative\",\"challenge\":\"The canary recommendation with concrete ramp/gate parameters is load-bearing on traffic-splittable and observable-slos, yet the only grounded evidence is issue text stating goals (ev_1, ev_2, ev_3). The pattern justification rests on ev_4, which the engine marked unverified (prior_knowledge, not resolvable against frozen input). No cited evidence establishes that the platform can weighted-split traffic or emit reliable per-version SLOs, so the specific policy is asserted beyond what the evidence supports.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\"]},{\"canonicalPositionId\":\"propose_alternative\",\"challenge\":\"Preserving delivery speed via automated promotion (ev_2) is only a speed win if the SLO gates are trustworthy; the same voice lists gate flakiness and unaddressed stateful migrations as risks. Since observable-slos and rollback-cheap are not backed by any capability evidence, the claimed risk-plus-speed balance could invert into thrash or an unbounded stateful blast radius.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4\"]},{\"canonicalPositionId\":\"defer_for_evidence\",\"challenge\":\"Deferral is defensible only while no-hidden-baseline holds and the current process is not actively harmful. The cited evidence (ev_bbbb_1, ev_bbbb_2) confirms the absence of data but says nothing about incident rate, so an unbounded defer could itself increase deployment risk (issue:L1) if the incumbent all-at-once process is already failing. The position needs an explicit time-box to avoid trading one risk for another.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\"]}],\"assumptionReviews\":[{\"assumptionId\":\"entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:traffic-splittable\",\"status\":\"unverified\",\"rationale\":\"Cited evidence is limited to issue goal statements (ev_1-ev_3) and an engine-unverified prior-knowledge claim (ev_4). None inspects the load balancer, service mesh, or platform routing, so the platform's weighted-split capability is neither confirmed nor contradicted.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4\"]},{\"assumptionId\":\"entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:observable-slos\",\"status\":\"unverified\",\"rationale\":\"No cited evidence inventories SLO metrics or their per-version attribution; ev_1-ev_3 are issue text and ev_4 is ungrounded prior knowledge. The reliability of automated promotion/rollback gates remains unestablished.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4\"]},{\"assumptionId\":\"entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:rollback-cheap\",\"status\":\"unverified\",\"rationale\":\"Whether releases include schema/data migrations is not addressed by any cited evidence; all supporting ids are issue goals or ungrounded practice. Flagged non-load-bearing but still unverified.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4\"]},{\"assumptionId\":\"entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:no-hidden-baseline\",\"status\":\"verified_by_cited_evidence\",\"rationale\":\"ev_bbbb_2 (engine_verified, issue:L3) states the issue provides no metrics, baselines, or constraints, directly confirming that no failure-rate or lead-time baseline is available beyond the issue lines.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\"]},{\"assumptionId\":\"entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:speed-measurable\",\"status\":\"unverified\",\"rationale\":\"No cited evidence confirms the metric definition of 'delivery speed'; ev_bbbb_1 only names it as an objective. Whether it maps to quantifiable throughput/lead time versus a subjective constraint is unresolved.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1\"]}]}",
+  "error": null,
+  "meta": {
+    "parsed": "schema",
+    "timed_out": false,
+    "attempts": 1,
+    "tokens": 2919,
+    "cost_usd": 0.136993
+  }
+}

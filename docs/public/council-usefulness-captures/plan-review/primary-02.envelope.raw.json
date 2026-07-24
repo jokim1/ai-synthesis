@@ -1,0 +1,66 @@
+{
+  "ok": true,
+  "status": "ok",
+  "provider": "claude",
+  "model": "",
+  "structured": {
+    "ok": true,
+    "member_id": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "role": "risk-critic",
+    "position_key": "revise_plan",
+    "recommendation": "Revise the plan before implementation. All three steps name the right controls (validation, feature flag, rollback) but each is a single unqualified sentence with no operational content, leaving the plan unexecutable and unverifiable as written. Step 1 (plan.md:L1) says \"Add request validation\" without specifying which requests, which fields, what rules, or whether invalid requests are rejected/sanitized/logged — so there is no way to confirm the validation is correct or complete. Step 2 (plan.md:L2) says \"Deploy behind a feature flag\" but names no rollout stages, no exposure percentages, and no owner/kill-switch mechanics. Step 3 (plan.md:L3) says \"Roll back on error-rate regression\" but defines no baseline, no regression threshold, no measurement window, and no automated-vs-manual trigger — an unquantified rollback gate cannot fire reliably. The plan also omits a monitoring/observability step required for step 3 to function at all. Minimum revision: quantify the rollback trigger, define the validation contract, and add the metrics prerequisite.",
+    "evidence": [
+      {
+        "claim": "Validation step is a single sentence with no fields, rules, or rejection behavior specified.",
+        "source_type": "plan_line",
+        "locator": "plan.md:L1"
+      },
+      {
+        "claim": "Feature-flag deploy step names no rollout stages, exposure levels, or kill-switch owner.",
+        "source_type": "plan_line",
+        "locator": "plan.md:L2"
+      },
+      {
+        "claim": "Rollback step references 'error-rate regression' but defines no baseline, threshold, window, or trigger mechanism.",
+        "source_type": "plan_line",
+        "locator": "plan.md:L3"
+      },
+      {
+        "claim": "No monitoring/metrics step exists, yet step 3 depends on measuring error-rate regression.",
+        "source_type": "plan_line",
+        "locator": "plan.md:L1-L3"
+      }
+    ],
+    "assumptions": [
+      {
+        "assumption_key": "plan_is_complete",
+        "statement": "The three lines are the entire plan with no external appendix defining thresholds or validation rules.",
+        "load_bearing": true,
+        "if_false_then": "If a referenced spec defines the missing thresholds and validation contract, the plan could move toward accept.",
+        "how_to_verify": "Confirm no linked spec/runbook accompanies plan.md."
+      }
+    ],
+    "risks": [
+      "Rollback gate cannot fire: 'error-rate regression' has no numeric threshold or window, so regressions may go undetected or trigger inconsistently (plan.md:L3).",
+      "Validation gaps: unspecified validation scope may leave some request paths unvalidated, defeating step 1's purpose (plan.md:L1).",
+      "Missing observability: no metrics step means the rollback trigger in step 3 has no data source (plan.md:L1-L3).",
+      "Flag rollout ambiguity: no staged exposure or owner may cause full-blast exposure despite the flag (plan.md:L2)."
+    ],
+    "what_would_change_my_view": [
+      "A quantified rollback trigger (baseline, threshold, measurement window, auto/manual) added to step 3.",
+      "An explicit validation contract for step 1 (target requests, fields, rules, reject behavior).",
+      "An added monitoring/metrics prerequisite feeding the error-rate signal.",
+      "Evidence that an accompanying spec already defines these details."
+    ],
+    "next_action": "Add a quantified rollback trigger to plan.md:L3 (define baseline error rate, regression threshold %, measurement window, and auto-vs-manual trigger)."
+  },
+  "text": "{\"ok\":true,\"member_id\":\"entry_bbbbbbbbbbbbbbbbbbbbbbbbbb\",\"role\":\"risk-critic\",\"position_key\":\"revise_plan\",\"recommendation\":\"Revise the plan before implementation. All three steps name the right controls (validation, feature flag, rollback) but each is a single unqualified sentence with no operational content, leaving the plan unexecutable and unverifiable as written. Step 1 (plan.md:L1) says \\\"Add request validation\\\" without specifying which requests, which fields, what rules, or whether invalid requests are rejected/sanitized/logged — so there is no way to confirm the validation is correct or complete. Step 2 (plan.md:L2) says \\\"Deploy behind a feature flag\\\" but names no rollout stages, no exposure percentages, and no owner/kill-switch mechanics. Step 3 (plan.md:L3) says \\\"Roll back on error-rate regression\\\" but defines no baseline, no regression threshold, no measurement window, and no automated-vs-manual trigger — an unquantified rollback gate cannot fire reliably. The plan also omits a monitoring/observability step required for step 3 to function at all. Minimum revision: quantify the rollback trigger, define the validation contract, and add the metrics prerequisite.\",\"evidence\":[{\"claim\":\"Validation step is a single sentence with no fields, rules, or rejection behavior specified.\",\"source_type\":\"plan_line\",\"locator\":\"plan.md:L1\"},{\"claim\":\"Feature-flag deploy step names no rollout stages, exposure levels, or kill-switch owner.\",\"source_type\":\"plan_line\",\"locator\":\"plan.md:L2\"},{\"claim\":\"Rollback step references 'error-rate regression' but defines no baseline, threshold, window, or trigger mechanism.\",\"source_type\":\"plan_line\",\"locator\":\"plan.md:L3\"},{\"claim\":\"No monitoring/metrics step exists, yet step 3 depends on measuring error-rate regression.\",\"source_type\":\"plan_line\",\"locator\":\"plan.md:L1-L3\"}],\"assumptions\":[{\"assumption_key\":\"plan_is_complete\",\"statement\":\"The three lines are the entire plan with no external appendix defining thresholds or validation rules.\",\"load_bearing\":true,\"if_false_then\":\"If a referenced spec defines the missing thresholds and validation contract, the plan could move toward accept.\",\"how_to_verify\":\"Confirm no linked spec/runbook accompanies plan.md.\"}],\"risks\":[\"Rollback gate cannot fire: 'error-rate regression' has no numeric threshold or window, so regressions may go undetected or trigger inconsistently (plan.md:L3).\",\"Validation gaps: unspecified validation scope may leave some request paths unvalidated, defeating step 1's purpose (plan.md:L1).\",\"Missing observability: no metrics step means the rollback trigger in step 3 has no data source (plan.md:L1-L3).\",\"Flag rollout ambiguity: no staged exposure or owner may cause full-blast exposure despite the flag (plan.md:L2).\"],\"what_would_change_my_view\":[\"A quantified rollback trigger (baseline, threshold, measurement window, auto/manual) added to step 3.\",\"An explicit validation contract for step 1 (target requests, fields, rules, reject behavior).\",\"An added monitoring/metrics prerequisite feeding the error-rate signal.\",\"Evidence that an accompanying spec already defines these details.\"],\"next_action\":\"Add a quantified rollback trigger to plan.md:L3 (define baseline error rate, regression threshold %, measurement window, and auto-vs-manual trigger).\"}",
+  "error": null,
+  "meta": {
+    "parsed": "schema",
+    "timed_out": false,
+    "attempts": 1,
+    "tokens": 1498,
+    "cost_usd": 0.06872299999999999
+  }
+}

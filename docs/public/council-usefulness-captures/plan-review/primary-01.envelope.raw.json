@@ -1,0 +1,59 @@
+{
+  "ok": true,
+  "status": "ok",
+  "provider": "claude",
+  "model": "",
+  "structured": {
+    "ok": true,
+    "member_id": "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "role": "architect",
+    "position_key": "revise_plan",
+    "recommendation": "Revise the plan before acceptance. The three steps name a sound high-level shape (validate, gate behind a flag, roll back on regression), but every step is underspecified in ways that block safe implementation. Step 1 (plan.md:L1) does not state what \"request validation\" covers — which fields, schema vs. semantic checks, reject vs. sanitize, or how failures are surfaced to callers. Step 2 (plan.md:L2) names a feature flag but not its default state, rollout scope/percentage, or the kill-switch owner. Step 3 (plan.md:L3) triggers rollback on \"error-rate regression\" without a baseline, a numeric threshold, an observation window, or an alerting/automation mechanism, so the trigger is not actionable. The plan should add: concrete validation scope and error contract; flag name, default-off state, and staged rollout percentages; and a quantified rollback SLO (baseline, threshold, window, owner).",
+    "evidence": [
+      {
+        "claim": "Step 1 specifies adding request validation but no scope, rules, or failure-handling contract.",
+        "source_type": "plan_line",
+        "locator": "plan.md:L1-L1"
+      },
+      {
+        "claim": "Step 2 mentions a feature flag but omits default state, rollout scope, and ownership.",
+        "source_type": "plan_line",
+        "locator": "plan.md:L2-L2"
+      },
+      {
+        "claim": "Step 3 conditions rollback on error-rate regression with no baseline, threshold, window, or mechanism.",
+        "source_type": "plan_line",
+        "locator": "plan.md:L3-L3"
+      }
+    ],
+    "assumptions": [
+      {
+        "assumption_key": "no_hidden_detail",
+        "statement": "The three lines are the complete plan; there is no linked appendix defining validation rules, flag config, or rollback thresholds.",
+        "load_bearing": true,
+        "if_false_then": "If a referenced spec supplies these details, the plan may be acceptable and my position weakens to accept_plan.",
+        "how_to_verify": "Confirm plan.md has no additional sections or external links beyond L1-L3."
+      }
+    ],
+    "risks": [
+      "Undefined validation scope risks either over-rejecting valid requests or leaving injection/malformed-input gaps.",
+      "A rollback trigger without a numeric threshold and window can fire on noise or never fire, defeating the safety mechanism.",
+      "Unspecified flag default could ship the change on by default, negating the staged-rollout intent."
+    ],
+    "what_would_change_my_view": [
+      "A referenced spec or appendix defining validation fields and the error contract.",
+      "A quantified rollback SLO: baseline error rate, regression threshold, observation window, and automated/owned response.",
+      "Explicit flag default (off), rollout percentages, and a named kill-switch owner."
+    ],
+    "next_action": "Add a quantified rollback criterion to plan.md:L3 (baseline error rate, percentage-point regression threshold, observation window, and owner/mechanism), as the smallest change that makes the safety gate actionable."
+  },
+  "text": "{\"ok\":true,\"member_id\":\"entry_aaaaaaaaaaaaaaaaaaaaaaaaaa\",\"role\":\"architect\",\"position_key\":\"revise_plan\",\"recommendation\":\"Revise the plan before acceptance. The three steps name a sound high-level shape (validate, gate behind a flag, roll back on regression), but every step is underspecified in ways that block safe implementation. Step 1 (plan.md:L1) does not state what \\\"request validation\\\" covers — which fields, schema vs. semantic checks, reject vs. sanitize, or how failures are surfaced to callers. Step 2 (plan.md:L2) names a feature flag but not its default state, rollout scope/percentage, or the kill-switch owner. Step 3 (plan.md:L3) triggers rollback on \\\"error-rate regression\\\" without a baseline, a numeric threshold, an observation window, or an alerting/automation mechanism, so the trigger is not actionable. The plan should add: concrete validation scope and error contract; flag name, default-off state, and staged rollout percentages; and a quantified rollback SLO (baseline, threshold, window, owner).\",\"evidence\":[{\"claim\":\"Step 1 specifies adding request validation but no scope, rules, or failure-handling contract.\",\"source_type\":\"plan_line\",\"locator\":\"plan.md:L1-L1\"},{\"claim\":\"Step 2 mentions a feature flag but omits default state, rollout scope, and ownership.\",\"source_type\":\"plan_line\",\"locator\":\"plan.md:L2-L2\"},{\"claim\":\"Step 3 conditions rollback on error-rate regression with no baseline, threshold, window, or mechanism.\",\"source_type\":\"plan_line\",\"locator\":\"plan.md:L3-L3\"}],\"assumptions\":[{\"assumption_key\":\"no_hidden_detail\",\"statement\":\"The three lines are the complete plan; there is no linked appendix defining validation rules, flag config, or rollback thresholds.\",\"load_bearing\":true,\"if_false_then\":\"If a referenced spec supplies these details, the plan may be acceptable and my position weakens to accept_plan.\",\"how_to_verify\":\"Confirm plan.md has no additional sections or external links beyond L1-L3.\"}],\"risks\":[\"Undefined validation scope risks either over-rejecting valid requests or leaving injection/malformed-input gaps.\",\"A rollback trigger without a numeric threshold and window can fire on noise or never fire, defeating the safety mechanism.\",\"Unspecified flag default could ship the change on by default, negating the staged-rollout intent.\"],\"what_would_change_my_view\":[\"A referenced spec or appendix defining validation fields and the error contract.\",\"A quantified rollback SLO: baseline error rate, regression threshold, observation window, and automated/owned response.\",\"Explicit flag default (off), rollout percentages, and a named kill-switch owner.\"],\"next_action\":\"Add a quantified rollback criterion to plan.md:L3 (baseline error rate, percentage-point regression threshold, observation window, and owner/mechanism), as the smallest change that makes the safety gate actionable.\"}",
+  "error": null,
+  "meta": {
+    "parsed": "schema",
+    "timed_out": false,
+    "attempts": 1,
+    "tokens": 1366,
+    "cost_usd": 0.065158
+  }
+}

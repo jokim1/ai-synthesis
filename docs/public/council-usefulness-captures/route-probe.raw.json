@@ -1,0 +1,112 @@
+{
+  "version": 1,
+  "routes": [
+    {
+      "ref": {
+        "executor": "provider-invoke",
+        "provider": "claude",
+        "model": "adapter-default",
+        "routeId": "v1:provider-invoke:claude:adapter-default"
+      },
+      "executionLaneKey": "provider-invoke:claude:subscription",
+      "executionLaneMaxConcurrency": 1,
+      "displayName": "Claude Code (adapter-default)",
+      "family": "claude",
+      "providerDisplayName": "Claude Code",
+      "supportedEfforts": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "effortSupport": {
+        "source": "provider_invoke_help_cli_help_passthrough",
+        "confidence": "wrapper_contract",
+        "verifiedBy": [
+          "bin/provider-invoke --help",
+          "claude --help",
+          "fake claude --effort pass-through"
+        ]
+      },
+      "structuredOutput": {
+        "retryOwner": "engine",
+        "maxProviderCalls": 2,
+        "verifiedBy": [
+          "engine JSON retry"
+        ]
+      },
+      "auth": {
+        "configured": true,
+        "runnable": true,
+        "policy": "subscription_only",
+        "source": "subscription",
+        "billing": "subscription"
+      },
+      "cost": {
+        "known": false
+      },
+      "limits": {}
+    },
+    {
+      "ref": {
+        "executor": "provider-invoke",
+        "provider": "codex",
+        "model": "adapter-default",
+        "routeId": "v1:provider-invoke:codex:adapter-default"
+      },
+      "executionLaneKey": "provider-invoke:codex:default",
+      "executionLaneMaxConcurrency": 1,
+      "displayName": "Codex CLI (adapter-default)",
+      "family": "openai",
+      "providerDisplayName": "Codex CLI",
+      "supportedEfforts": [
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh"
+      ],
+      "effortSupport": {
+        "source": "provider_adapter_static",
+        "confidence": "static_adapter_contract",
+        "verifiedBy": [
+          "bin/provider-invoke --help",
+          "bin/adapters/codex.sh"
+        ]
+      },
+      "structuredOutput": {
+        "retryOwner": "adapter",
+        "maxProviderCalls": 2,
+        "verifiedBy": [
+          "bin/adapters/codex.sh schema retry"
+        ]
+      },
+      "auth": {
+        "configured": false,
+        "runnable": false,
+        "policy": "default",
+        "billing": "unknown",
+        "reason": "tool_policy_unproven"
+      },
+      "cost": {
+        "known": false
+      },
+      "limits": {}
+    }
+  ],
+  "diagnostics": [
+    {
+      "executor": "provider-invoke",
+      "provider": "claude",
+      "status": "ok",
+      "message": "claude subscription route ready"
+    },
+    {
+      "executor": "provider-invoke",
+      "provider": "codex",
+      "status": "unavailable",
+      "message": "tool_policy_unproven"
+    }
+  ]
+}

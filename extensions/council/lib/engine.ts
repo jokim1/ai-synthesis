@@ -19,7 +19,7 @@ import type {
   CouncilPositionCatalogV1
 } from "./types.js";
 import { validateRoster } from "./validate-roster.js";
-import { invokeProvider } from "./executors/provider-invoke.js";
+import { invokeProvider, type ProviderInvocationCapture } from "./executors/provider-invoke.js";
 import { extractModelJson, validateModelJsonValue } from "./validate-json.js";
 import { buildRunPlan } from "./run-intent.js";
 import { sha256, stableJson } from "./util.js";
@@ -96,6 +96,7 @@ export interface RunCouncilOptions {
   rememberedRosterWritten: boolean;
   env?: NodeJS.ProcessEnv;
   signal?: AbortSignal;
+  captureProviderInvocation?: (capture: ProviderInvocationCapture) => void;
 }
 
 function lineNumbered(input: CouncilInputSnapshotV1): string {
@@ -116,6 +117,7 @@ function voicePrompt(input: CouncilInputSnapshotV1, catalogBytes: string, entryI
   return `You are council member ${entryId} with role ${role}.
 Role rubric: ${template}
 Review the immutable ${input.kind} independently. Cite evidence only as ${locator}.
+When the input has at least three lines, provide at least three evidence items using the narrowest valid locators.
 Choose position_key from ${catalogBytes}, or other:<lowercase-slug>.
 Return only JSON matching the schema. Council completion does not authorize implementation.
 
@@ -281,7 +283,17 @@ async function invokeStructured(
       diagnostics.push(`retry_skipped_no_member_budget: ${entry.id}`);
       return undefined;
     }
-    const result = await invokeProvider(opts.packageRoot, route, entry, attemptPrompt, schemaPath, remaining, opts.env, opts.signal);
+    const result = await invokeProvider(
+      opts.packageRoot,
+      route,
+      entry,
+      attemptPrompt,
+      schemaPath,
+      remaining,
+      opts.env,
+      opts.signal,
+      opts.captureProviderInvocation
+    );
     onEnvelope?.(executionIdentity(route, result.model));
     const providerCalls = result.attempts ?? 1;
     cumulativeProviderCalls += providerCalls;
@@ -360,7 +372,11 @@ function chairGroundingError(
       .filter((item) => item.grounded)
       .map((item) => `${item.claim} (${item.locator})`)
   );
-  if (!Array.isArray(report.evidence_summary) || report.evidence_summary.some((item) => !allowedEvidence.has(item))) {
+  if (
+    !Array.isArray(report.evidence_summary)
+    || (allowedEvidence.size > 0 && report.evidence_summary.length === 0)
+    || report.evidence_summary.some((item) => !allowedEvidence.has(item))
+  ) {
     return "chair evidence_summary contains evidence outside the frozen grounded ledger";
   }
   const serialized = stableJson(value);

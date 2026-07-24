@@ -1,0 +1,50 @@
+{
+  "ok": true,
+  "status": "ok",
+  "provider": "claude",
+  "model": "",
+  "structured": {
+    "memberId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "objections": [
+      {
+        "canonicalPositionId": "propose_alternative",
+        "axis": "evidence",
+        "objection": "The canary policy is load-bearing on traffic-splittable and observable-slos, but the only grounded evidence (ev_1, ev_2, ev_3) is issue goal text; the pattern justification rests on ev_4, which the engine marked unverified prior_knowledge. No cited evidence establishes that the platform can weighted-split traffic or emit reliable per-version SLOs, so the specific policy is asserted beyond what the evidence supports.",
+        "wouldChangeRecommendation": "Grounded evidence inspecting the load balancer/service-mesh routing capability and an SLO metric inventory with per-version attribution would move this from unverified-assumption to supportable.",
+        "evidenceIds": [
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"
+        ]
+      },
+      {
+        "canonicalPositionId": "propose_alternative",
+        "axis": "recommendation_logic",
+        "objection": "The claimed speed benefit depends on automated promotion (ev_2) being gated by trustworthy SLOs, yet observable-slos and rollback-cheap have no capability evidence. If gates are flaky the automated rollback can misread noise as failure and cause release thrash, and unaddressed stateful/irreversible migrations reintroduce unbounded blast radius, inverting the risk-plus-speed balance the position claims.",
+        "wouldChangeRecommendation": "Evidence that SLO gates are reliable enough to gate promotion and that canary-stage releases carry no irreversible migrations (or an explicit expand-contract fallback) would restore the recommendation logic.",
+        "evidenceIds": [
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4"
+        ]
+      },
+      {
+        "canonicalPositionId": "defer_for_evidence",
+        "axis": "framing",
+        "objection": "Deferral is defensible only while no-hidden-baseline holds and the incumbent process is not actively harmful. The cited evidence (ev_bbbb_1, ev_bbbb_2) confirms absence of data but says nothing about the current incident rate, so an unbounded defer could itself increase deployment risk (issue:L1) if the existing all-at-once process is already failing. Without an explicit time-box the position trades one risk for another.",
+        "wouldChangeRecommendation": "An explicit time-box on the deferral plus evidence of the incumbent process's current failure rate would make deferral safe to recommend.",
+        "evidenceIds": [
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"
+        ]
+      }
+    ]
+  },
+  "text": "{\"memberId\":\"entry_bbbbbbbbbbbbbbbbbbbbbbbbbb\",\"objections\":[{\"canonicalPositionId\":\"propose_alternative\",\"axis\":\"evidence\",\"objection\":\"The canary policy is load-bearing on traffic-splittable and observable-slos, but the only grounded evidence (ev_1, ev_2, ev_3) is issue goal text; the pattern justification rests on ev_4, which the engine marked unverified prior_knowledge. No cited evidence establishes that the platform can weighted-split traffic or emit reliable per-version SLOs, so the specific policy is asserted beyond what the evidence supports.\",\"wouldChangeRecommendation\":\"Grounded evidence inspecting the load balancer/service-mesh routing capability and an SLO metric inventory with per-version attribution would move this from unverified-assumption to supportable.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\"]},{\"canonicalPositionId\":\"propose_alternative\",\"axis\":\"recommendation_logic\",\"objection\":\"The claimed speed benefit depends on automated promotion (ev_2) being gated by trustworthy SLOs, yet observable-slos and rollback-cheap have no capability evidence. If gates are flaky the automated rollback can misread noise as failure and cause release thrash, and unaddressed stateful/irreversible migrations reintroduce unbounded blast radius, inverting the risk-plus-speed balance the position claims.\",\"wouldChangeRecommendation\":\"Evidence that SLO gates are reliable enough to gate promotion and that canary-stage releases carry no irreversible migrations (or an explicit expand-contract fallback) would restore the recommendation logic.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4\"]},{\"canonicalPositionId\":\"defer_for_evidence\",\"axis\":\"framing\",\"objection\":\"Deferral is defensible only while no-hidden-baseline holds and the incumbent process is not actively harmful. The cited evidence (ev_bbbb_1, ev_bbbb_2) confirms absence of data but says nothing about the current incident rate, so an unbounded defer could itself increase deployment risk (issue:L1) if the existing all-at-once process is already failing. Without an explicit time-box the position trades one risk for another.\",\"wouldChangeRecommendation\":\"An explicit time-box on the deferral plus evidence of the incumbent process's current failure rate would make deferral safe to recommend.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\"]}]}",
+  "error": null,
+  "meta": {
+    "parsed": "schema",
+    "timed_out": false,
+    "attempts": 1,
+    "tokens": 1171,
+    "cost_usd": 0.10729000000000001
+  }
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { join } from "node:path";
-import { invokeProvider, sanitizeProviderInvokeEnv } from "../../extensions/council/lib/executors/provider-invoke.js";
+import { invokeProvider, sanitizeProviderInvokeEnv, type ProviderInvocationCapture } from "../../extensions/council/lib/executors/provider-invoke.js";
 import { providerInvokeRoute } from "../../extensions/council/lib/routes.js";
 
 describe("provider-invoke executor", () => {
@@ -28,5 +28,31 @@ describe("provider-invoke executor", () => {
       { ...process.env, AISYNTH_COUNCIL_PROVIDER_INVOKE: join(process.cwd(), "missing-provider-invoke") }
     );
     expect(result).toMatchObject({ ok: false, status: "invocation_failed" });
+  });
+
+  it("captures exact replay inputs and raw provider stdout", async () => {
+    const route = providerInvokeRoute("claude", true);
+    const captures: ProviderInvocationCapture[] = [];
+    const result = await invokeProvider(
+      process.cwd(),
+      route,
+      { id: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", route: route.ref, role: "architect", effort: "medium", enabled: true },
+      "fixed prompt",
+      join(process.cwd(), "schemas/council-voice.json"),
+      1000,
+      { ...process.env, AISYNTH_COUNCIL_PROVIDER_INVOKE: join(process.cwd(), "tests/council/fakes/provider-invoke") },
+      undefined,
+      (capture) => captures.push(capture)
+    );
+    expect(result.ok).toBe(true);
+    expect(captures).toHaveLength(1);
+    expect(captures[0]).toMatchObject({
+      prompt: "fixed prompt",
+      routeId: route.ref.routeId,
+      entryId: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa",
+      effort: "medium"
+    });
+    expect(captures[0].args).toContain("--auth");
+    expect(JSON.parse(captures[0].stdout)).toMatchObject({ ok: true, status: "ok" });
   });
 });

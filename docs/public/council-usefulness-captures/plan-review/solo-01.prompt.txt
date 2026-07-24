@@ -1,0 +1,9 @@
+You are a solo baseline, not a council. Review the immutable plan independently.
+Return only JSON matching the supplied schema.
+Use member_id entry_cccccccccccccccccccccccccc, role product-operator, and choose position_key from {"candidates":[{"id":"accept_plan","label":"Accept plan","source":"plan_review_default"},{"id":"revise_plan","label":"Revise plan","source":"plan_review_default"},{"id":"reject_plan","label":"Reject plan","source":"plan_review_default"},{"id":"needs_more_evidence","label":"Needs more evidence","source":"plan_review_default"}],"inputKind":"plan","otherPrefix":"other:","version":1} or other:<lowercase-slug>.
+Cite only plan.md:Lx-Ly evidence.
+
+plan.md:
+1: 1. Add request validation.
+2: 2. Deploy behind a feature flag.
+3: 3. Roll back on error-rate regression.

@@ -289,6 +289,38 @@ describe("Phase 5 council engine", () => {
     expect(result.diagnostics.some((item) => item.includes("outside the frozen grounded ledger"))).toBe(true);
   });
 
+  it("rejects empty chair evidence when grounded evidence exists", async () => {
+    const base = providerInvokeRoute("claude", true);
+    const second = { ...base, ref: { ...base.ref, routeId: `${base.ref.routeId}:second`, model: `${base.ref.model}-second` } };
+    const result = await runCouncil({
+      cwd: mkdtempSync(join(tmpdir(), "council-chair-empty-evidence-")),
+      packageRoot: process.cwd(),
+      input: issueSnapshot("approve or reject"),
+      roster: {
+        version: 1,
+        updatedAt: new Date().toISOString(),
+        scope: "explicit",
+        entries: [
+          { id: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", route: base.ref, role: "chair", effort: "medium", enabled: true },
+          { id: "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb", route: second.ref, role: "risk-critic", effort: "medium", enabled: true }
+        ],
+        reportStrategy: { kind: "chair", chairEntryId: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa" }
+      },
+      routes: [base, second],
+      reportStrategySource: "roster_file",
+      rememberedRosterWritten: false,
+      env: {
+        ...process.env,
+        AISYNTH_COUNCIL_PROVIDER_INVOKE: join(process.cwd(), "tests/council/fakes/provider-invoke"),
+        AISYNTH_FAKE_CHAIR_EMPTY_EVIDENCE: "1"
+      }
+    });
+    expect(result.ok).toBe(true);
+    expect(result.report?.evidence_summary.length).toBeGreaterThan(0);
+    expect(result.report?.recommendation).not.toBe("Proceed with safeguards");
+    expect(result.diagnostics.some((item) => item.includes("chair synthesis degraded"))).toBe(true);
+  });
+
   it("rejects critique output that omits supplied assumptions", async () => {
     const route = providerInvokeRoute("claude", true);
     const root = mkdtempSync(join(tmpdir(), "council-critique-coverage-"));

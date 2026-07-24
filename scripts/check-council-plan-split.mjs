@@ -89,12 +89,18 @@ for (const subplan of manifest.subplans ?? []) {
 const companion = manifest.companion;
 let companionText;
 let actualCompanionStatus;
+const governingCompanion = plan.match(/Governed companion index:\n\n\| Companion \| Status \| Main-plan contract \|\n\|[-| ]+\|\n\| `([^`]+)` \| ([^|]+) \|/);
+const governingCompanionPath = governingCompanion?.[1];
+const governingCompanionStatus = governingCompanion?.[2]?.trim().split(/\s+/, 1)[0]?.toLowerCase();
 if (!companion?.path) {
   failures.push("companion path missing");
 } else {
   companionText = readFileSync(join(root, companion.path), "utf8");
   actualCompanionStatus = companionText.match(/^Status:\s*(deferred|active)\b/im)?.[1];
   if (!actualCompanionStatus || companion.status !== actualCompanionStatus) failures.push("companion status table drift");
+  if (governingCompanionPath !== companion.path || governingCompanionStatus !== companion.status) {
+    failures.push("governing companion index drift");
+  }
 }
 for (const subplan of subplans.values()) {
   if (subplan.frontmatter.companionStatus !== actualCompanionStatus) failures.push(`${subplan.path}: companionStatus frontmatter drift`);

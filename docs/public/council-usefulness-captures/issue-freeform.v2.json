@@ -1,0 +1,597 @@
+{
+  "version": 2,
+  "kind": "authorized_portable_provider_invoke_raw_capture",
+  "sampleId": "issue-freeform",
+  "capturedAt": "2026-07-24T04:50:04.591Z",
+  "input": {
+    "kind": "issue",
+    "text": "Goal: reduce deployment risk.\nConstraint: preserve delivery speed.\nQuestion: Which rollout policy balances both?",
+    "sha256": "84cd5ab1dcf87ef33352a9f7307d358b40c125b2642beb0624767d3792dec5a4",
+    "artifact": {
+      "path": "docs/public/council-usefulness-captures/issue-freeform/input.issue.txt",
+      "sha256": "84cd5ab1dcf87ef33352a9f7307d358b40c125b2642beb0624767d3792dec5a4"
+    }
+  },
+  "routeProbe": {
+    "path": "docs/public/council-usefulness-captures/route-probe.raw.json",
+    "sha256": "3d1ef139df4d205b4de58168f1c2e2267d512145978bb38ef60b7ef61b4cc192"
+  },
+  "roster": {
+    "path": "docs/public/council-usefulness-captures/roster.raw.json",
+    "sha256": "2d2ddce135415c1a387edb497bf21428a05de565ad3f919e5dbd938ab9917829"
+  },
+  "routeId": "v1:provider-invoke:claude:adapter-default",
+  "primary": {
+    "result": {
+      "path": "docs/public/council-usefulness-captures/issue-freeform/primary.result.json",
+      "sha256": "8c9f2d0f84a8f3eb4810975c803166b2dbca5e0a9e5c72e6941aa65b2575ea4e"
+    },
+    "report": {
+      "path": "docs/public/council-usefulness-captures/issue-freeform/primary.report.md",
+      "sha256": "8828e35d5601714ba0605949eb71437955819c614a1f74c80c501665cb2be3ad"
+    },
+    "providerCalls": [
+      {
+        "command": [
+          "bin/provider-invoke",
+          "claude",
+          "--prompt-file",
+          "docs/public/council-usefulness-captures/issue-freeform/primary-01.prompt.txt",
+          "--schema-file",
+          "schemas/council-voice.json",
+          "--effort",
+          "medium",
+          "--timeout",
+          "300",
+          "--auth",
+          "subscription"
+        ],
+        "routeId": "v1:provider-invoke:claude:adapter-default",
+        "entryId": "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "effort": "medium",
+        "prompt": {
+          "path": "docs/public/council-usefulness-captures/issue-freeform/primary-01.prompt.txt",
+          "sha256": "139332ff2434ebf5abe47b7c3fe54a10a3218610d5cada2cd7effd552f8a9eb8"
+        },
+        "schema": {
+          "path": "schemas/council-voice.json",
+          "sha256": "5a866f3d8cd1d2658062058b23b78af25898ede106554a88af81d5174e54a7ec"
+        },
+        "rawEnvelope": {
+          "path": "docs/public/council-usefulness-captures/issue-freeform/primary-01.envelope.raw.json",
+          "sha256": "8626baf71398443e4981f55daf77cf0974aae8ed58c7a5ae2298b0c202da3e4d"
+        },
+        "envelopeStatus": "ok",
+        "resolvedModel": ""
+      },
+      {
+        "command": [
+          "bin/provider-invoke",
+          "claude",
+          "--prompt-file",
+          "docs/public/council-usefulness-captures/issue-freeform/primary-02.prompt.txt",
+          "--schema-file",
+          "schemas/council-voice.json",
+          "--effort",
+          "medium",
+          "--timeout",
+          "300",
+          "--auth",
+          "subscription"
+        ],
+        "routeId": "v1:provider-invoke:claude:adapter-default",
+        "entryId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "effort": "medium",
+        "prompt": {
+          "path": "docs/public/council-usefulness-captures/issue-freeform/primary-02.prompt.txt",
+          "sha256": "00403a9fdea671a2e98f9ca87bf5f7cc2d11f37e5e3ca01e834e2be7a953ae1d"
+        },
+        "schema": {
+          "path": "schemas/council-voice.json",
+          "sha256": "5a866f3d8cd1d2658062058b23b78af25898ede106554a88af81d5174e54a7ec"
+        },
+        "rawEnvelope": {
+          "path": "docs/public/council-usefulness-captures/issue-freeform/primary-02.envelope.raw.json",
+          "sha256": "ad1d912ebcf134e1e5b3ab54b77af0e5ec0a749f19e14756ff3d7ea787647eca"
+        },
+        "envelopeStatus": "ok",
+        "resolvedModel": ""
+      },
+      {
+        "command": [
+          "bin/provider-invoke",
+          "claude",
+          "--prompt-file",
+          "docs/public/council-usefulness-captures/issue-freeform/primary-03.prompt.txt",
+          "--schema-file",
+          "schemas/council-critique.json",
+          "--effort",
+          "medium",
+          "--timeout",
+          "300",
+          "--auth",
+          "subscription"
+        ],
+        "routeId": "v1:provider-invoke:claude:adapter-default",
+        "entryId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "effort": "medium",
+        "prompt": {
+          "path": "docs/public/council-usefulness-captures/issue-freeform/primary-03.prompt.txt",
+          "sha256": "f9e39a0e613ab85f738c3e747650abbe98a3d1cfa21bf11011b4c4d6f9c0df45"
+        },
+        "schema": {
+          "path": "schemas/council-critique.json",
+          "sha256": "c74634134a7036f2855b961614b0573f77167d26416cb888886e11ea5b9f6440"
+        },
+        "rawEnvelope": {
+          "path": "docs/public/council-usefulness-captures/issue-freeform/primary-03.envelope.raw.json",
+          "sha256": "bb55252e144c5d7cbf085b1797b506bdbfeb6339bc5169e05a49fcb9ef33679a"
+        },
+        "envelopeStatus": "ok",
+        "resolvedModel": ""
+      },
+      {
+        "command": [
+          "bin/provider-invoke",
+          "claude",
+          "--prompt-file",
+          "docs/public/council-usefulness-captures/issue-freeform/primary-04.prompt.txt",
+          "--schema-file",
+          "schemas/council-steelman.json",
+          "--effort",
+          "medium",
+          "--timeout",
+          "300",
+          "--auth",
+          "subscription"
+        ],
+        "routeId": "v1:provider-invoke:claude:adapter-default",
+        "entryId": "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "effort": "medium",
+        "prompt": {
+          "path": "docs/public/council-usefulness-captures/issue-freeform/primary-04.prompt.txt",
+          "sha256": "b89d8f94ea57d7787466809297f795d74de8974f3496d4a70ed75d8fae9b740d"
+        },
+        "schema": {
+          "path": "schemas/council-steelman.json",
+          "sha256": "15007d4ee1f3fc335eb3324344a21d49e4f0bbf17c37fc6ae51f7b629f5f5efd"
+        },
+        "rawEnvelope": {
+          "path": "docs/public/council-usefulness-captures/issue-freeform/primary-04.envelope.raw.json",
+          "sha256": "6cea59677464874ed8e54ad00ac93b6526a32fd9b5233a012f0129ec0b502dcc"
+        },
+        "envelopeStatus": "ok",
+        "resolvedModel": ""
+      },
+      {
+        "command": [
+          "bin/provider-invoke",
+          "claude",
+          "--prompt-file",
+          "docs/public/council-usefulness-captures/issue-freeform/primary-05.prompt.txt",
+          "--schema-file",
+          "schemas/council-adversary.json",
+          "--effort",
+          "medium",
+          "--timeout",
+          "300",
+          "--auth",
+          "subscription"
+        ],
+        "routeId": "v1:provider-invoke:claude:adapter-default",
+        "entryId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "effort": "medium",
+        "prompt": {
+          "path": "docs/public/council-usefulness-captures/issue-freeform/primary-05.prompt.txt",
+          "sha256": "fade22cf8a6ab08c21ea58e777f70204a1a944087e2519b624d01a89a1179b2e"
+        },
+        "schema": {
+          "path": "schemas/council-adversary.json",
+          "sha256": "c6ab079324076965af4ae5993ed676c5a6d234882b526107e8af2e8172f96f34"
+        },
+        "rawEnvelope": {
+          "path": "docs/public/council-usefulness-captures/issue-freeform/primary-05.envelope.raw.json",
+          "sha256": "909a03a38055d28415bcac1f34bfaf0d626ea8f9abb2f22f254dc936a722e375"
+        },
+        "envelopeStatus": "ok",
+        "resolvedModel": ""
+      }
+    ]
+  },
+  "solo": {
+    "structuredOutputSha256": "0bcaaf33047da7393c64b95b7693e6ebc4123979678e1bb809bc0167b29d7f4a",
+    "providerCalls": [
+      {
+        "command": [
+          "bin/provider-invoke",
+          "claude",
+          "--prompt-file",
+          "docs/public/council-usefulness-captures/issue-freeform/solo-01.prompt.txt",
+          "--schema-file",
+          "schemas/council-voice.json",
+          "--effort",
+          "medium",
+          "--timeout",
+          "300",
+          "--auth",
+          "subscription"
+        ],
+        "routeId": "v1:provider-invoke:claude:adapter-default",
+        "entryId": "entry_cccccccccccccccccccccccccc",
+        "effort": "medium",
+        "prompt": {
+          "path": "docs/public/council-usefulness-captures/issue-freeform/solo-01.prompt.txt",
+          "sha256": "27b019141c9c381b82664c46a7cb4f8c946a18c24ad1012f885a364a37881ec5"
+        },
+        "schema": {
+          "path": "schemas/council-voice.json",
+          "sha256": "5a866f3d8cd1d2658062058b23b78af25898ede106554a88af81d5174e54a7ec"
+        },
+        "rawEnvelope": {
+          "path": "docs/public/council-usefulness-captures/issue-freeform/solo-01.envelope.raw.json",
+          "sha256": "8e00d4cedd3916c367132c882ca5468fdcd8b0a72935c9579dd652291cb546a2"
+        },
+        "envelopeStatus": "ok",
+        "resolvedModel": ""
+      }
+    ]
+  },
+  "revisions": [
+    {
+      "result": {
+        "path": "docs/public/council-usefulness-captures/issue-freeform/revision-1.result.json",
+        "sha256": "6c242b4c5c50c02389b1f6ce29c5feae14ea491c7893df75a65fcaea00e4ff22"
+      },
+      "report": {
+        "path": "docs/public/council-usefulness-captures/issue-freeform/revision-1.report.md",
+        "sha256": "02af6dffe94982d141fe9ae2870acf5b9523134bfbe47c21da1fe5956b39584e"
+      },
+      "providerCalls": [
+        {
+          "command": [
+            "bin/provider-invoke",
+            "claude",
+            "--prompt-file",
+            "docs/public/council-usefulness-captures/issue-freeform/revision-1-01.prompt.txt",
+            "--schema-file",
+            "schemas/council-voice.json",
+            "--effort",
+            "medium",
+            "--timeout",
+            "300",
+            "--auth",
+            "subscription"
+          ],
+          "routeId": "v1:provider-invoke:claude:adapter-default",
+          "entryId": "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "effort": "medium",
+          "prompt": {
+            "path": "docs/public/council-usefulness-captures/issue-freeform/revision-1-01.prompt.txt",
+            "sha256": "139332ff2434ebf5abe47b7c3fe54a10a3218610d5cada2cd7effd552f8a9eb8"
+          },
+          "schema": {
+            "path": "schemas/council-voice.json",
+            "sha256": "5a866f3d8cd1d2658062058b23b78af25898ede106554a88af81d5174e54a7ec"
+          },
+          "rawEnvelope": {
+            "path": "docs/public/council-usefulness-captures/issue-freeform/revision-1-01.envelope.raw.json",
+            "sha256": "ca1253d781ab80a603cb7d1b4f819330d9ada5035895226b43e4f3ecf0fd4353"
+          },
+          "envelopeStatus": "ok",
+          "resolvedModel": ""
+        },
+        {
+          "command": [
+            "bin/provider-invoke",
+            "claude",
+            "--prompt-file",
+            "docs/public/council-usefulness-captures/issue-freeform/revision-1-02.prompt.txt",
+            "--schema-file",
+            "schemas/council-voice.json",
+            "--effort",
+            "medium",
+            "--timeout",
+            "300",
+            "--auth",
+            "subscription"
+          ],
+          "routeId": "v1:provider-invoke:claude:adapter-default",
+          "entryId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "effort": "medium",
+          "prompt": {
+            "path": "docs/public/council-usefulness-captures/issue-freeform/revision-1-02.prompt.txt",
+            "sha256": "00403a9fdea671a2e98f9ca87bf5f7cc2d11f37e5e3ca01e834e2be7a953ae1d"
+          },
+          "schema": {
+            "path": "schemas/council-voice.json",
+            "sha256": "5a866f3d8cd1d2658062058b23b78af25898ede106554a88af81d5174e54a7ec"
+          },
+          "rawEnvelope": {
+            "path": "docs/public/council-usefulness-captures/issue-freeform/revision-1-02.envelope.raw.json",
+            "sha256": "ce241c28ef21f3f111e223a4c7e5647785df2201a91fd0d32c12b4cdb0cccb53"
+          },
+          "envelopeStatus": "ok",
+          "resolvedModel": ""
+        },
+        {
+          "command": [
+            "bin/provider-invoke",
+            "claude",
+            "--prompt-file",
+            "docs/public/council-usefulness-captures/issue-freeform/revision-1-03.prompt.txt",
+            "--schema-file",
+            "schemas/council-critique.json",
+            "--effort",
+            "medium",
+            "--timeout",
+            "300",
+            "--auth",
+            "subscription"
+          ],
+          "routeId": "v1:provider-invoke:claude:adapter-default",
+          "entryId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "effort": "medium",
+          "prompt": {
+            "path": "docs/public/council-usefulness-captures/issue-freeform/revision-1-03.prompt.txt",
+            "sha256": "5426673ee24c5fcc7afd06b4c085db6befbd6fc3c9300fc7bc9db1fac294151b"
+          },
+          "schema": {
+            "path": "schemas/council-critique.json",
+            "sha256": "c74634134a7036f2855b961614b0573f77167d26416cb888886e11ea5b9f6440"
+          },
+          "rawEnvelope": {
+            "path": "docs/public/council-usefulness-captures/issue-freeform/revision-1-03.envelope.raw.json",
+            "sha256": "3861bf117c2a522ff35274362893032dfab0327e981ea62270787fe75ea9ce10"
+          },
+          "envelopeStatus": "ok",
+          "resolvedModel": ""
+        },
+        {
+          "command": [
+            "bin/provider-invoke",
+            "claude",
+            "--prompt-file",
+            "docs/public/council-usefulness-captures/issue-freeform/revision-1-04.prompt.txt",
+            "--schema-file",
+            "schemas/council-steelman.json",
+            "--effort",
+            "medium",
+            "--timeout",
+            "300",
+            "--auth",
+            "subscription"
+          ],
+          "routeId": "v1:provider-invoke:claude:adapter-default",
+          "entryId": "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "effort": "medium",
+          "prompt": {
+            "path": "docs/public/council-usefulness-captures/issue-freeform/revision-1-04.prompt.txt",
+            "sha256": "3d611a9addbf7fd5b5609cc8df9fb2532e375af6a8a1d7e6e7c964e79bdfaa49"
+          },
+          "schema": {
+            "path": "schemas/council-steelman.json",
+            "sha256": "15007d4ee1f3fc335eb3324344a21d49e4f0bbf17c37fc6ae51f7b629f5f5efd"
+          },
+          "rawEnvelope": {
+            "path": "docs/public/council-usefulness-captures/issue-freeform/revision-1-04.envelope.raw.json",
+            "sha256": "6acbcf556db311c8d70e31e59b166b4df527588e580279983d50a9afe2b6679c"
+          },
+          "envelopeStatus": "ok",
+          "resolvedModel": ""
+        },
+        {
+          "command": [
+            "bin/provider-invoke",
+            "claude",
+            "--prompt-file",
+            "docs/public/council-usefulness-captures/issue-freeform/revision-1-05.prompt.txt",
+            "--schema-file",
+            "schemas/council-adversary.json",
+            "--effort",
+            "medium",
+            "--timeout",
+            "300",
+            "--auth",
+            "subscription"
+          ],
+          "routeId": "v1:provider-invoke:claude:adapter-default",
+          "entryId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "effort": "medium",
+          "prompt": {
+            "path": "docs/public/council-usefulness-captures/issue-freeform/revision-1-05.prompt.txt",
+            "sha256": "ad6ef42c1305e8d44850399d52207e1d77867ddac2138caed239801555761c3c"
+          },
+          "schema": {
+            "path": "schemas/council-adversary.json",
+            "sha256": "c6ab079324076965af4ae5993ed676c5a6d234882b526107e8af2e8172f96f34"
+          },
+          "rawEnvelope": {
+            "path": "docs/public/council-usefulness-captures/issue-freeform/revision-1-05.envelope.raw.json",
+            "sha256": "85f1eb38a51312037c93640f9305d867fa90077e2bd76807858609982213ba99"
+          },
+          "envelopeStatus": "ok",
+          "resolvedModel": ""
+        }
+      ],
+      "strategy": "structured_disagreement"
+    },
+    {
+      "result": {
+        "path": "docs/public/council-usefulness-captures/issue-freeform/revision-2.result.json",
+        "sha256": "94096a4ef223582b79a1d7c0e9fac742646e0d41d4ced12536c8f39f393b8bcf"
+      },
+      "report": {
+        "path": "docs/public/council-usefulness-captures/issue-freeform/revision-2.report.md",
+        "sha256": "554977bfcb791cb2eced3ed3eebe75b6cc213768e349d36e5ebeda76aa9851cd"
+      },
+      "providerCalls": [
+        {
+          "command": [
+            "bin/provider-invoke",
+            "claude",
+            "--prompt-file",
+            "docs/public/council-usefulness-captures/issue-freeform/revision-2-01.prompt.txt",
+            "--schema-file",
+            "schemas/council-voice.json",
+            "--effort",
+            "medium",
+            "--timeout",
+            "300",
+            "--auth",
+            "subscription"
+          ],
+          "routeId": "v1:provider-invoke:claude:adapter-default",
+          "entryId": "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "effort": "medium",
+          "prompt": {
+            "path": "docs/public/council-usefulness-captures/issue-freeform/revision-2-01.prompt.txt",
+            "sha256": "139332ff2434ebf5abe47b7c3fe54a10a3218610d5cada2cd7effd552f8a9eb8"
+          },
+          "schema": {
+            "path": "schemas/council-voice.json",
+            "sha256": "5a866f3d8cd1d2658062058b23b78af25898ede106554a88af81d5174e54a7ec"
+          },
+          "rawEnvelope": {
+            "path": "docs/public/council-usefulness-captures/issue-freeform/revision-2-01.envelope.raw.json",
+            "sha256": "aaa511cf59857da71b2cb72ae66bbd4e497d49769a2ee4a31cea4599294ca710"
+          },
+          "envelopeStatus": "ok",
+          "resolvedModel": ""
+        },
+        {
+          "command": [
+            "bin/provider-invoke",
+            "claude",
+            "--prompt-file",
+            "docs/public/council-usefulness-captures/issue-freeform/revision-2-02.prompt.txt",
+            "--schema-file",
+            "schemas/council-voice.json",
+            "--effort",
+            "medium",
+            "--timeout",
+            "300",
+            "--auth",
+            "subscription"
+          ],
+          "routeId": "v1:provider-invoke:claude:adapter-default",
+          "entryId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "effort": "medium",
+          "prompt": {
+            "path": "docs/public/council-usefulness-captures/issue-freeform/revision-2-02.prompt.txt",
+            "sha256": "00403a9fdea671a2e98f9ca87bf5f7cc2d11f37e5e3ca01e834e2be7a953ae1d"
+          },
+          "schema": {
+            "path": "schemas/council-voice.json",
+            "sha256": "5a866f3d8cd1d2658062058b23b78af25898ede106554a88af81d5174e54a7ec"
+          },
+          "rawEnvelope": {
+            "path": "docs/public/council-usefulness-captures/issue-freeform/revision-2-02.envelope.raw.json",
+            "sha256": "f4fb329fcfc5f579a94d07f679e5abb63ddd620cfba9694ab89ac4a00d3361da"
+          },
+          "envelopeStatus": "ok",
+          "resolvedModel": ""
+        },
+        {
+          "command": [
+            "bin/provider-invoke",
+            "claude",
+            "--prompt-file",
+            "docs/public/council-usefulness-captures/issue-freeform/revision-2-03.prompt.txt",
+            "--schema-file",
+            "schemas/council-critique.json",
+            "--effort",
+            "medium",
+            "--timeout",
+            "300",
+            "--auth",
+            "subscription"
+          ],
+          "routeId": "v1:provider-invoke:claude:adapter-default",
+          "entryId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "effort": "medium",
+          "prompt": {
+            "path": "docs/public/council-usefulness-captures/issue-freeform/revision-2-03.prompt.txt",
+            "sha256": "476828bc957ae2cf2d4858541741ba4aea4d2a192b70da3e78ad47c6138e578b"
+          },
+          "schema": {
+            "path": "schemas/council-critique.json",
+            "sha256": "c74634134a7036f2855b961614b0573f77167d26416cb888886e11ea5b9f6440"
+          },
+          "rawEnvelope": {
+            "path": "docs/public/council-usefulness-captures/issue-freeform/revision-2-03.envelope.raw.json",
+            "sha256": "f3494b69f52579776c8034bfd2d9e3f77cc7ef6d0543015bf4e8564a863f1ea2"
+          },
+          "envelopeStatus": "ok",
+          "resolvedModel": ""
+        },
+        {
+          "command": [
+            "bin/provider-invoke",
+            "claude",
+            "--prompt-file",
+            "docs/public/council-usefulness-captures/issue-freeform/revision-2-04.prompt.txt",
+            "--schema-file",
+            "schemas/council-steelman.json",
+            "--effort",
+            "medium",
+            "--timeout",
+            "300",
+            "--auth",
+            "subscription"
+          ],
+          "routeId": "v1:provider-invoke:claude:adapter-default",
+          "entryId": "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "effort": "medium",
+          "prompt": {
+            "path": "docs/public/council-usefulness-captures/issue-freeform/revision-2-04.prompt.txt",
+            "sha256": "df45d32c5519a086555f1b55dc12e5a6dc17edbf7af1751c663a3b8be5b851ab"
+          },
+          "schema": {
+            "path": "schemas/council-steelman.json",
+            "sha256": "15007d4ee1f3fc335eb3324344a21d49e4f0bbf17c37fc6ae51f7b629f5f5efd"
+          },
+          "rawEnvelope": {
+            "path": "docs/public/council-usefulness-captures/issue-freeform/revision-2-04.envelope.raw.json",
+            "sha256": "e300731accb55b543cd10ad81a48701afd77752d2127046fb8aff85e553b7ea3"
+          },
+          "envelopeStatus": "ok",
+          "resolvedModel": ""
+        },
+        {
+          "command": [
+            "bin/provider-invoke",
+            "claude",
+            "--prompt-file",
+            "docs/public/council-usefulness-captures/issue-freeform/revision-2-05.prompt.txt",
+            "--schema-file",
+            "schemas/council-adversary.json",
+            "--effort",
+            "medium",
+            "--timeout",
+            "300",
+            "--auth",
+            "subscription"
+          ],
+          "routeId": "v1:provider-invoke:claude:adapter-default",
+          "entryId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "effort": "medium",
+          "prompt": {
+            "path": "docs/public/council-usefulness-captures/issue-freeform/revision-2-05.prompt.txt",
+            "sha256": "51ccb2b9d600e99d89ed396e0d5d5ac914b01324b2f49d5e1552ad8ab0cd25a3"
+          },
+          "schema": {
+            "path": "schemas/council-adversary.json",
+            "sha256": "c6ab079324076965af4ae5993ed676c5a6d234882b526107e8af2e8172f96f34"
+          },
+          "rawEnvelope": {
+            "path": "docs/public/council-usefulness-captures/issue-freeform/revision-2-05.envelope.raw.json",
+            "sha256": "d6e971a6ea14923588b89b19688a70e1b8a603088c27066eedff1b45387616e5"
+          },
+          "envelopeStatus": "ok",
+          "resolvedModel": ""
+        }
+      ],
+      "strategy": "deterministic"
+    }
+  ]
+}

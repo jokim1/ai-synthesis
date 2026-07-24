@@ -10,6 +10,7 @@ const set = readJson("docs/public/council-usefulness-set.v1.json");
 const scorecard = readJson("docs/public/council-usefulness-scorecard.v1.json");
 const evidence = readJson(scorecard.evidenceFile);
 const records = new Map(evidence.records.map((record) => [record.sampleId, record]));
+const captureRoot = resolve(root, "docs/public/council-usefulness-captures");
 const failures = [];
 if (evidence.evaluationMode !== "authorized_portable_provider_invoke") failures.push("usefulness evidence must be from authorized portable provider-invoke routes");
 if (evidence.noCostFixture === true) failures.push("usefulness evidence must not be the no-cost engine fixture");
@@ -24,89 +25,163 @@ function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
 
-function hasArgs(command, ...args) {
-  return Array.isArray(command) && args.every((arg, index) => command[index] === arg);
-}
-
 function optionValue(command, option) {
   const index = command.indexOf(option);
   return index >= 0 ? command[index + 1] : undefined;
 }
 
-function loadCapture(record, sample) {
-  const path = record.captureArtifact?.path;
-  if (typeof path !== "string" || !/^docs\/public\/council-usefulness-captures\/[a-z0-9-]+\.v1\.json$/.test(path)) {
-    failures.push(`${sample.id}: missing immutable capture artifact`);
+function readArtifact(reference, label) {
+  const path = reference?.path;
+  if (typeof path !== "string" || !path.startsWith("docs/public/council-usefulness-captures/") || /[<>]/.test(path)) {
+    failures.push(`${label}: invalid artifact path`);
     return undefined;
   }
   const absolutePath = resolve(root, path);
-  if (relative(root, absolutePath).startsWith("..")) {
-    failures.push(`${sample.id}: capture artifact escapes repository`);
+  if (relative(captureRoot, absolutePath).startsWith("..")) {
+    failures.push(`${label}: artifact escapes capture root`);
     return undefined;
   }
   let bytes;
   try {
     bytes = readFileSync(absolutePath, "utf8");
   } catch {
-    failures.push(`${sample.id}: capture artifact unreadable`);
+    failures.push(`${label}: artifact unreadable`);
     return undefined;
   }
-  if (sha256(bytes) !== record.captureArtifact.sha256) failures.push(`${sample.id}: capture artifact hash mismatch`);
-  const capture = JSON.parse(bytes);
-  if (capture.version !== 1 || capture.kind !== "authorized_portable_provider_invoke_replay_capture") failures.push(`${sample.id}: invalid capture kind`);
-  if (capture.sampleId !== sample.id || capture.input?.sha256 !== sample.inputSha256 || capture.input?.text !== sample.input || capture.input?.kind !== sample.kind) {
+  if (sha256(bytes) !== reference.sha256) failures.push(`${label}: artifact hash mismatch`);
+  return bytes;
+}
+
+function readJsonArtifact(reference, label) {
+  const bytes = readArtifact(reference, label);
+  if (bytes === undefined) return undefined;
+  try {
+    return JSON.parse(bytes);
+  } catch {
+    failures.push(`${label}: artifact is not JSON`);
+    return undefined;
+  }
+}
+
+function verifyRepositoryFile(reference, label) {
+  const path = reference?.path;
+  if (typeof path !== "string" || !/^schemas\/council-[a-z-]+\.json$/.test(path)) {
+    failures.push(`${label}: invalid repository file path`);
+    return undefined;
+  }
+  let bytes;
+  try {
+    bytes = readFileSync(resolve(root, path), "utf8");
+  } catch {
+    failures.push(`${label}: repository file unreadable`);
+    return undefined;
+  }
+  if (sha256(bytes) !== reference.sha256) failures.push(`${label}: repository file hash mismatch`);
+  return bytes;
+}
+
+function validateRawCall(call, routeId, sample, label) {
+  const command = call?.command;
+  if (
+    !Array.isArray(command)
+    || command[0] !== "bin/provider-invoke"
+    || command[1] !== "claude"
+    || command.some((value) => typeof value !== "string" || /[<>]/.test(value))
+    || optionValue(command, "--auth") !== "subscription"
+    || optionValue(command, "--prompt-file") !== call.prompt?.path
+    || optionValue(command, "--schema-file") !== call.schema?.path
+    || call.routeId !== routeId
+  ) failures.push(`${label}: provider replay command mismatch`);
+  const promptBytes = readArtifact(call?.prompt, `${label}:prompt`);
+  if (
+    promptBytes === undefined
+    || sample.input.split("\n").some((line, index) => !promptBytes.includes(`${index + 1}: ${line}`))
+  ) failures.push(`${label}: prompt is not bound to the fixed sample`);
+  const schemaBytes = verifyRepositoryFile(call?.schema, `${label}:schema`);
+  if (schemaBytes === undefined) failures.push(`${label}: invalid council schema`);
+  const envelope = readJsonArtifact(call?.rawEnvelope, `${label}:raw-envelope`);
+  if (envelope?.ok !== true || envelope?.status !== "ok" || envelope?.structured === undefined) {
+    failures.push(`${label}: raw provider envelope is not a successful structured call`);
+  }
+  if (call.envelopeStatus !== envelope?.status || call.resolvedModel !== (envelope?.model ?? "")) failures.push(`${label}: envelope summary mismatch`);
+  return envelope;
+}
+
+function validateRun(run, routeId, sample, label) {
+  const result = readJsonArtifact(run?.result, `${label}:result`);
+  const reportBytes = readArtifact(run?.report, `${label}:report`);
+  if (!Array.isArray(run?.providerCalls) || run.providerCalls.length < 4) failures.push(`${label}: missing raw council provider calls`);
+  const envelopes = (run?.providerCalls ?? []).map((call, index) => validateRawCall(call, routeId, sample, `${label}:call-${index + 1}`));
+  return { result, reportBytes, envelopes };
+}
+
+function loadCapture(record, sample) {
+  const path = record.captureArtifact?.path;
+  if (typeof path !== "string" || path !== `docs/public/council-usefulness-captures/${sample.id}.v2.json`) {
+    failures.push(`${sample.id}: missing immutable raw capture artifact`);
+    return undefined;
+  }
+  const capture = readJsonArtifact(record.captureArtifact, `${sample.id}:capture`);
+  if (capture?.version !== 2 || capture?.kind !== "authorized_portable_provider_invoke_raw_capture") failures.push(`${sample.id}: invalid raw capture kind`);
+  if (capture?.sampleId !== sample.id || capture?.input?.sha256 !== sample.inputSha256 || capture?.input?.text !== sample.input || capture?.input?.kind !== sample.kind) {
     failures.push(`${sample.id}: capture input mismatch`);
   }
-  const route = capture.routeContract;
-  const probe = capture.routeProbe;
-  if (!hasArgs(probe?.command, "bin/council-route-probe", "--json")) failures.push(`${sample.id}: invalid route-probe replay command`);
-  if (!probe?.diagnostics?.some((diagnostic) => diagnostic.executor === "provider-invoke" && diagnostic.provider === route?.provider && diagnostic.status === "ok")) {
-    failures.push(`${sample.id}: capture does not contain a successful portable route probe`);
-  }
+  const inputBytes = readArtifact(capture?.input?.artifact, `${sample.id}:input`);
+  if (inputBytes !== sample.input) failures.push(`${sample.id}: captured input bytes mismatch`);
+  const routeProbe = readJsonArtifact(capture?.routeProbe, `${sample.id}:route-probe`);
+  const route = routeProbe?.routes?.find((candidate) => candidate.ref?.routeId === capture?.routeId);
   if (
-    route?.provider !== "claude"
-    || route?.authPolicy !== "subscription_only"
-    || route?.billing !== "subscription"
-    || typeof route?.routeId !== "string"
-    || !route.routeId.startsWith("v1:provider-invoke:claude:")
-    || !Array.isArray(route.routes)
-    || route.routes.length < 2
-    || route.routes.some((routeId) => routeId !== route.routeId)
+    route?.ref?.executor !== "provider-invoke"
+    || route?.ref?.provider !== "claude"
+    || route?.auth?.runnable !== true
+    || route?.auth?.policy !== "subscription_only"
+    || route?.auth?.billing !== "subscription"
+    || !routeProbe?.diagnostics?.some((diagnostic) =>
+      diagnostic.executor === "provider-invoke" && diagnostic.provider === "claude" && diagnostic.status === "ok"
+    )
   ) failures.push(`${sample.id}: capture route contract is not authorized portable Claude subscription`);
-  const councilCommand = capture.commands?.council;
+  const roster = readJsonArtifact(capture?.roster, `${sample.id}:roster`);
   if (
-    !Array.isArray(councilCommand)
-    || councilCommand[0] !== "bin/council"
-    || optionValue(councilCommand, "--auth-policy") !== "subscription-only"
-    || optionValue(councilCommand, "--roster-file") !== "<authorized-live-roster>"
-    || !councilCommand.includes("--json")
-    || optionValue(councilCommand, sample.kind === "plan" ? "--plan-file" : "--issue") !== (sample.kind === "plan" ? "<fixed-sample-input>" : sample.input)
-  ) failures.push(`${sample.id}: invalid council replay command`);
-  const soloCommand = capture.commands?.solo;
-  if (
-    !hasArgs(soloCommand, "bin/provider-invoke", "claude")
-    || optionValue(soloCommand, "--auth") !== "subscription"
-    || optionValue(soloCommand, "--schema-file") !== "schemas/council-voice.json"
-  ) failures.push(`${sample.id}: invalid solo replay command`);
+    roster?.version !== 1
+    || !Array.isArray(roster?.entries)
+    || roster.entries.length < 2
+    || roster.entries.some((entry) => !entry.enabled || entry.route?.routeId !== capture.routeId)
+  ) failures.push(`${sample.id}: captured roster mismatch`);
+  const primary = validateRun(capture?.primary, capture?.routeId, sample, `${sample.id}:primary`);
   const rawSolo = Object.fromEntries(Object.entries(record.soloComparison).filter(([key]) =>
     !["baselineRecommendation", "materialDeltas", "usedByFinalReport"].includes(key)
   ));
-  if (stableJson(capture.capturedOutputs?.councilResult) !== stableJson(record.councilResult)) failures.push(`${sample.id}: captured council output mismatch`);
-  if (stableJson(capture.capturedOutputs?.soloResult) !== stableJson(rawSolo)) failures.push(`${sample.id}: captured solo output mismatch`);
-  if (capture.outputHashes?.councilResultSha256 !== sha256(stableJson(record.councilResult))) failures.push(`${sample.id}: captured council output hash mismatch`);
-  if (capture.outputHashes?.soloResultSha256 !== sha256(stableJson(rawSolo))) failures.push(`${sample.id}: captured solo output hash mismatch`);
-  if (stableJson(capture.capturedOutputs?.revisionResults) !== stableJson(record.revisionAttempts)) failures.push(`${sample.id}: captured revision output mismatch`);
+  const soloCalls = capture?.solo?.providerCalls;
+  if (!Array.isArray(soloCalls) || soloCalls.length !== 1) failures.push(`${sample.id}: missing raw solo provider envelope`);
+  const soloEnvelope = validateRawCall(soloCalls?.[0], capture?.routeId, sample, `${sample.id}:solo`);
+  if (stableJson(soloEnvelope?.structured) !== stableJson(rawSolo)) failures.push(`${sample.id}: raw solo output mismatch`);
+  if (capture?.solo?.structuredOutputSha256 !== sha256(stableJson(rawSolo))) failures.push(`${sample.id}: solo structured hash mismatch`);
+  const { verifiedCitationLocators: ignoredLocators, assumptionsOrRisksCount: ignoredCount, ...rawCouncilResult } = record.councilResult;
+  if (stableJson(primary.result?.report) !== stableJson(rawCouncilResult)) failures.push(`${sample.id}: raw council result mismatch`);
+  const revisions = (capture?.revisions ?? []).map((run, index) =>
+    validateRun(run, capture?.routeId, sample, `${sample.id}:revision-${index + 1}`)
+  );
+  if (sample.id === "issue-freeform" && revisions.length !== scorecard.sameRouteExit.maxRevisionAttempts) {
+    failures.push(`${sample.id}: two raw same-route revision runs are required`);
+  }
+  const expectedRevisionStrategies = ["structured_disagreement", "deterministic"];
   if (
-    !Array.isArray(capture.commands?.revisions)
-    || capture.commands.revisions.length !== record.revisionAttempts.length
-    || capture.commands.revisions.some((command, index) =>
-      optionValue(command, "--report-strategy") !== record.revisionAttempts[index].strategy
-      || optionValue(command, "--auth-policy") !== "subscription-only"
-      || !command.includes("--json")
+    sample.id === "issue-freeform"
+    && revisions.some((revision, index) =>
+      capture.revisions[index]?.strategy !== expectedRevisionStrategies[index]
+      || !revision.reportBytes?.includes(`report_strategy: "${expectedRevisionStrategies[index]}"`)
     )
-    || stableJson(capture.outputHashes?.revisionResultSha256) !== stableJson(record.revisionAttempts.map((attempt) => sha256(stableJson(attempt))))
-  ) failures.push(`${sample.id}: invalid revision replay capture`);
-  return capture;
+  ) failures.push(`${sample.id}: raw revision strategy mismatch`);
+  if (
+    record.revisionAttempts.length > 0
+    && (
+      revisions.length !== record.revisionAttempts.length
+      || record.revisionAttempts.some((attempt, index) =>
+        stableJson(attempt.rawRunArtifact) !== stableJson(capture.revisions[index].result)
+      )
+    )
+  ) failures.push(`${sample.id}: revision attempts are not bound to raw runs`);
+  return { capture, routeProbe, route, roster };
 }
 
 function locatorFromEvidence(text) {
@@ -168,15 +243,17 @@ for (const sample of set.samples) {
     diagnostic.provider !== "claude" && diagnostic.status === "ok"
   );
   if (
-    record.execution?.provider !== capture?.routeContract?.provider
-    || record.execution?.routeId !== capture?.routeContract?.routeId
-    || record.execution?.authPolicy !== capture?.routeContract?.authPolicy
-    || record.execution?.billing !== capture?.routeContract?.billing
+    record.execution?.provider !== capture?.route?.ref?.provider
+    || record.execution?.routeId !== capture?.route?.ref?.routeId
+    || record.execution?.authPolicy !== capture?.route?.auth?.policy
+    || record.execution?.billing !== capture?.route?.auth?.billing
     || record.execution?.fixture !== false
   ) failures.push(`${sample.id}: execution summary does not match immutable capture`);
   if (!Array.isArray(record.routes) || record.routes.length < 2) failures.push(`${sample.id}: expected at least two executable member routes`);
   if (record.routes.some((route) => typeof route !== "string" || !route.startsWith("v1:provider-invoke:"))) failures.push(`${sample.id}: non-portable route recorded`);
-  if (stableJson(record.routes) !== stableJson(capture?.routeContract?.routes)) failures.push(`${sample.id}: routes do not match immutable capture`);
+  if (stableJson(record.routes) !== stableJson(capture?.roster?.entries?.filter((entry) => entry.enabled).map((entry) => entry.route.routeId))) {
+    failures.push(`${sample.id}: routes do not match immutable captured roster`);
+  }
   const report = record.councilResult;
   const baseline = record.soloComparison;
   if (!report || !baseline) {
@@ -185,7 +262,7 @@ for (const sample of set.samples) {
   }
   {
     const lineCount = sample.input.split("\n").length;
-    const locators = [...new Set(report.evidence_summary.map(locatorFromEvidence).filter(Boolean))].sort();
+    const locators = report.evidence_summary.map(locatorFromEvidence).filter(Boolean).sort();
     const verifiedLocators = locators.filter((locator) => locatorIsValid(locator, sample, lineCount));
     const deltas = [];
     const outcome = normalizeClaim(`${report.recommendation} ${report.next_action}`);

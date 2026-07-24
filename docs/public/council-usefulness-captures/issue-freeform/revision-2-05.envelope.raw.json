@@ -1,0 +1,60 @@
+{
+  "ok": true,
+  "status": "ok",
+  "provider": "claude",
+  "model": "",
+  "structured": {
+    "memberId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "objections": [
+      {
+        "canonicalPositionId": "propose_alternative",
+        "axis": "evidence",
+        "objection": "Every evidence item supporting the progressive-delivery/canary recommendation is engine_unverified: ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1..4 have groundingStatus engine_unverified because their locators (issue:1, issue:2, issue:3, and a prior_knowledge citation) do not resolve against the frozen input. The only grounded evidence (ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2) confirms no system context or metrics are provided. The recommendation therefore rests entirely on ungrounded assertions.",
+        "wouldChangeRecommendation": "Ground at least one of the load-bearing premises (traffic-splittable target or observable SLOs) against a verifiable source in the frozen context.",
+        "evidenceIds": [
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"
+        ]
+      },
+      {
+        "canonicalPositionId": "propose_alternative",
+        "axis": "recommendation_logic",
+        "objection": "The 'optimizes both rather than trading one off' claim depends on the observable-SLOs assumption, which is unverified. If health signals are noisy or slow to settle, automated gates either stall promotion (harming delivery speed, issue:2) or pass bad releases (harming risk reduction, issue:1). The claim that canary simultaneously satisfies both objectives is not established from frozen evidence and can fail on either axis.",
+        "wouldChangeRecommendation": "Establish that meaningful SLO signals exist and settle within the delivery cadence, so gating cannot regress either objective.",
+        "evidenceIds": [
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"
+        ]
+      },
+      {
+        "canonicalPositionId": "propose_alternative",
+        "axis": "framing",
+        "objection": "The recommendation is framed as answering 'which rollout policy balances both,' but 'balances both' is unquantified: no acceptable-risk or acceptable-speed threshold is given (ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1 states only that two objectives exist). Committing to canary silently fixes a tradeoff point the issue never authorized.",
+        "wouldChangeRecommendation": "Obtain a quantified balance criterion (target change-failure rate, MTTR, and acceptable promotion latency) before selecting a specific policy.",
+        "evidenceIds": [
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1"
+        ]
+      },
+      {
+        "canonicalPositionId": "defer_for_evidence",
+        "axis": "recommendation_logic",
+        "objection": "Deferral itself does not reduce deployment risk; the stated goal (ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1) remains unmet during the deferral window and the position offers no interim rollout guidance, so it risks being read as declining to answer the question actually posed (ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2).",
+        "wouldChangeRecommendation": "Pair the deferral with an interim, mechanism-agnostic containment default so risk is bounded while missing metrics are gathered.",
+        "evidenceIds": [
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"
+        ]
+      }
+    ]
+  },
+  "text": "{\"memberId\":\"entry_bbbbbbbbbbbbbbbbbbbbbbbbbb\",\"objections\":[{\"canonicalPositionId\":\"propose_alternative\",\"axis\":\"evidence\",\"objection\":\"Every evidence item supporting the progressive-delivery/canary recommendation is engine_unverified: ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1..4 have groundingStatus engine_unverified because their locators (issue:1, issue:2, issue:3, and a prior_knowledge citation) do not resolve against the frozen input. The only grounded evidence (ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2) confirms no system context or metrics are provided. The recommendation therefore rests entirely on ungrounded assertions.\",\"wouldChangeRecommendation\":\"Ground at least one of the load-bearing premises (traffic-splittable target or observable SLOs) against a verifiable source in the frozen context.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\"]},{\"canonicalPositionId\":\"propose_alternative\",\"axis\":\"recommendation_logic\",\"objection\":\"The 'optimizes both rather than trading one off' claim depends on the observable-SLOs assumption, which is unverified. If health signals are noisy or slow to settle, automated gates either stall promotion (harming delivery speed, issue:2) or pass bad releases (harming risk reduction, issue:1). The claim that canary simultaneously satisfies both objectives is not established from frozen evidence and can fail on either axis.\",\"wouldChangeRecommendation\":\"Establish that meaningful SLO signals exist and settle within the delivery cadence, so gating cannot regress either objective.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\"]},{\"canonicalPositionId\":\"propose_alternative\",\"axis\":\"framing\",\"objection\":\"The recommendation is framed as answering 'which rollout policy balances both,' but 'balances both' is unquantified: no acceptable-risk or acceptable-speed threshold is given (ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1 states only that two objectives exist). Committing to canary silently fixes a tradeoff point the issue never authorized.\",\"wouldChangeRecommendation\":\"Obtain a quantified balance criterion (target change-failure rate, MTTR, and acceptable promotion latency) before selecting a specific policy.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1\"]},{\"canonicalPositionId\":\"defer_for_evidence\",\"axis\":\"recommendation_logic\",\"objection\":\"Deferral itself does not reduce deployment risk; the stated goal (ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1) remains unmet during the deferral window and the position offers no interim rollout guidance, so it risks being read as declining to answer the question actually posed (ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2).\",\"wouldChangeRecommendation\":\"Pair the deferral with an interim, mechanism-agnostic containment default so risk is bounded while missing metrics are gathered.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\"]}]}",
+  "error": null,
+  "meta": {
+    "parsed": "schema",
+    "timed_out": false,
+    "attempts": 1,
+    "tokens": 1576,
+    "cost_usd": 0.11353800000000001
+  }
+}
