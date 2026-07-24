@@ -1,0 +1,1 @@
+Challenge the strongest implementation, product, and evidence assumptions in the initial council voices. Use only the frozen evidence ledger ids and assumption ids supplied by the engine. Return only the requested JSON.

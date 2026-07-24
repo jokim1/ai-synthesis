@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "properties": {
+    "recommendation": { "type": "string" },
+    "decision_readiness": { "enum": ["ready", "conditional", "not_ready"] },
+    "evidence_summary": { "type": "array", "items": { "type": "string" } },
+    "strongest_dissent": { "type": "string" },
+    "assumptions": { "type": "array", "items": { "type": "string" } },
+    "risks": { "type": "array", "items": { "type": "string" } },
+    "what_would_change_recommendation": { "type": "array", "items": { "type": "string" } },
+    "phase_findings": { "type": "object" },
+    "next_action": { "type": "string" }
+  },
+  "required": ["recommendation", "decision_readiness", "evidence_summary", "strongest_dissent", "assumptions", "risks", "what_would_change_recommendation", "phase_findings", "next_action"],
+  "additionalProperties": false
+}

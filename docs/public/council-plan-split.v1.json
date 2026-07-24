@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "governingPlan": "docs/council-command-implementation-plan.md",
+  "governingPlanSha256": "a2b3450b88019e13e2f942580fff1ddd6aea90f7cfe51b231b11b31680bbaac3",
+  "subplans": [
+    { "path": "docs/council/track-a-toolchain.md", "sourceLines": "1229-1273" },
+    { "path": "docs/council/track-b-provider-hardening.md", "sourceLines": "856-891,1274-1275" },
+    { "path": "docs/council/track-c-portable-mvp.md", "sourceLines": "1276-1298,1309-1438" }
+  ],
+  "companion": {
+    "path": "docs/council-command-post-mvp-pi-companion.md",
+    "status": "deferred"
+  },
+  "decisionKeys": [
+    {
+      "key": "first-ship-order",
+      "anchor": "Implementation Phases",
+      "requiredText": "The first shippable MVP is Track A plus Phase 2B, Phase 2C, Phase 5, and minimum Phase 6 docs, with authorized portable routes.",
+      "forbiddenText": []
+    },
+    {
+      "key": "pi-registry-mvp-users",
+      "anchor": "Availability And Routing",
+      "requiredText": "MVP cannot run with Pi-registry-only auth; it shows `no_executable_provider_cli_routes` and docs explain that authorized portable routes are required.",
+      "forbiddenText": []
+    },
+    {
+      "key": "track-a-product-fallback",
+      "anchor": "Architecture",
+      "requiredText": "Owner decision: a failed Track A package/toolchain baseline does not block the TypeScript product.",
+      "forbiddenText": []
+    },
+    {
+      "key": "package-gate-default",
+      "anchor": "Architecture",
+      "requiredText": "Phase 1 `package.json` is a portable toolchain baseline for the `ai-synthesis` repository's own implementation and review workflow, not an installation requirement for user repositories.",
+      "forbiddenText": []
+    },
+    {
+      "key": "mvp-plan-scope-split",
+      "anchor": "Architecture",
+      "requiredText": "Post-MVP Pi UI starts only after the portable council ships, and Pi-registry-only execution remains outside MVP.",
+      "forbiddenText": []
+    },
+    {
+      "key": "claude-525ce69-followups",
+      "anchor": "Availability And Routing",
+      "requiredText": "Claude routes must be subscription-only.",
+      "forbiddenText": []
+    }
+  ]
+}

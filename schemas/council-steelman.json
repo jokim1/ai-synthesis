@@ -1,0 +1,9 @@
+{
+  "type": "object",
+  "properties": {
+    "memberId": { "type": "string" },
+    "steelmans": { "type": "array", "items": { "type": "object" } }
+  },
+  "required": ["memberId", "steelmans"],
+  "additionalProperties": false
+}

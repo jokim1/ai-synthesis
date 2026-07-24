@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "pipelaneVersion": "0.2.0",
+  "execution": "sh -lc <check>",
+  "activeConfigSource": "machine-local-or-default",
+  "activePrePrChecks": ["npm run test", "npm run typecheck", "npm run build"],
+  "synthesizedPrePrChecks": ["npm run test", "npm run typecheck", "npm run build"],
+  "bootstrapSmoke": {
+    "node": ">=22.19.0",
+    "npm": "npm ci --prefer-offline --no-audit --fund=false",
+    "fallback": "NoPackageTrackCPlanV1 only if package bootstrap fails before metadata lands"
+  }
+}

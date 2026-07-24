@@ -12,10 +12,15 @@ No SDK, no framework — "the skill file is the orchestrator."
 
 ## Entrypoints
 
-### `bin/provider-probe <claude|codex>`
+### `bin/provider-probe <claude|codex> [--auth <auto|subscription|apikey>]`
 Cheap "can this backend run?" check — binary present + auth resolvable. **No model
 call, no cost.** Emits the envelope with `structured = {available, authed, …}`;
 `ok = available && authed`.
+
+`--auth` is backward compatible and defaults to `auto`. Council route discovery
+uses `bin/provider-probe claude --auth subscription` so Claude council routes
+require a first-party Claude login and do not treat Anthropic API keys as
+subscription auth.
 
 ### `bin/provider-invoke <claude|codex> [options]`
 Run one role call. Always emits the envelope on stdout. Invocation *outcomes*
@@ -134,5 +139,12 @@ tests/conformance/     # assert.sh · fakes.sh · run.sh · unit.sh · {claude,c
 
 **Status:** host Claude (headless) + Codex done and conformance-green. Next external
 adapter per the spec: DeepSeek via NVIDIA-free (pure curl) — needs `$NVIDIA_API_KEY`.
-Orchestration (roles, grounded round flow, synthesis) is the next phase and was
-gated on this layer.
+The portable council adds a fake-only `hermetic` target for clean checkout gates:
+
+```
+tests/conformance/run.sh hermetic
+```
+
+It exercises `bin/council`, `bin/council-route-probe`, JSON roster authoring,
+read-only roster-file execution, remembered roster persistence, and council
+report writing without provider CLIs, auth, or paid model calls.

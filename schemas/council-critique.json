@@ -1,0 +1,10 @@
+{
+  "type": "object",
+  "properties": {
+    "memberId": { "type": "string" },
+    "targetedChallenges": { "type": "array", "items": { "type": "object" } },
+    "assumptionReviews": { "type": "array", "items": { "type": "object" } }
+  },
+  "required": ["memberId", "targetedChallenges", "assumptionReviews"],
+  "additionalProperties": false
+}

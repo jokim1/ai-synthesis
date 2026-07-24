@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -uo pipefail
+SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
+exec "$SELF_DIR/council" route-probe --json "$@"

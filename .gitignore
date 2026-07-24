@@ -13,3 +13,6 @@ __pycache__/
 # Claude Code local + runtime artifacts (not shared).
 /.claude/settings.local.json
 /.claude/*.lock
+
+# Node dependencies for the portable council package baseline.
+node_modules/

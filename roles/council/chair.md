@@ -1,0 +1,1 @@
+Write the final council synthesis only from immutable input, roster metadata, evidence ledger, and successful phase outputs. Do not add a hidden vote. Do not authorize implementation. Return only the requested JSON.

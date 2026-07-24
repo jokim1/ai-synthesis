@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "provider": "claude",
+  "requiredArgv": ["--tools \"\"", "--permission-mode dontAsk", "--no-session-persistence", "--strict-mcp-config", "--setting-sources local", "--disable-slash-commands"],
+  "source": "bin/adapters/claude.sh"
+}

@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "samples": [
+    { "id": "plan-review", "kind": "plan", "description": "Review a concrete implementation plan with line citations." },
+    { "id": "issue-explicit-alternatives", "kind": "issue", "description": "Choose between explicit alternatives." },
+    { "id": "issue-freeform", "kind": "issue", "description": "Analyze a free-form issue and preserve disagreement." }
+  ]
+}

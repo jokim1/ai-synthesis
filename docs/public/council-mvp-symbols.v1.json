@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "allowedSurfaces": ["bin/council", "bin/council-route-probe", "extensions/council/cli.ts", "extensions/council/lib"],
+  "forbiddenPaths": ["extensions/council/ui/", "skills/council/"],
+  "forbiddenSymbols": ["CouncilPiSurfaceGateV1", "CouncilPiEffortLiveGateV1", "pi-complete", "ctx.ui.custom", "pi.setThinkingLevel"]
+}
