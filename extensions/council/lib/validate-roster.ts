@@ -14,7 +14,7 @@ function entryShapeError(entry: unknown): string | undefined {
   const value = entry as Record<string, unknown>;
   if (typeof value.id !== "string" || !COUNCIL_ROSTER_ENTRY_ID_PATTERN.test(value.id)) return "entry id must match entry_<26 lowercase base32 chars>";
   if (!roles.has(value.role as CouncilRole)) return "entry role is invalid";
-  if (!isCouncilEffort(value.effort)) return "entry effort is invalid";
+  if (typeof value.effort !== "string" || !isCouncilEffort(value.effort)) return "entry effort is invalid";
   if (typeof value.enabled !== "boolean") return "entry enabled must be boolean";
   if (!value.route || typeof value.route !== "object" || Array.isArray(value.route)) return "entry route is required";
   const route = value.route as Record<string, unknown>;
