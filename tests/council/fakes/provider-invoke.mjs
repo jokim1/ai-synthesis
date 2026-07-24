@@ -59,22 +59,33 @@ if (schema === "council-voice.json") {
     position_key: positions[member] ?? "other:approve",
     recommendation: "Proceed with the reviewed approach",
     evidence: [1, 2, 3].map((line) => ({ claim: `The input line ${line} informs the decision`, source_type: sourceType, locator: `${locatorPrefix}:L${line}` })),
-    assumptions: [{ assumption_key: "inputs-hold", statement: "Inputs remain accurate", load_bearing: false, if_false_then: "Reassess", how_to_verify: "Confirm inputs" }],
+    assumptions: role === "risk-critic"
+      ? [{
+          assumption_key: "rollback-readiness",
+          statement: "Rollback thresholds are proven against staged traffic",
+          load_bearing: true,
+          if_false_then: "Pause the rollout",
+          how_to_verify: "Measure rollback readiness against staged traffic"
+        }]
+      : [{ assumption_key: "inputs-hold", statement: "Inputs remain accurate", load_bearing: false, if_false_then: "Reassess", how_to_verify: "Confirm inputs" }],
     risks: ["Execution risk remains"],
     what_would_change_my_view: ["Contradictory evidence"],
     next_action: "Start the smallest reversible rollout step"
   };
 } else if (schema === "council-critique.json") {
-  const assumptionIds = [...prompt.matchAll(/"id":"([^"]+:inputs-hold)"/g)].map((match) => match[1]);
+  const assumptionIds = [...prompt.matchAll(/"id":"(entry_[a-z0-9_]+:[a-z0-9-]+)"/g)].map((match) => match[1]);
   structured = {
     memberId: member,
     targetedChallenges: [{ canonicalPositionId: "other:approve", challenge: "Validate the execution assumption", evidenceIds: [`ev_initial_${member}_1`] }],
-    assumptionReviews: [...new Set(assumptionIds)].map((assumptionId) => ({
-      assumptionId,
-      status: "verified_by_cited_evidence",
-      rationale: "The cited input supports it",
-      evidenceIds: [`ev_initial_${assumptionId.split(":")[0]}_1`]
-    }))
+    assumptionReviews: [...new Set(assumptionIds)].map((assumptionId) => {
+      const verified = process.env.AISYNTH_FAKE_ALL_ASSUMPTIONS_VERIFIED === "1" || !assumptionId.endsWith(":rollback-readiness");
+      return {
+        assumptionId,
+        status: verified ? "verified_by_cited_evidence" : "unverified",
+        rationale: verified ? "The cited input supports it" : "The frozen input does not prove staged rollback behavior",
+        evidenceIds: verified ? [`ev_initial_${assumptionId.split(":")[0]}_1`] : []
+      };
+    })
   };
   if (process.env.AISYNTH_FAKE_PARTIAL_CRITIQUE === "1") structured.assumptionReviews = structured.assumptionReviews.slice(0, 1);
 } else if (schema === "council-steelman.json") {

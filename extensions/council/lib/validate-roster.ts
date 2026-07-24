@@ -29,6 +29,16 @@ export function validateRoster(input: CouncilValidateRosterInputV1): CouncilRost
   const unavailableEntryIds: string[] = [];
   const unsupportedEffortEntryIds: string[] = [];
   const seen = new Set<string>();
+  const configuredCap = input.config.maxEnabledMembers ?? 6;
+
+  if (!Number.isInteger(configuredCap) || configuredCap < 2 || configuredCap > 8) {
+    blockingProblems.push({ kind: "invalid_roster_cap", message: "maxEnabledMembers must be an integer from 2 through 8" });
+  } else {
+    const enabledCount = reconciledConfig.entries.filter((entry) => entry.enabled).length;
+    if (enabledCount > configuredCap) {
+      blockingProblems.push({ kind: "too_many_enabled_members", message: `enabled roster has ${enabledCount} members; configured cap is ${configuredCap}` });
+    }
+  }
 
   for (const entry of reconciledConfig.entries) {
     if (seen.has(entry.id)) {
@@ -119,6 +129,12 @@ export function assertRosterShape(value: unknown): asserts value is CouncilRoste
   const roster = value as Record<string, unknown>;
   if (roster.version !== 1) throw new Error("roster version must be 1");
   if (!Array.isArray(roster.entries)) throw new Error("roster entries must be an array");
+  if (
+    roster.maxEnabledMembers !== undefined
+    && (!Number.isInteger(roster.maxEnabledMembers) || (roster.maxEnabledMembers as number) < 2 || (roster.maxEnabledMembers as number) > 8)
+  ) {
+    throw new Error("maxEnabledMembers must be an integer from 2 through 8");
+  }
   if (!roster.reportStrategy || typeof roster.reportStrategy !== "object") throw new Error("reportStrategy is required");
   for (const rawEntry of roster.entries as Array<Record<string, unknown>>) {
     if ("chair" in rawEntry) throw new Error("entry-level chair is stale dogfood; use reportStrategy.kind=chair");

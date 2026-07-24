@@ -31,6 +31,39 @@ function locatorIsValid(locator, sample, lineCount) {
   return Boolean(match && match[1] === expected && Number(match[2]) >= 1 && Number(match[3] ?? match[2]) <= lineCount);
 }
 
+function normalizeClaim(value) {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/\b(?:ev_[a-z0-9_:-]+|entry_[a-z0-9_:-]+|plan\.md:l\d+(?:-l\d+)?|issue:l\d+(?:-l\d+)?)\b/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function substantiveClaim(value) {
+  const normalized = normalizeClaim(value);
+  if (normalized.split(" ").length < 4) return false;
+  return ![
+    "gather more grounded evidence before implementation",
+    "proceed with the reviewed approach",
+    "start the smallest reversible rollout step",
+    "confirm inputs"
+  ].includes(normalized);
+}
+
+function absentFromBaseline(value, baseline) {
+  const candidate = normalizeClaim(value);
+  const baselineClaims = [
+    baseline.recommendation,
+    baseline.next_action,
+    ...baseline.evidence.map((item) => item.claim),
+    ...baseline.assumptions.flatMap((item) => [item.statement, item.how_to_verify]),
+    ...baseline.risks,
+    ...baseline.what_would_change_my_view
+  ].map(normalizeClaim);
+  return candidate.length > 0 && baselineClaims.every((claim) => !claim.includes(candidate) && !candidate.includes(claim));
+}
+
 for (const sample of set.samples) {
   const hash = createHash("sha256").update(sample.input).digest("hex");
   const record = records.get(sample.id);
@@ -88,12 +121,28 @@ for (const sample of set.samples) {
     const locators = [...new Set(report.evidence_summary.map(locatorFromEvidence).filter(Boolean))].sort();
     const verifiedLocators = locators.filter((locator) => locatorIsValid(locator, sample, input.lineMap.length));
     const deltas = [];
-    if (report.strongest_dissent && !JSON.stringify(baseline).includes(report.strongest_dissent)) deltas.push("dissent");
-    const soloClaims = new Set(baseline.evidence.map((item) => item.claim));
-    if (report.evidence_summary.some((item) => !soloClaims.has(item.replace(/\s+\([^)]+\)$/, "")))) deltas.push("evidence");
-    const soloAssumptions = new Set(baseline.assumptions.map((item) => item.statement));
-    if (report.assumptions.some((item) => !soloAssumptions.has(item.replace(/^[^:]+:\s*/, "")))) deltas.push("assumption");
-    if (report.next_action !== baseline.next_action) deltas.push("next_action");
+    const outcome = normalizeClaim(`${report.recommendation} ${report.next_action}`);
+    let dissent;
+    try {
+      dissent = JSON.parse(report.strongest_dissent);
+    } catch {
+      dissent = { objection: report.strongest_dissent };
+    }
+    const dissentClaim = dissent?.objection;
+    if (
+      substantiveClaim(dissentClaim)
+      && absentFromBaseline(dissentClaim, baseline)
+      && outcome.includes(normalizeClaim(dissentClaim))
+    ) deltas.push("dissent");
+    if (report.evidence_summary.some((item) => {
+      const claim = item.replace(/\s+\([^)]+\)$/, "");
+      return substantiveClaim(claim) && absentFromBaseline(claim, baseline) && outcome.includes(normalizeClaim(claim));
+    })) deltas.push("evidence");
+    if (report.assumptions.some((item) => {
+      const claim = item.replace(/^[^:]+:\s*/, "");
+      return substantiveClaim(claim) && absentFromBaseline(claim, baseline) && outcome.includes(normalizeClaim(claim));
+    })) deltas.push("assumption");
+    if (substantiveClaim(report.next_action) && absentFromBaseline(report.next_action, baseline)) deltas.push("next_action");
     const derivedPass = [
       report.recommendation,
       report.strongest_dissent,

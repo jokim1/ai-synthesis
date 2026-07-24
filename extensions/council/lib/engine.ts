@@ -21,11 +21,12 @@ import { validateRoster } from "./validate-roster.js";
 import { invokeProvider } from "./executors/provider-invoke.js";
 import { extractModelJson, validateModelJsonValue } from "./validate-json.js";
 import { buildRunPlan } from "./run-intent.js";
-import { sha256 } from "./util.js";
+import { sha256, stableJson } from "./util.js";
 import { renderCouncilMarkdown, renderTerminalMarkdown, validateFinalReport, writeReport } from "./report.js";
 import { derivePositionCatalog } from "./position-catalog.js";
 import { phaseSelectionWasFallback, selectPhaseEntries } from "./phase-selection.js";
 import { rosterHash } from "./config.js";
+import { buildPhaseLanePlan, executePhaseLanePlan } from "./scheduler.js";
 
 interface Voice {
   member_id: string;
@@ -109,12 +110,12 @@ function loadRoleTemplates(packageRoot: string): RoleTemplates {
   ) as unknown as RoleTemplates;
 }
 
-function voicePrompt(input: CouncilInputSnapshotV1, catalog: CouncilPositionCatalogV1, entryId: string, role: string, template: string): string {
+function voicePrompt(input: CouncilInputSnapshotV1, catalogBytes: string, entryId: string, role: string, template: string): string {
   const locator = input.kind === "plan" ? "plan.md:Lx-Ly" : "issue:Lx-Ly";
   return `You are council member ${entryId} with role ${role}.
 Role rubric: ${template}
 Review the immutable ${input.kind} independently. Cite evidence only as ${locator}.
-Choose position_key from ${JSON.stringify(catalog)}, or other:<lowercase-slug>.
+Choose position_key from ${catalogBytes}, or other:<lowercase-slug>.
 Return only JSON matching the schema. Council completion does not authorize implementation.
 
 ${input.displayName}:
@@ -524,6 +525,8 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
   const strategy = validation.reportStrategy.effective;
   const diagnostics = [...validation.reconciliationDiagnostics, ...validation.compositionFeedback.map((item) => item.message)];
   const positionCatalog = derivePositionCatalog(opts.input);
+  const positionCatalogBytes = stableJson(positionCatalog);
+  const positionCatalogSha256 = sha256(positionCatalogBytes);
   const roleTemplates = loadRoleTemplates(opts.packageRoot);
   const plan = buildRunPlan(opts.input, roster, opts.routes, strategy);
   const runId = `council_${new Date().toISOString().replace(/[-:.]/g, "").slice(0, 15)}_${sha256(opts.input.sha256).slice(0, 8)}_${randomBytes(5).toString("hex")}`;
@@ -538,22 +541,36 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
   const voiceSchemaPath = join(opts.packageRoot, "schemas/council-voice.json");
   const voices: Voice[] = [];
   const failedMembers: string[] = [];
+  const initialPromptHashes: Array<{ memberId: string; promptSha256: string; positionCatalogSha256: string }> = [];
   const executionIdentities = new Map<string, CouncilExecutionIdentityV1>();
   const recordExecutionIdentity = (identity: CouncilExecutionIdentityV1) => {
     executionIdentities.set(identity.routeId, identity);
   };
   try {
-    for (const entry of selectPhaseEntries("initial_analysis", roster, strategy).filter((item) => validation.executableEntryIds.includes(item.id))) {
+    const initialEntries = selectPhaseEntries("initial_analysis", roster, strategy)
+      .filter((item) => validation.executableEntryIds.includes(item.id));
+    const initialPrompts = new Map(initialEntries.map((entry) => {
+      const prompt = voicePrompt(opts.input, positionCatalogBytes, entry.id, entry.role, roleTemplates.initial);
+      initialPromptHashes.push({ memberId: entry.id, promptSha256: sha256(prompt), positionCatalogSha256 });
+      return [entry.id, prompt];
+    }));
+    for (const prompt of initialPromptHashes) {
+      diagnostics.push(`initial_prompt_hash: ${prompt.memberId}=${prompt.promptSha256} position_catalog=${prompt.positionCatalogSha256}`);
+    }
+    const initialLanePlan = buildPhaseLanePlan("initial_analysis", initialEntries, opts.routes, 300000);
+    diagnostics.push(`phase_lane_plan: initial_analysis concurrency=${initialLanePlan.effectiveConcurrency} batches=${initialLanePlan.executionBatches.length}`);
+    const initialResults = await executePhaseLanePlan(initialLanePlan, initialEntries, async (entry) => {
+      const memberDiagnostics: string[] = [];
       const route = routeMap.get(entry.route.routeId);
-      if (!route) continue;
+      if (!route) return { value: undefined, diagnostics: [`initial_analysis degraded for ${entry.id}: route unavailable`] };
       const value = await invokeStructured(
         runOpts,
         route,
         entry,
-        voicePrompt(opts.input, positionCatalog, entry.id, entry.role, roleTemplates.initial),
+        initialPrompts.get(entry.id) as string,
         voiceSchemaPath,
-        300000,
-        diagnostics,
+        initialLanePlan.memberTimeoutMs,
+        memberDiagnostics,
         (candidate) => {
           const voice = candidate as Voice;
           if (voice.member_id !== entry.id || voice.role !== entry.role) return "voice identity does not match roster entry";
@@ -563,7 +580,11 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
         undefined,
         recordExecutionIdentity
       );
-      if (value) voices.push(value as Voice);
+      return { value, diagnostics: memberDiagnostics };
+    });
+    for (const { entry, value: result } of initialResults) {
+      diagnostics.push(...result.diagnostics);
+      if (result.value) voices.push(result.value as Voice);
       else failedMembers.push(entry.id);
     }
     if (controller.signal.aborted) throw new RunAbortedError(String(controller.signal.reason));
@@ -590,12 +611,13 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
         const outputs: T[] = [];
         const selected = phaseMembers(phaseName, roster, voices, strategy, diagnostics);
         if (selected.length === 0) degradedPhases.add(phaseName);
-        for (const entry of selected) {
+        const lanePlan = buildPhaseLanePlan(phaseName, selected, opts.routes, 300000);
+        diagnostics.push(`phase_lane_plan: ${phaseName} concurrency=${lanePlan.effectiveConcurrency} batches=${lanePlan.executionBatches.length}`);
+        const results = await executePhaseLanePlan(lanePlan, selected, async (entry) => {
+          const memberDiagnostics: string[] = [];
           const route = routeMap.get(entry.route.routeId);
           if (!route) {
-            degradedPhases.add(phaseName);
-            diagnostics.push(`${phaseName} degraded for ${entry.id}: route unavailable`);
-            continue;
+            return { value: undefined, diagnostics: [`${phaseName} degraded for ${entry.id}: route unavailable`] };
           }
           const value = await invokeStructured(
             runOpts,
@@ -603,8 +625,8 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
             entry,
             phasePrompt(phaseName, opts.input, entry, context, roleTemplates[phaseName]),
             schemaPath,
-            300000,
-            diagnostics,
+            lanePlan.memberTimeoutMs,
+            memberDiagnostics,
             (candidate) => {
               const output = candidate as PhaseOutput;
               if (output.memberId !== entry.id) return "phase memberId does not match roster entry";
@@ -620,7 +642,11 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
             undefined,
             recordExecutionIdentity
           );
-          if (value) outputs.push(value as T);
+          return { value, diagnostics: memberDiagnostics };
+        });
+        for (const { entry, value: result } of results) {
+          diagnostics.push(...result.diagnostics);
+          if (result.value) outputs.push(result.value as T);
           else {
             degradedPhases.add(phaseName);
             diagnostics.push(`${phaseName} degraded for ${entry.id}`);
@@ -639,23 +665,31 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
         const chair = selectPhaseEntries("chair", roster, strategy, new Set(voices.map((voice) => voice.member_id)))[0];
         const route = chair ? routeMap.get(chair.route.routeId) : undefined;
         if (chair && route) {
-          const draft = await invokeStructured(
-            runOpts,
-            route,
-            chair,
-            phasePrompt("chair", opts.input, chair, { synthesisBrief: brief, adversary, deterministicBrief: report }, roleTemplates.chair),
-            join(opts.packageRoot, "schemas/council-chair-report.json"),
-            420000,
-            diagnostics,
-            undefined,
-            (candidate) => {
-              if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return candidate;
-              const { implementation_authorized: ignored, ...rest } = candidate as Record<string, unknown>;
-              if (ignored !== undefined) diagnostics.push("implementation_authorized_forced_false");
-              return rest;
-            },
-            recordExecutionIdentity
-          );
+          const chairLanePlan = buildPhaseLanePlan("chair", [chair], opts.routes, 420000);
+          diagnostics.push(`phase_lane_plan: chair concurrency=${chairLanePlan.effectiveConcurrency} batches=${chairLanePlan.executionBatches.length}`);
+          const [{ value: chairResult }] = await executePhaseLanePlan(chairLanePlan, [chair], async (entry) => {
+            const memberDiagnostics: string[] = [];
+            const value = await invokeStructured(
+              runOpts,
+              route,
+              entry,
+              phasePrompt("chair", opts.input, entry, { synthesisBrief: brief, adversary, deterministicBrief: report }, roleTemplates.chair),
+              join(opts.packageRoot, "schemas/council-chair-report.json"),
+              chairLanePlan.memberTimeoutMs,
+              memberDiagnostics,
+              undefined,
+              (candidate) => {
+                if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return candidate;
+                const { implementation_authorized: ignored, ...rest } = candidate as Record<string, unknown>;
+                if (ignored !== undefined) memberDiagnostics.push("implementation_authorized_forced_false");
+                return rest;
+              },
+              recordExecutionIdentity
+            );
+            return { value, diagnostics: memberDiagnostics };
+          });
+          diagnostics.push(...chairResult.diagnostics);
+          const draft = chairResult.value;
           if (draft) {
             const readinessRank = { not_ready: 0, conditional: 1, ready: 2 } as const;
             const draftReadiness = (draft as CouncilFinalReportV1).decision_readiness;
@@ -689,7 +723,7 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
     }
     diagnostics.push(`worst_case_provider_calls: ${plan.worstCaseProviderCallCount}`);
     validateFinalReport(report, join(opts.packageRoot, "schemas/council-report.json"));
-    const effectiveStrategy = voices.length === 1 ? "single_survivor" : strategy.kind;
+    const effectiveStrategy = voices.length === 1 ? "single_survivor_mechanical" : strategy.kind;
     const markdown = renderCouncilMarkdown({
       runId,
       input: opts.input,
@@ -702,6 +736,7 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
       reportStrategySource: opts.reportStrategySource,
       rememberedRosterWritten: opts.rememberedRosterWritten,
       executionIdentities: [...executionIdentities.values()],
+      initialPromptHashes,
       diagnostics
     });
     const reportPath = writeReport(opts.cwd, runId, markdown);

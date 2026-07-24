@@ -4,6 +4,7 @@ import type { CouncilAuthPolicy, CouncilInputSnapshotV1, CouncilMvpRunPlanV1, Co
 import { sha256, stableJson } from "./util.js";
 import { rosterHash, writeJsonAtomic } from "./config.js";
 import { selectPhaseEntries } from "./phase-selection.js";
+import { buildPhaseLanePlan } from "./scheduler.js";
 
 export function buildRunPlan(
   input: CouncilInputSnapshotV1,
@@ -50,34 +51,10 @@ export function buildRunPlan(
   }));
   const phasePlans = [...phaseSelections.entries()].filter(([, selection]) => selection.selected.length > 0).map(([phase, selection]) => {
     const memberTimeoutMs = phase === "chair" ? 420000 : 300000;
-    const lanes = new Map<string, { memberCount: number; maxConcurrency: number }>();
-    for (const entry of selection.selected) {
-      const route = routeMap.get(entry.route.routeId);
-      const laneKey = route?.executionLaneKey ?? `provider-invoke:${entry.route.provider}:unknown`;
-      const current = lanes.get(laneKey);
-      lanes.set(laneKey, {
-        memberCount: (current?.memberCount ?? 0) + 1,
-        maxConcurrency: route?.executionLaneMaxConcurrency ?? 1
-      });
-    }
-    const providerInvokeLanes = [...lanes.entries()].map(([laneKey, lane]) => ({
-      laneKey,
-      memberCount: lane.memberCount,
-      maxConcurrency: lane.maxConcurrency,
-      budgetMs: Math.ceil(lane.memberCount / lane.maxConcurrency) * memberTimeoutMs
-    }));
-    return {
-      phase,
+    return buildPhaseLanePlan(phase, selection.selected, routes, memberTimeoutMs, {
       selectionMode: selection.selectionMode,
-      candidateEntryIds: selection.candidates.map((entry) => entry.id),
-      memberTimeoutMs,
-      maxConcurrencyGlobalCeiling: 4,
-      providerInvokeLanePolicy: "serial_same_account_by_default" as const,
-      providerInvokeLanes,
-      portableProviderInvokeMemberCount: selection.selected.length,
-      phaseBudgetMs: Math.max(0, ...providerInvokeLanes.map((lane) => lane.budgetMs)),
-      effectiveConcurrency: Math.min(4, providerInvokeLanes.reduce((sum, lane) => sum + lane.maxConcurrency, 0))
-    };
+      candidateEntryIds: selection.candidates.map((entry) => entry.id)
+    });
   });
   const retryCostInputs = phasePlans.flatMap((phase) =>
     (phaseSelections.get(phase.phase)?.billed ?? []).map((entry) => {

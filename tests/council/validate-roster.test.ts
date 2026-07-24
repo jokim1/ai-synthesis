@@ -44,4 +44,30 @@ describe("validateRoster", () => {
     expect(result.reconciledConfig.entries[0].route).toEqual(route.ref);
     expect(config.entries[0].route.routeId).toBe(staleRef.routeId);
   });
+
+  it("enforces the default six-member cap and bounds overrides at eight", () => {
+    const entries = Array.from({ length: 7 }, (_, index) => ({
+      id: `entry_${index}`,
+      route: route.ref,
+      role: "architect" as const,
+      effort: "medium" as const,
+      enabled: true
+    }));
+    const defaultResult = validateRoster({ config: roster(entries), routes: [route], mode: "portable_cli" });
+    expect(defaultResult.blockingProblems.map((item) => item.kind)).toContain("too_many_enabled_members");
+
+    const overridden = validateRoster({
+      config: { ...roster(entries), maxEnabledMembers: 8 },
+      routes: [route],
+      mode: "portable_cli"
+    });
+    expect(overridden.ok).toBe(true);
+
+    const invalid = validateRoster({
+      config: { ...roster(entries), maxEnabledMembers: 9 },
+      routes: [route],
+      mode: "portable_cli"
+    });
+    expect(invalid.blockingProblems.map((item) => item.kind)).toContain("invalid_roster_cap");
+  });
 });

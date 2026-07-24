@@ -12,11 +12,11 @@
         "verifiedCitationLocators": ["plan.md:L1", "plan.md:L2", "plan.md:L3"],
         "strongestDissent": "{\"canonicalPositionId\":\"other:approve\",\"axis\":\"recommendation_logic\",\"objection\":\"Residual risk remains\",\"wouldChangeRecommendation\":\"Independent validation\",\"evidenceIds\":[\"ev_initial_entry_b_1\"]}",
         "assumptionsOrRisksCount": 5,
-        "nextAction": "Gather more grounded evidence before implementation."
+        "nextAction": "Verify: Measure rollback readiness against staged traffic"
       },
       "soloComparison": {
         "baselineRecommendation": "Proceed with the reviewed approach",
-        "materialDeltas": ["dissent", "next_action"],
+        "materialDeltas": ["next_action"],
         "usedByFinalReport": true
       },
       "revisionAttempts": [],
@@ -31,11 +31,11 @@
         "verifiedCitationLocators": ["issue:L1", "issue:L2", "issue:L3"],
         "strongestDissent": "{\"canonicalPositionId\":\"other:approve\",\"axis\":\"recommendation_logic\",\"objection\":\"Residual risk remains\",\"wouldChangeRecommendation\":\"Independent validation\",\"evidenceIds\":[\"ev_initial_entry_b_1\"]}",
         "assumptionsOrRisksCount": 5,
-        "nextAction": "Gather more grounded evidence before implementation."
+        "nextAction": "Verify: Measure rollback readiness against staged traffic"
       },
       "soloComparison": {
         "baselineRecommendation": "Proceed with the reviewed approach",
-        "materialDeltas": ["dissent", "next_action"],
+        "materialDeltas": ["next_action"],
         "usedByFinalReport": true
       },
       "revisionAttempts": [],
@@ -50,11 +50,11 @@
         "verifiedCitationLocators": ["issue:L1", "issue:L2", "issue:L3"],
         "strongestDissent": "{\"canonicalPositionId\":\"other:approve\",\"axis\":\"recommendation_logic\",\"objection\":\"Residual risk remains\",\"wouldChangeRecommendation\":\"Independent validation\",\"evidenceIds\":[\"ev_initial_entry_b_1\"]}",
         "assumptionsOrRisksCount": 5,
-        "nextAction": "Gather more grounded evidence before implementation."
+        "nextAction": "Verify: Measure rollback readiness against staged traffic"
       },
       "soloComparison": {
         "baselineRecommendation": "Proceed with the reviewed approach",
-        "materialDeltas": ["dissent", "next_action"],
+        "materialDeltas": ["next_action"],
         "usedByFinalReport": true
       },
       "revisionAttempts": [],

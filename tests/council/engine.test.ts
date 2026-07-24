@@ -51,7 +51,12 @@ describe("Phase 5 council engine", () => {
     expect(result.diagnostics.filter((item) => item.startsWith("engine_json_retry:")).length).toBeGreaterThanOrEqual(4);
     expect(result.report?.decision_readiness).toBe("conditional");
     expect(result.diagnostics).toContain(`resolved_model: ${route.ref.routeId}=claude-fixture-resolved (provider_envelope)`);
-    expect(readFileSync(result.reportPath as string, "utf8")).toContain(`${route.ref.routeId}:claude-fixture-resolved`);
+    const markdown = readFileSync(result.reportPath as string, "utf8");
+    expect(markdown).toContain(`${route.ref.routeId}:claude-fixture-resolved`);
+    expect(markdown).toContain("initial_prompt_hashes:");
+    expect(markdown).toContain("position_catalog_sha256:");
+    expect(markdown).toContain("Deterministic synthesis was produced by auditable aggregation code, not another model voice.");
+    expect(result.diagnostics.filter((item) => item.startsWith("initial_prompt_hash:")).length).toBe(2);
   });
 
   it("does not add an engine retry for adapter-owned routes", async () => {
@@ -268,7 +273,11 @@ describe("Phase 5 council engine", () => {
       routes: [base, second],
       reportStrategySource: "roster_file",
       rememberedRosterWritten: false,
-      env: { ...process.env, AISYNTH_COUNCIL_PROVIDER_INVOKE: join(process.cwd(), "tests/council/fakes/provider-invoke") }
+      env: {
+        ...process.env,
+        AISYNTH_COUNCIL_PROVIDER_INVOKE: join(process.cwd(), "tests/council/fakes/provider-invoke"),
+        AISYNTH_FAKE_ALL_ASSUMPTIONS_VERIFIED: "1"
+      }
     });
     expect(result.report?.decision_readiness).toBe("ready");
     expect(result.report?.next_action).toBe("Start the smallest reversible rollout step");
@@ -333,5 +342,42 @@ describe("Phase 5 council engine", () => {
     });
     expect(chairFailure.report?.decision_readiness).toBe("conditional");
     expect(chairFailure.diagnostics.some((item) => item.includes("chair synthesis degraded"))).toBe(true);
+  });
+
+  it("labels a one-voice report as single-survivor mechanical synthesis", async () => {
+    const base = providerInvokeRoute("claude", true);
+    const second = {
+      ...base,
+      ref: { ...base.ref, routeId: `${base.ref.routeId}:second`, model: "second" },
+      executionLaneKey: `${base.executionLaneKey}:second`
+    };
+    const root = mkdtempSync(join(tmpdir(), "council-single-survivor-"));
+    const result = await runCouncil({
+      cwd: root,
+      packageRoot: process.cwd(),
+      input: issueSnapshot("Goal one\nConstraint two\nDecision three"),
+      roster: {
+        version: 1,
+        updatedAt: new Date().toISOString(),
+        scope: "explicit",
+        entries: [
+          { id: "entry_a", route: base.ref, role: "architect", effort: "medium", enabled: true },
+          { id: "entry_b", route: second.ref, role: "risk-critic", effort: "medium", enabled: true }
+        ],
+        reportStrategy: { kind: "deterministic" }
+      },
+      routes: [base, second],
+      reportStrategySource: "roster_file",
+      rememberedRosterWritten: false,
+      env: {
+        ...process.env,
+        AISYNTH_COUNCIL_PROVIDER_INVOKE: join(process.cwd(), "tests/council/fakes/provider-invoke"),
+        AISYNTH_FAKE_FAIL_KEY: "council-voice.json:entry_b"
+      }
+    });
+    const markdown = readFileSync(result.reportPath as string, "utf8");
+    expect(markdown).toContain('report_strategy: "single_survivor"');
+    expect(markdown).toContain('report_strategy_effective: "single_survivor_mechanical"');
+    expect(markdown).toContain('configured_report_strategy: "deterministic"');
   });
 });

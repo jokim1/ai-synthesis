@@ -89,6 +89,7 @@ export interface CouncilRosterConfigV1 {
   version: 1;
   updatedAt: string;
   scope: CouncilConfigScope;
+  maxEnabledMembers?: number;
   entries: CouncilRosterEntryV1[];
   reportStrategy: CouncilReportStrategy;
 }
@@ -130,6 +131,8 @@ export interface CouncilRosterValidationResultV1 {
       | "unavailable_route"
       | "unsupported_effort"
       | "too_few_executable_members"
+      | "too_many_enabled_members"
+      | "invalid_roster_cap"
       | "missing_report_strategy"
       | "invalid_chair_strategy"
       | "input_context_overflow"
@@ -238,6 +241,8 @@ export interface CouncilMvpLanePlanV1 {
   phase: "initial_analysis" | "critique" | "steelman" | "adversary" | "chair";
   selectionMode: "fixed" | "least_supported_position_fallback";
   candidateEntryIds: string[];
+  selectedEntryIds: string[];
+  executionBatches: string[][];
   memberTimeoutMs: number;
   maxConcurrencyGlobalCeiling: number;
   providerInvokeLanePolicy: "serial_same_account_by_default";

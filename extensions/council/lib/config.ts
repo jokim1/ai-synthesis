@@ -57,7 +57,14 @@ export function loadRosterConfig(location: CouncilConfigLocation): { config?: Co
 }
 
 export function canonicalRoster(config: CouncilRosterConfigV1, scope = config.scope): CouncilRosterConfigV1 {
-  return { version: 1, updatedAt: nowIso(), scope, entries: config.entries, reportStrategy: config.reportStrategy };
+  return {
+    version: 1,
+    updatedAt: nowIso(),
+    scope,
+    ...(config.maxEnabledMembers === undefined ? {} : { maxEnabledMembers: config.maxEnabledMembers }),
+    entries: config.entries,
+    reportStrategy: config.reportStrategy
+  };
 }
 
 export function writeJsonAtomic(path: string, value: unknown, mode = 0o600): void {
