@@ -87,6 +87,20 @@ function bootstrapSmoke() {
     const active = exerciseCheckout(cleanCheckout(temporaryRoot, "active-home-checkout"), { ...baseEnv, PIPELANE_HOME: activeHome }, "active PIPELANE_HOME");
     const empty = exerciseCheckout(cleanCheckout(temporaryRoot, "empty-home-checkout"), { ...baseEnv, PIPELANE_HOME: emptyHome }, "empty PIPELANE_HOME");
 
+    const warmCache = join(temporaryRoot, "populated-npm-cache");
+    mkdirSync(warmCache, { recursive: true });
+    const warmCheckout = cleanCheckout(temporaryRoot, "cache-warm-checkout");
+    const warm = run("npm", ["ci", "--prefer-offline", "--no-audit", "--fund=false"], {
+      cwd: warmCheckout,
+      env: { ...baseEnv, npm_config_cache: warmCache }
+    });
+    if (warm.status !== 0) throw new Error(`TRACK_A_CACHE_WARM_FAILED: ${warm.stderr || warm.stdout}`);
+    const cacheHit = exerciseCheckout(
+      cleanCheckout(temporaryRoot, "cache-hit-offline-checkout"),
+      { ...baseEnv, PIPELANE_HOME: emptyHome, npm_config_cache: warmCache, npm_config_offline: "true" },
+      "populated cache offline"
+    );
+
     const missCheckout = cleanCheckout(temporaryRoot, "cache-miss-checkout");
     const emptyCache = join(temporaryRoot, "empty-npm-cache");
     mkdirSync(emptyCache, { recursive: true });
@@ -103,6 +117,12 @@ function bootstrapSmoke() {
       preconditions,
       active,
       empty,
+      cacheHit: {
+        ...cacheHit,
+        offline: true,
+        networkAvoided: true,
+        populatedCache: warmCache
+      },
       cacheMissFailure: {
         status: miss.status,
         registry: npmFact(missCheckout, "registry", baseEnv),

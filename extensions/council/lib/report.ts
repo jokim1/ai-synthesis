@@ -1,12 +1,23 @@
 import { existsSync, mkdirSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { CouncilFinalReportV1, CouncilInputSnapshotV1, CouncilReportStrategy, CouncilRosterConfigV1, CouncilRoute } from "./types.js";
+import type { CouncilFinalReportV1, CouncilInputSnapshotV1, CouncilReportStrategy, CouncilRosterConfigV1, CouncilRoute, CouncilTerminalReportV1 } from "./types.js";
 
 export function validateFinalReport(report: CouncilFinalReportV1): void {
   if (report.implementation_authorized !== false) throw new Error("implementation_authorized must be false");
   for (const key of ["recommendation", "strongest_dissent", "next_action"] as const) {
     if (!report[key]) throw new Error(`final report missing ${key}`);
   }
+}
+
+export function renderTerminalMarkdown(report: CouncilTerminalReportV1): string {
+  const frontmatter = [
+    `id: ${JSON.stringify(report.run_id)}`,
+    "mode: council",
+    `input_sha256: ${JSON.stringify(report.input_sha256)}`,
+    `status: ${report.status}`,
+    `implementation_authorized: false`
+  ].join("\n");
+  return `---\n${frontmatter}\n---\n\n# Council Terminal Report\n\nCouncil completion does not authorize project implementation.\n\n## Status\n\n${report.status}\n\n## Phase\n\n${report.phase}\n\n## Reason\n\n${report.reason}\n\n## Diagnostics\n\n${report.member_diagnostics.map((item) => `- ${item}`).join("\n") || "- None."}\n`;
 }
 
 function yamlValue(value: unknown): string {

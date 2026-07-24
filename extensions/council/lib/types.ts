@@ -236,6 +236,9 @@ export interface CouncilRunIntentV1 {
   runPlanHash: string;
   retryAdjustedCostHash: string;
   estimatedCostBucket: string;
+  rosterFile?: string;
+  reportStrategyOverride?: CouncilReportStrategy;
+  authPolicy?: CouncilAuthPolicy;
   acceptStaleInputSha?: string;
   ackLongRunToken?: string;
 }
@@ -266,5 +269,17 @@ export interface CouncilFinalReportV1 {
     adversary: string[];
   };
   next_action: string;
+  implementation_authorized: false;
+}
+
+export interface CouncilTerminalReportV1 {
+  version: 1;
+  status: "canceled" | "failed";
+  run_id: string;
+  input_sha256: string;
+  roster_sha256: string;
+  phase: string;
+  reason: string;
+  member_diagnostics: string[];
   implementation_authorized: false;
 }

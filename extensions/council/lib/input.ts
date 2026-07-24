@@ -105,7 +105,9 @@ export function parseCouncilInput(opts: ParseInputOptions): CouncilInputSnapshot
     try {
       const stat = statSync(candidate);
       if (stat.isFile()) return loadPlanSnapshot(positional[0], opts.cwd, opts.allowedRoots ?? [opts.cwd]);
-    } catch {
+      throw Object.assign(new Error(`plan path is not a regular file: ${positional[0]}`), { exitCode: 2 });
+    } catch (error) {
+      if (error instanceof Error && "exitCode" in error) throw error;
       throw Object.assign(new Error(`path-shaped input is not readable: ${positional[0]}`), { exitCode: 2 });
     }
   }

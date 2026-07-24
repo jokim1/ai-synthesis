@@ -2,7 +2,20 @@
   "type": "object",
   "properties": {
     "memberId": { "type": "string" },
-    "steelmans": { "type": "array", "items": { "type": "object" } }
+    "steelmans": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "positionId": { "type": "string" },
+          "summary": { "type": "string" },
+          "evidenceIds": { "type": "array", "items": { "type": "string" } },
+          "concededRisks": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["positionId", "summary", "evidenceIds", "concededRisks"],
+        "additionalProperties": false
+      }
+    }
   },
   "required": ["memberId", "steelmans"],
   "additionalProperties": false

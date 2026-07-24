@@ -26,4 +26,25 @@ describe("run intent cost contract", () => {
     expect(runPlanHashes(changedPlan).retryAdjustedCostHash).not.toBe(runPlanHashes(plan).retryAdjustedCostHash);
     expect(ackToken(input, roster, [changed], changedPlan)).not.toBe(token);
   });
+
+  it("binds phase selection and a chair override into the consent plan", () => {
+    const route = providerInvokeRoute("claude", true);
+    const roster: CouncilRosterConfigV1 = {
+      version: 1,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      scope: "explicit",
+      entries: [
+        { id: "entry_chair", route: route.ref, role: "chair", effort: "medium", enabled: true },
+        { id: "entry_critic", route: route.ref, role: "risk-critic", effort: "medium", enabled: true }
+      ],
+      reportStrategy: { kind: "deterministic" }
+    };
+    const deterministic = buildRunPlan(input, roster, [route]);
+    const chair = buildRunPlan(input, roster, [route], { kind: "chair", chairEntryId: "entry_chair" });
+    expect(deterministic.phasePlans.find((phase) => phase.phase === "critique")?.portableProviderInvokeMemberCount).toBe(1);
+    expect(deterministic.phasePlans.some((phase) => phase.phase === "chair")).toBe(false);
+    expect(chair.phasePlans.find((phase) => phase.phase === "chair")?.memberTimeoutMs).toBe(420000);
+    expect(chair.worstCaseProviderCallCount).toBe(deterministic.worstCaseProviderCallCount + 2);
+    expect(runPlanHashes(chair).runPlanHash).not.toBe(runPlanHashes(deterministic).runPlanHash);
+  });
 });

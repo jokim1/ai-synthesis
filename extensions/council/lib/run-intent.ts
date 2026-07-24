@@ -1,20 +1,21 @@
 import { mkdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import type { CouncilInputSnapshotV1, CouncilMvpRunPlanV1, CouncilRosterConfigV1, CouncilRoute, CouncilRunIntentV1 } from "./types.js";
+import type { CouncilAuthPolicy, CouncilInputSnapshotV1, CouncilMvpRunPlanV1, CouncilReportStrategy, CouncilRosterConfigV1, CouncilRoute, CouncilRunIntentV1 } from "./types.js";
 import { sha256, stableJson } from "./util.js";
 import { rosterHash, writeJsonAtomic } from "./config.js";
+import { selectPhaseEntries } from "./phase-selection.js";
 
-export function buildRunPlan(input: CouncilInputSnapshotV1, roster: CouncilRosterConfigV1, routes: CouncilRoute[]): CouncilMvpRunPlanV1 {
+export function buildRunPlan(
+  input: CouncilInputSnapshotV1,
+  roster: CouncilRosterConfigV1,
+  routes: CouncilRoute[],
+  strategy: CouncilReportStrategy = roster.reportStrategy
+): CouncilMvpRunPlanV1 {
   const routeMap = new Map(routes.map((route) => [route.ref.routeId, route]));
-  const enabled = roster.entries.filter((entry) => entry.enabled);
-  const chair = roster.reportStrategy.kind === "chair" ? enabled.find((entry) => entry.id === roster.reportStrategy.chairEntryId) : undefined;
-  const phaseMembers = new Map([
-    ["initial_analysis", enabled],
-    ["critique", enabled],
-    ["steelman", enabled],
-    ["adversary", enabled],
-    ["chair", chair ? [chair] : []]
-  ] as const);
+  const phaseMembers = new Map((["initial_analysis", "critique", "steelman", "adversary", "chair"] as const).map((phase) => [
+    phase,
+    selectPhaseEntries(phase, roster, strategy)
+  ]));
   const phasePlans = [...phaseMembers.entries()].filter(([, members]) => members.length > 0).map(([phase, members]) => ({
     phase,
     memberTimeoutMs: phase === "chair" ? 420000 : 300000,
@@ -26,7 +27,7 @@ export function buildRunPlan(input: CouncilInputSnapshotV1, roster: CouncilRoste
     effectiveConcurrency: members.length > 0 ? 1 : 0
   }));
   const retryCostInputs = phasePlans.flatMap((phase) =>
-    (phase.phase === "chair" ? (chair ? [chair] : []) : enabled).map((entry) => {
+    (phaseMembers.get(phase.phase) ?? []).map((entry) => {
       const route = routeMap.get(entry.route.routeId);
       const outputTokenCap = route?.limits.maxTokens ?? null;
       const inputPricePerMTok = route?.cost.inputPerMTok ?? null;
@@ -94,7 +95,20 @@ export function requiresAcknowledgment(plan: CouncilMvpRunPlanV1): boolean {
   return plan.expectedRunMs > 2700000 || !plan.retryAdjustedCostKnown || (plan.retryAdjustedCostUpperBoundUsd ?? 0) > 2;
 }
 
-export function writeIntent(cwd: string, input: CouncilInputSnapshotV1, roster: CouncilRosterConfigV1, routes: CouncilRoute[], plan: CouncilMvpRunPlanV1, token: string): string {
+export function writeIntent(
+  cwd: string,
+  input: CouncilInputSnapshotV1,
+  roster: CouncilRosterConfigV1,
+  routes: CouncilRoute[],
+  plan: CouncilMvpRunPlanV1,
+  token: string | undefined,
+  options: {
+    rosterFile?: string;
+    reportStrategyOverride?: CouncilReportStrategy;
+    authPolicy?: CouncilAuthPolicy;
+    acceptStaleInputSha?: string;
+  } = {}
+): string {
   const id = `intent_${Date.now().toString(36)}_${sha256(input.sha256).slice(0, 8)}`;
   const dir = join(cwd, ".ai-synthesis", "council-intents");
   mkdirSync(dir, { recursive: true, mode: 0o700 });
@@ -109,7 +123,8 @@ export function writeIntent(cwd: string, input: CouncilInputSnapshotV1, roster: 
     routeCatalogHash: sha256(stableJson(routes)),
     runPlan: plan,
     ...hashes,
-    ackLongRunToken: token
+    ackLongRunToken: token,
+    ...options
   }, 0o600);
   return id;
 }

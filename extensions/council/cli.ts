@@ -1,7 +1,6 @@
-import { existsSync } from "node:fs";
 import { configLocationForPortable, loadRosterConfig, persistRememberedRoster } from "./lib/config.js";
 import { emitRoster } from "./lib/emit-roster.js";
-import { parseCouncilInput } from "./lib/input.js";
+import { checkPlanDrift, parseCouncilInput } from "./lib/input.js";
 import { ackToken, buildRunPlan, deleteIntent, loadIntent, requiresAcknowledgment, runPlanHashes, writeIntent } from "./lib/run-intent.js";
 import { selfTest } from "./lib/runtime.js";
 import { packageRootFrom } from "./lib/runtime.js";
@@ -20,16 +19,18 @@ interface Args {
   emitRoster?: string;
   reportStrategy?: string;
   authPolicy: CouncilAuthPolicy;
+  authPolicySpecified: boolean;
   overwrite: boolean;
   json: boolean;
   selfTest: boolean;
   ackLongRun?: string;
   intent?: string;
+  acceptStaleInputSha?: string;
   positional: string[];
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { command: argv[0] === "route-probe" ? "route-probe" : "run", authPolicy: "subscription_only", overwrite: false, json: false, selfTest: false, positional: [] };
+  const args: Args = { command: argv[0] === "route-probe" ? "route-probe" : "run", authPolicy: "subscription_only", authPolicySpecified: false, overwrite: false, json: false, selfTest: false, positional: [] };
   const rest = args.command === "route-probe" ? argv.slice(1) : argv;
   for (let i = 0; i < rest.length; i += 1) {
     const arg = rest[i];
@@ -41,11 +42,13 @@ function parseArgs(argv: string[]): Args {
     else if (arg === "--auth-policy") {
       const value = rest[++i];
       args.authPolicy = value === "default" ? "default" : "subscription_only";
+      args.authPolicySpecified = true;
     } else if (arg === "--overwrite") args.overwrite = true;
     else if (arg === "--json") args.json = true;
     else if (arg === "--self-test") args.selfTest = true;
     else if (arg === "--ack-long-run") args.ackLongRun = rest[++i];
     else if (arg === "--intent") args.intent = rest[++i];
+    else if (arg === "--accept-stale-input-sha") args.acceptStaleInputSha = rest[++i];
     else if (arg === "-h" || arg === "--help") throw Object.assign(new Error(usage()), { exitCode: 0 });
     else if (arg.startsWith("--")) throw Object.assign(new Error(`unknown option: ${arg}`), { exitCode: 2 });
     else args.positional.push(arg);
@@ -103,28 +106,39 @@ export async function main(argv = process.argv.slice(2), packageRoot = packageRo
     }
   }
   const input = savedIntent?.inputSnapshot ?? parseCouncilInput({ cwd, issue: args.issue, planFile: args.planFile, positional: args.positional });
+  const authPolicy = args.authPolicySpecified ? args.authPolicy : savedIntent?.authPolicy ?? args.authPolicy;
   if (args.emitRoster) {
-    const result = emitRoster({ cwd, packageRoot, targetPath: args.emitRoster, overwrite: args.overwrite, authPolicy: args.authPolicy, input, env: process.env });
+    const result = emitRoster({ cwd, packageRoot, targetPath: args.emitRoster, overwrite: args.overwrite, authPolicy, input, env: process.env });
     print(args.json, { ok: true, path: result.path, roster: result.roster, routeProbe: result.routeProbe }, `wrote ${result.path}`);
     return 0;
   }
-  const location = configLocationForPortable(cwd, args.rosterFile, process.env);
+  const rosterFile = args.rosterFile ?? savedIntent?.rosterFile;
+  const location = configLocationForPortable(cwd, rosterFile, process.env);
   const loaded = loadRosterConfig(location);
   if (!loaded.config) {
     const command = `bin/council ${input.kind === "plan" ? `--plan-file ${input.sourcePath}` : `--issue ${JSON.stringify(input.text)}`} --emit-roster ./council-roster.json`;
     print(args.json, { ok: false, status: "validation_failed", exitCode: loaded.diagnostics.includes("no_portable_roster") ? 4 : 3, diagnostics: loaded.diagnostics, next: command }, `no portable roster. Create one with:\n${command}`);
     return loaded.diagnostics.includes("no_portable_roster") ? 4 : 3;
   }
-  const routeProbe = discoverRoutes({ packageRoot, authPolicy: args.authPolicy, env: process.env });
-  const strategyOverride = parseStrategy(args.reportStrategy);
+  const routeProbe = discoverRoutes({ packageRoot, authPolicy, env: process.env });
+  const strategyOverride = args.reportStrategy ? parseStrategy(args.reportStrategy) : savedIntent?.reportStrategyOverride;
   const validation = validateRoster({ config: loaded.config, routes: routeProbe.routes, mode: "portable_cli", reportStrategyOverride: strategyOverride, inputSnapshot: input });
   if (!validation.ok) {
     print(args.json, { ok: false, status: "validation_failed", exitCode: 4, diagnostics: validation.blockingProblems, compositionFeedback: validation.compositionFeedback }, validation.blockingProblems.map((p) => p.message).join("\n"));
     return 4;
   }
   const effectiveRoster = validation.reconciledConfig;
-  const runPlan = buildRunPlan(input, effectiveRoster, routeProbe.routes);
+  const effectiveStrategy = validation.reportStrategy.effective as CouncilReportStrategy;
+  const runPlan = buildRunPlan(input, effectiveRoster, routeProbe.routes, effectiveStrategy);
   const token = ackToken(input, effectiveRoster, routeProbe.routes, runPlan);
+  const staleInput = checkPlanDrift(input);
+  const staleAccepted = !staleInput || args.acceptStaleInputSha === input.sha256;
+  const acknowledgmentRequired = requiresAcknowledgment(runPlan);
+  const rosterArg = rosterFile ? ` --roster-file ${JSON.stringify(rosterFile)}` : "";
+  const strategyArg = strategyOverride
+    ? ` --report-strategy ${strategyOverride.kind === "chair" ? `chair:${strategyOverride.chairEntryId}` : strategyOverride.kind}`
+    : "";
+  const authArg = ` --auth-policy ${authPolicy === "subscription_only" ? "subscription-only" : "default"}`;
   if (savedIntent) {
     const freshHashes = runPlanHashes(runPlan);
     const changed = savedIntent.rosterHash !== rosterHash(effectiveRoster)
@@ -136,37 +150,58 @@ export async function main(argv = process.argv.slice(2), packageRoot = packageRo
       deleteIntent(cwd, savedIntent.id);
       print(
         args.json,
-        { ok: false, status: "intent_cost_contract_changed", exitCode: 2, ackLongRun: requiresAcknowledgment(runPlan) ? token : undefined, runPlan },
-        `intent_cost_contract_changed. Review the fresh estimate${requiresAcknowledgment(runPlan) ? ` and re-run with --ack-long-run ${token}` : ""}.`
+        { ok: false, status: "intent_cost_contract_changed", exitCode: 2, ackLongRun: acknowledgmentRequired ? token : undefined, runPlan },
+        `intent_cost_contract_changed. Review the fresh estimate${acknowledgmentRequired ? ` and re-run with --ack-long-run ${token}` : ""}.`
       );
       return 2;
     }
-    if (args.ackLongRun !== token) {
-      print(args.json, { ok: false, status: "ack_required", exitCode: 2, ackLongRun: token, intent: savedIntent.id, runPlan }, `long-run/cost acknowledgment required. Re-run with --intent ${savedIntent.id} --ack-long-run ${token}`);
+    if (acknowledgmentRequired && args.ackLongRun !== token) {
+      const rerun = `bin/council --intent ${savedIntent.id}${rosterArg}${strategyArg}${authArg} --ack-long-run ${token}`;
+      print(args.json, { ok: false, status: "ack_required", exitCode: 2, ackLongRun: token, intent: savedIntent.id, rerun, runPlan }, `long-run/cost acknowledgment required. Re-run with ${rerun}`);
       return 2;
     }
   }
-  if (requiresAcknowledgment(runPlan)) {
-    if (!savedIntent) {
-      const intent = writeIntent(cwd, input, effectiveRoster, routeProbe.routes, runPlan, token);
-      print(args.json, { ok: false, status: "ack_required", exitCode: 2, ackLongRun: token, intent, runPlan }, `long-run/cost acknowledgment required. Re-run with --intent ${intent} --ack-long-run ${token}`);
-      return 2;
-    }
+  if (!staleAccepted || (acknowledgmentRequired && !savedIntent)) {
+    if (savedIntent) deleteIntent(cwd, savedIntent.id);
+    const intent = writeIntent(cwd, input, effectiveRoster, routeProbe.routes, runPlan, acknowledgmentRequired ? token : undefined, {
+      rosterFile,
+      reportStrategyOverride: strategyOverride,
+      authPolicy,
+      acceptStaleInputSha: staleInput ? input.sha256 : undefined
+    });
+    const staleArg = staleInput ? ` --accept-stale-input-sha ${input.sha256}` : "";
+    const ackArg = acknowledgmentRequired ? ` --ack-long-run ${token}` : "";
+    const status = staleInput ? "stale_input_confirmation_required" : "ack_required";
+    const rerun = `bin/council --intent ${intent}${rosterArg}${strategyArg}${authArg}${staleArg}${ackArg}`;
+    print(
+      args.json,
+      { ok: false, status, exitCode: 2, ackLongRun: acknowledgmentRequired ? token : undefined, acceptStaleInputSha: staleInput ? input.sha256 : undefined, intent, rerun, runPlan },
+      `confirmation required. Re-run with ${rerun}, omit --intent to re-snapshot, or cancel.`
+    );
+    return 2;
   }
   if (savedIntent) deleteIntent(cwd, savedIntent.id);
   const persisted = persistRememberedRoster(loaded.location, effectiveRoster);
+  const controller = new AbortController();
+  const cancel = () => controller.abort("canceled");
+  process.once("SIGINT", cancel);
+  process.once("SIGTERM", cancel);
   const result = await runCouncil({
     cwd,
     packageRoot,
-    input,
+    input: staleInput ? { ...input, onDiskChangedAfterSnapshot: true } : input,
     roster: effectiveRoster,
     routes: routeProbe.routes,
     reportStrategyOverride: strategyOverride,
     reportStrategySource: strategyOverride ? "cli" : "roster_file",
     rememberedRosterWritten: persisted.written,
-    env: process.env
+    env: process.env,
+    signal: controller.signal
+  }).finally(() => {
+    process.removeListener("SIGINT", cancel);
+    process.removeListener("SIGTERM", cancel);
   });
-  const body = { ok: result.ok, reportPath: result.reportPath, report: result.report, diagnostics: [...validation.reconciliationDiagnostics, ...result.diagnostics, persisted.warning].filter(Boolean) };
+  const body = { ok: result.ok, reportPath: result.reportPath, report: result.report, terminalReport: result.terminalReport, diagnostics: [...validation.reconciliationDiagnostics, ...result.diagnostics, persisted.warning].filter(Boolean) };
   print(args.json, body, `wrote council report: ${result.reportPath}`);
   return result.ok ? 0 : 5;
 }

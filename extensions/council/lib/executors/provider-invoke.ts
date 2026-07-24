@@ -22,7 +22,16 @@ export function sanitizeProviderInvokeEnv(route: CouncilRoute, baseEnv: NodeJS.P
   return env;
 }
 
-export function invokeProvider(packageRoot: string, route: CouncilRoute, entry: CouncilRosterEntryV1, prompt: string, schemaPath: string, timeoutMs: number, env: NodeJS.ProcessEnv = process.env): Promise<ProviderInvokeResult> {
+export function invokeProvider(
+  packageRoot: string,
+  route: CouncilRoute,
+  entry: CouncilRosterEntryV1,
+  prompt: string,
+  schemaPath: string,
+  timeoutMs: number,
+  env: NodeJS.ProcessEnv = process.env,
+  signal?: AbortSignal
+): Promise<ProviderInvokeResult> {
   const bin = env.AISYNTH_COUNCIL_PROVIDER_INVOKE ?? join(packageRoot, "bin/provider-invoke");
   const args = [
     route.ref.provider,
@@ -38,21 +47,47 @@ export function invokeProvider(packageRoot: string, route: CouncilRoute, entry: 
   if (route.ref.provider === "claude") args.push("--auth", "subscription");
   const childEnv = sanitizeProviderInvokeEnv(route, env);
   return new Promise((resolve) => {
+    if (signal?.aborted) {
+      resolve({ ok: false, status: "canceled", text: "", error: String(signal.reason ?? "canceled") });
+      return;
+    }
     const child = spawn(bin, args, { cwd: packageRoot, env: childEnv, stdio: ["ignore", "pipe", "pipe"], detached: process.platform !== "win32" });
     let stdout = "";
     let stderr = "";
-    const timer = setTimeout(() => {
+    let timedOut = false;
+    let aborted = false;
+    const kill = (force: boolean) => {
       try {
-        if (process.platform !== "win32" && child.pid) process.kill(-child.pid, "SIGKILL");
-        else child.kill("SIGKILL");
+        const signalName = force ? "SIGKILL" : "SIGTERM";
+        if (process.platform !== "win32" && child.pid) process.kill(-child.pid, signalName);
+        else child.kill(signalName);
       } catch {
-        // best effort
+        return;
       }
+    };
+    const timer = setTimeout(() => {
+      timedOut = true;
+      kill(true);
     }, timeoutMs);
+    const abortHandler = () => {
+      aborted = true;
+      kill(false);
+      setTimeout(() => kill(true), Math.min(1000, Math.max(1, timeoutMs)));
+    };
+    signal?.addEventListener("abort", abortHandler, { once: true });
     child.stdout.on("data", (chunk) => { stdout += chunk; });
     child.stderr.on("data", (chunk) => { stderr += chunk; });
     child.on("close", () => {
       clearTimeout(timer);
+      signal?.removeEventListener("abort", abortHandler);
+      if (aborted) {
+        resolve({ ok: false, status: "canceled", text: stdout, error: String(signal?.reason ?? "canceled") });
+        return;
+      }
+      if (timedOut) {
+        resolve({ ok: false, status: "timeout", text: stdout, error: `provider-invoke exceeded ${timeoutMs}ms` });
+        return;
+      }
       try {
         const parsed = JSON.parse(stdout);
         resolve({

@@ -15,4 +15,12 @@ describe("plan input boundaries", () => {
     symlinkSync(outside, link);
     expect(() => loadPlanSnapshot(link, allowed, [allowed])).toThrow("outside allowed roots");
   });
+
+  it("rejects a path-shaped directory instead of treating it as issue text", async () => {
+    const { parseCouncilInput } = await import("../../extensions/council/lib/input.js");
+    const root = mkdtempSync(join(tmpdir(), "council-directory-"));
+    const directory = join(root, "plan");
+    mkdirSync(directory);
+    expect(() => parseCouncilInput({ cwd: root, positional: ["./plan"] })).toThrow("not a regular file");
+  });
 });

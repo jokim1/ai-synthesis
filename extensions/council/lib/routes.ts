@@ -73,7 +73,7 @@ function probe(packageRoot: string, provider: "claude" | "codex", auth: string, 
 }
 
 function councilProbeEnv(provider: "claude" | "codex", env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
-  const childEnv = { ...env, AISYNTH_COUNCIL: "1" };
+  const childEnv: NodeJS.ProcessEnv = { ...env, AISYNTH_COUNCIL: "1" };
   if (provider === "claude") {
     for (const key of Object.keys(childEnv)) {
       if (key.startsWith("ANTHROPIC_")) delete childEnv[key];

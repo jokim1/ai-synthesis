@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { main } from "../../extensions/council/cli.js";
@@ -33,15 +33,51 @@ describe("portable intent lifecycle", () => {
     process.chdir(root);
     process.env.AISYNTH_CONFIG_HOME = configHome;
     process.env.AISYNTH_COUNCIL_FAKE_ROUTES = JSON.stringify({ version: 1, routes: [route], diagnostics: [] });
-    vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
     expect(await main(["--issue", "A or B", "--roster-file", rosterPath, "--json"], originalCwd)).toBe(2);
+    expect(log.mock.calls.flat().join("\n")).toContain(rosterPath);
     const intentDir = join(root, ".ai-synthesis", "council-intents");
     const intentFile = join(intentDir, readdirSync(intentDir).find((name) => name.endsWith(".json")) as string);
     const intent = JSON.parse(readFileSync(intentFile, "utf8"));
     const changedRoute = { ...route, limits: { ...route.limits, maxTokens: 4096 } };
     process.env.AISYNTH_COUNCIL_FAKE_ROUTES = JSON.stringify({ version: 1, routes: [changedRoute], diagnostics: [] });
-    expect(await main(["--roster-file", rosterPath, "--intent", intent.id, "--ack-long-run", intent.ackLongRunToken, "--json"], originalCwd)).toBe(2);
+    expect(await main(["--intent", intent.id, "--ack-long-run", intent.ackLongRunToken, "--json"], originalCwd)).toBe(2);
     expect(existsSync(intentFile)).toBe(false);
     expect(existsSync(join(configHome, "council", "roster.v1.json"))).toBe(false);
+  });
+
+  it("requires explicit acceptance when a plan changes after snapshot", async () => {
+    const root = mkdtempSync(join(tmpdir(), "council-plan-drift-"));
+    const packageRoot = join(root, "package");
+    mkdirSync(join(packageRoot, "bin", "adapters"), { recursive: true });
+    writeFileSync(join(packageRoot, "bin", "adapters", "claude.sh"), '--tools "" --permission-mode dontAsk --no-session-persistence --strict-mcp-config --setting-sources local --disable-slash-commands\n');
+    const probe = join(packageRoot, "bin", "provider-probe");
+    writeFileSync(probe, '#!/bin/sh\nprintf changed > "$AISYNTH_TEST_PLAN"\nprintf \'{"ok":true,"status":"ok","text":"ready"}\\n\'\n');
+    chmodSync(probe, 0o755);
+    const route = providerInvokeRoute("claude", true);
+    const planPath = join(root, "plan.md");
+    const rosterPath = join(root, "roster.json");
+    writeFileSync(planPath, "original plan\n");
+    writeFileSync(rosterPath, JSON.stringify({
+      version: 1,
+      updatedAt: new Date().toISOString(),
+      scope: "explicit",
+      entries: [
+        { id: "entry_a", route: route.ref, role: "architect", effort: "medium", enabled: true },
+        { id: "entry_b", route: route.ref, role: "risk-critic", effort: "medium", enabled: true }
+      ],
+      reportStrategy: { kind: "deterministic" }
+    }));
+    process.chdir(root);
+    process.env.AISYNTH_CONFIG_HOME = join(root, "config");
+    process.env.AISYNTH_TEST_PLAN = planPath;
+    delete process.env.AISYNTH_COUNCIL_FAKE_ROUTES;
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    expect(await main(["--plan-file", planPath, "--roster-file", rosterPath, "--json"], packageRoot)).toBe(2);
+    const output = log.mock.calls.flat().join("\n");
+    expect(output).toContain("stale_input_confirmation_required");
+    expect(output).toContain("acceptStaleInputSha");
+    expect(output).toContain(rosterPath);
+    expect(existsSync(join(root, "config", "council", "roster.v1.json"))).toBe(false);
   });
 });

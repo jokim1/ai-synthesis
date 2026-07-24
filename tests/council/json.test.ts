@@ -14,4 +14,10 @@ describe("validate-json", () => {
     const invalid = validateModelJson(schema, '{"ok":false}');
     expect(invalid.ok).toBe(false);
   });
+
+  it("rejects empty nested phase objects", () => {
+    const schema = join(process.cwd(), "schemas/council-critique.json");
+    const invalid = validateModelJson(schema, JSON.stringify({ memberId: "entry_a", targetedChallenges: [{}], assumptionReviews: [] }));
+    expect(invalid.ok).toBe(false);
+  });
 });

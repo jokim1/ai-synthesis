@@ -2,7 +2,21 @@
   "type": "object",
   "properties": {
     "memberId": { "type": "string" },
-    "objections": { "type": "array", "items": { "type": "object" } }
+    "objections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "positionId": { "type": "string" },
+          "axis": { "enum": ["evidence", "framing", "recommendation_logic"] },
+          "objection": { "type": "string" },
+          "whatWouldChange": { "type": "string" },
+          "evidenceIds": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["positionId", "axis", "objection", "whatWouldChange", "evidenceIds"],
+        "additionalProperties": false
+      }
+    }
   },
   "required": ["memberId", "objections"],
   "additionalProperties": false

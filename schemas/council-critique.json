@@ -2,8 +2,33 @@
   "type": "object",
   "properties": {
     "memberId": { "type": "string" },
-    "targetedChallenges": { "type": "array", "items": { "type": "object" } },
-    "assumptionReviews": { "type": "array", "items": { "type": "object" } }
+    "targetedChallenges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "targetMemberId": { "type": "string" },
+          "summary": { "type": "string" },
+          "evidenceIds": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["targetMemberId", "summary", "evidenceIds"],
+        "additionalProperties": false
+      }
+    },
+    "assumptionReviews": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "assumptionId": { "type": "string" },
+          "status": { "enum": ["verified_by_cited_evidence", "contradicted", "unverified"] },
+          "rationale": { "type": "string" },
+          "evidenceIds": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["assumptionId", "status", "rationale", "evidenceIds"],
+        "additionalProperties": false
+      }
+    }
   },
   "required": ["memberId", "targetedChallenges", "assumptionReviews"],
   "additionalProperties": false
