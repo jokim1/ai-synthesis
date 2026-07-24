@@ -10,7 +10,7 @@ import { lineMapFor } from "../extensions/council/lib/input.js";
 import { derivePositionCatalog } from "../extensions/council/lib/position-catalog.js";
 import { validateModelJsonValue } from "../extensions/council/lib/validate-json.js";
 import { stableJson } from "../extensions/council/lib/util.js";
-import { evaluateRuns } from "./council-usefulness-derivation.mjs";
+import { evaluateRuns, needsRevision } from "./council-usefulness-derivation.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const outputRoot = join(root, "docs/public/council-usefulness-captures");
@@ -199,13 +199,20 @@ ${sample.input.split("\n").map((line, index) => `${index + 1}: ${line}`).join("\
 for (const sample of set.samples.filter((candidate) => !sampleFilter || candidate.id === sampleFilter)) {
   const primary = await captureRun(sample, "primary", undefined);
   const solo = await captureSolo(sample);
-  const revisions = sample.id === "issue-freeform"
-    ? [
-        await captureRun(sample, "revision-1", { kind: "structured_disagreement" }),
-        await captureRun(sample, "revision-2", { kind: "deterministic" })
-      ]
-    : [];
-  const evaluation = evaluateRuns(primary.result.report, revisions.map((revision) => revision.result.report), solo.value);
+  const revisions = [];
+  const revisionStrategies = [
+    { kind: "structured_disagreement" as const },
+    { kind: "deterministic" as const }
+  ];
+  let evaluation = evaluateRuns(primary.result.report, [], solo.value);
+  while (
+    sample.id === "issue-freeform"
+    && needsRevision(evaluation, revisions.length, scorecard.sameRouteExit.maxRevisionAttempts)
+  ) {
+    const attempt = revisions.length;
+    revisions.push(await captureRun(sample, `revision-${attempt + 1}`, revisionStrategies[attempt]));
+    evaluation = evaluateRuns(primary.result.report, revisions.map((revision) => revision.result.report), solo.value);
+  }
   const revisionEvaluations = revisions.map((revision, index) => ({
     revision,
     ...evaluation.revisions[index]

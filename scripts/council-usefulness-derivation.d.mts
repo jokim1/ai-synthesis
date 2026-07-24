@@ -11,3 +11,8 @@ export function evaluateRuns(primaryReport: any, revisionReports: any[], baselin
   selectedReport: any;
   selectedDeltas: string[];
 };
+export function needsRevision(
+  evaluation: ReturnType<typeof evaluateRuns>,
+  completedAttempts: number,
+  maxAttempts: number
+): boolean;

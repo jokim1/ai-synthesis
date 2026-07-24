@@ -160,9 +160,6 @@ function loadCapture(record, sample) {
   const revisions = (capture?.revisions ?? []).map((run, index) =>
     validateRun(run, capture?.routeId, sample, `${sample.id}:revision-${index + 1}`)
   );
-  if (sample.id === "issue-freeform" && revisions.length !== scorecard.sameRouteExit.maxRevisionAttempts) {
-    failures.push(`${sample.id}: two raw same-route revision runs are required`);
-  }
   const expectedRevisionStrategies = ["structured_disagreement", "deterministic"];
   if (
     sample.id === "issue-freeform"
@@ -176,6 +173,13 @@ function loadCapture(record, sample) {
     revisions.map((revision) => revision.result?.report),
     rawSolo
   );
+  const correlatedExitCandidate = evaluation.primaryDeltas.length === 0
+    && evaluation.selectedRevisionIndex < 0;
+  if (
+    sample.id === "issue-freeform"
+    && correlatedExitCandidate
+    && revisions.length !== scorecard.sameRouteExit.maxRevisionAttempts
+  ) failures.push(`${sample.id}: correlated exit requires two raw same-route revision runs`);
   const revisionDeltas = evaluation.revisions.map((revision) => revision.deltas);
   for (let index = 0; index < revisions.length; index += 1) {
     if (

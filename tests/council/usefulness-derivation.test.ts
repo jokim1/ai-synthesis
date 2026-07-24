@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluateRuns } from "../../scripts/council-usefulness-derivation.mjs";
+import { evaluateRuns, needsRevision } from "../../scripts/council-usefulness-derivation.mjs";
 
 const baseline = {
   recommendation: "Proceed with the reviewed approach",
@@ -43,5 +43,16 @@ describe("council usefulness run derivation", () => {
     expect(evaluation.selectedRun).toBe("primary");
     expect(evaluation.selectedDeltas).toEqual([]);
     expect(evaluation.revisions.every((revision) => revision.outcome === "correlated_no_added_value")).toBe(true);
+  });
+
+  it("schedules revisions only until material value or the attempt limit", () => {
+    const primaryValue = evaluateRuns(report("Deploy the verified canary now"), [], baseline);
+    const revisionValue = evaluateRuns(report(), [report("Deploy the verified canary now")], baseline);
+    const noValue = evaluateRuns(report(), [report()], baseline);
+
+    expect(needsRevision(primaryValue, 0, 2)).toBe(false);
+    expect(needsRevision(revisionValue, 1, 2)).toBe(false);
+    expect(needsRevision(noValue, 1, 2)).toBe(true);
+    expect(needsRevision(noValue, 2, 2)).toBe(false);
   });
 });

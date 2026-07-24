@@ -80,3 +80,7 @@ export function evaluateRuns(primaryReport, revisionReports, baseline) {
     selectedDeltas: selectedRevisionIndex >= 0 ? revisions[selectedRevisionIndex].deltas : primaryDeltas
   };
 }
+
+export function needsRevision(evaluation, completedAttempts, maxAttempts) {
+  return evaluation.selectedDeltas.length === 0 && completedAttempts < maxAttempts;
+}
