@@ -37,9 +37,15 @@ case "$which" in
   hermetic)
     # shellcheck source=tests/conformance/unit.sh
     source "$TESTDIR/unit.sh"
+    # shellcheck source=tests/conformance/claude.sh
+    source "$TESTDIR/claude.sh"
+    # shellcheck source=tests/conformance/codex.sh
+    source "$TESTDIR/codex.sh"
     # shellcheck source=tests/conformance/council.sh
     source "$TESTDIR/council.sh"
     printf '\n[unit]\n'; unit_suite
+    printf '\n[claude fake]\n'; claude_fake_suite
+    printf '\n[codex fake]\n'; codex_fake_suite
     printf '\n[council]\n'; council_suite ;;
   all)
     # shellcheck source=tests/conformance/unit.sh

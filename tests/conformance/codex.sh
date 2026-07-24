@@ -18,7 +18,7 @@ _extract_rc() {
 }
 
 codex_suite() {
-  local p authed s schema st fdir fp fr ftext fcount rc
+  local p authed s schema st
 
   section "probe — binary + auth (no model call)"
   p="$("$PROBE" codex)"
@@ -46,7 +46,12 @@ codex_suite() {
     assert_true     "structured .ok==true"      "$(printf '%s' "$st" | jq -r '.structured.ok')"
   fi
 
-  # --- hermetic fakes: deterministic retry / malformed / timeout ---
+  codex_fake_suite
+}
+
+codex_fake_suite() {
+  local schema fdir ft fr fp fe argf argv ftext fcount rc
+
   fdir="$(fake_dir_new)"; write_fake_codex "$fdir"
   schema='{"type":"object","properties":{"ok":{"const":true}},"required":["ok"],"additionalProperties":false}'
 
@@ -71,15 +76,15 @@ codex_suite() {
   assert_true     "malformed envelope is valid json" "$(printf '%s' "$fp" | jq -e . >/dev/null 2>&1 && echo true || echo false)"
 
   section "empty turn — completed turn with no agent_message is a failure, not ok"
-  local fe; fe="$(PATH="$fdir:$PATH" FAKE=empty_turn "$INVOKE" codex --prompt x --timeout 10)"
+  fe="$(PATH="$fdir:$PATH" FAKE=empty_turn "$INVOKE" codex --prompt x --timeout 10)"
   assert_true "empty turn not ok"        "$(printf '%s' "$fe" | jq -r '(.ok|not)')"
   assert_eq   "empty turn invocation_failed" "invocation_failed" "$(printf '%s' "$fe" | jq -r '.status')"
 
   section "argv construction — model forwarded, -- sentinel, web/effort mapped"
-  local argf; argf="$fdir/argv"
+  argf="$fdir/argv"
   PATH="$fdir:$PATH" FAKE=echoargs FAKE_STATE="$argf" "$INVOKE" codex \
     --prompt 'hello' --model gpt-x --web --effort max --timeout 10 >/dev/null 2>&1
-  local argv; argv="$(cat "$argf" 2>/dev/null || true)"
+  argv="$(cat "$argf" 2>/dev/null || true)"
   assert_contains "forwards -m <model>"          "$argv" "-m gpt-x"
   assert_contains "uses -- end-of-options"       "$argv" " -- "
   assert_contains "--web -> web_search=live"     "$argv" 'web_search="live"'
