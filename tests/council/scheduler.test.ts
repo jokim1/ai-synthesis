@@ -43,4 +43,28 @@ describe("council phase lane scheduler", () => {
     });
     expect(maxActive).toBe(4);
   });
+
+  it("executes a runtime subset only through candidate-authorized batches", async () => {
+    const route = providerInvokeRoute("claude", true);
+    const entries = ["entry_a", "entry_b"].map((id) => ({
+      id,
+      route: route.ref,
+      role: "architect" as const,
+      effort: "medium" as const,
+      enabled: true
+    }));
+    const plan = buildPhaseLanePlan("steelman", entries, [route], 100, {
+      selectionMode: "least_supported_position_fallback",
+      candidateEntryIds: entries.map((entry) => entry.id)
+    });
+    const called: string[] = [];
+    const results = await executePhaseLanePlan(plan, [entries[1]], async (entry) => {
+      called.push(entry.id);
+      return entry.id;
+    });
+    expect(called).toEqual(["entry_b"]);
+    expect(results.map((result) => result.value)).toEqual(["entry_b"]);
+    await expect(executePhaseLanePlan(plan, [{ ...entries[0], id: "entry_c" }], async (entry) => entry.id))
+      .rejects.toThrow("lane plan does not authorize entry: entry_c");
+  });
 });

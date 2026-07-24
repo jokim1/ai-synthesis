@@ -8,6 +8,7 @@ import type {
   CouncilExecutionIdentityV1,
   CouncilFinalReportV1,
   CouncilInputSnapshotV1,
+  CouncilMvpLanePlanV1,
   CouncilPositionGroupReportV1,
   CouncilReportStrategy,
   CouncilRosterConfigV1,
@@ -26,7 +27,7 @@ import { renderCouncilMarkdown, renderTerminalMarkdown, validateFinalReport, wri
 import { derivePositionCatalog } from "./position-catalog.js";
 import { phaseSelectionWasFallback, selectPhaseEntries } from "./phase-selection.js";
 import { rosterHash } from "./config.js";
-import { buildPhaseLanePlan, executePhaseLanePlan } from "./scheduler.js";
+import { executePhaseLanePlan } from "./scheduler.js";
 
 interface Voice {
   member_id: string;
@@ -126,7 +127,7 @@ function phasePrompt(
   phase: "critique" | "steelman" | "adversary" | "chair",
   input: CouncilInputSnapshotV1,
   entry: CouncilRosterEntryV1,
-  context: unknown,
+  contextBytes: string,
   template: string
 ): string {
   return `You are explicit council member ${entry.id} with role ${entry.role}.
@@ -138,7 +139,34 @@ Immutable ${input.displayName}:
 ${lineNumbered(input)}
 
 Frozen context:
-${JSON.stringify(context)}`;
+${contextBytes}`;
+}
+
+function phaseLaneDiagnostic(
+  plan: CouncilMvpLanePlanV1,
+  entries: CouncilRosterEntryV1[],
+  routeMap: Map<string, CouncilRoute>
+): string {
+  const entryIds = new Set(entries.map((entry) => entry.id));
+  const activeBatches = plan.executionBatches
+    .map((batch) => batch.filter((entryId) => entryIds.has(entryId)))
+    .filter((batch) => batch.length > 0);
+  const plannedWidths = new Map(plan.providerInvokeLanes.map((lane) => [lane.laneKey, lane.maxConcurrency]));
+  const lanes = new Map<string, { width: number; members: number }>();
+  for (const entry of entries) {
+    const route = routeMap.get(entry.route.routeId);
+    const laneKey = route?.executionLaneKey ?? `provider-invoke:${entry.route.provider}:unknown`;
+    const lane = lanes.get(laneKey);
+    lanes.set(laneKey, {
+      width: plannedWidths.get(laneKey) ?? lane?.width ?? 1,
+      members: (lane?.members ?? 0) + 1
+    });
+  }
+  const laneDetails = [...lanes.entries()]
+    .map(([key, lane]) => `${key}(width=${lane.width},members=${lane.members})`)
+    .join(",");
+  const effectiveConcurrency = Math.max(0, ...activeBatches.map((batch) => batch.length));
+  return `phase_lane_plan: ${plan.phase} concurrency=${effectiveConcurrency} batches=${activeBatches.length} lanes=[${laneDetails}]`;
 }
 
 function canonicalPosition(input: CouncilInputSnapshotV1, catalog: CouncilPositionCatalogV1, raw: string): string {
@@ -542,9 +570,15 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
   const voices: Voice[] = [];
   const failedMembers: string[] = [];
   const initialPromptHashes: Array<{ memberId: string; promptSha256: string; positionCatalogSha256: string }> = [];
+  const critiquePromptHashes: Array<{ memberId: string; promptSha256: string; assumptionCatalogSha256: string }> = [];
   const executionIdentities = new Map<string, CouncilExecutionIdentityV1>();
   const recordExecutionIdentity = (identity: CouncilExecutionIdentityV1) => {
     executionIdentities.set(identity.routeId, identity);
+  };
+  const plannedPhase = (name: CouncilMvpLanePlanV1["phase"]): CouncilMvpLanePlanV1 => {
+    const phasePlan = plan.phasePlans.find((candidate) => candidate.phase === name);
+    if (!phasePlan) throw new Error(`run plan missing phase: ${name}`);
+    return phasePlan;
   };
   try {
     const initialEntries = selectPhaseEntries("initial_analysis", roster, strategy)
@@ -557,8 +591,8 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
     for (const prompt of initialPromptHashes) {
       diagnostics.push(`initial_prompt_hash: ${prompt.memberId}=${prompt.promptSha256} position_catalog=${prompt.positionCatalogSha256}`);
     }
-    const initialLanePlan = buildPhaseLanePlan("initial_analysis", initialEntries, opts.routes, 300000);
-    diagnostics.push(`phase_lane_plan: initial_analysis concurrency=${initialLanePlan.effectiveConcurrency} batches=${initialLanePlan.executionBatches.length}`);
+    const initialLanePlan = plannedPhase("initial_analysis");
+    diagnostics.push(phaseLaneDiagnostic(initialLanePlan, initialEntries, routeMap));
     const initialResults = await executePhaseLanePlan(initialLanePlan, initialEntries, async (entry) => {
       const memberDiagnostics: string[] = [];
       const route = routeMap.get(entry.route.routeId);
@@ -602,7 +636,9 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
       const ledgerIds = new Set(ledger.items.map((item) => item.id));
       const assumptionIds = new Set(assumptions.map((assumption) => assumption.id));
       const positionIds = new Set(voices.map((voice) => canonicalPosition(opts.input, positionCatalog, voice.position_key)));
-      const initialContext = { positionCatalog, voices, evidenceLedger: ledger, assumptionCatalog: assumptions, positionIds: [...positionIds] };
+      const assumptionReviewCatalogBytes = stableJson(assumptions);
+      const assumptionCatalogSha256 = sha256(assumptionReviewCatalogBytes);
+      const initialContext = { positionCatalog, voices, evidenceLedger: ledger, assumptionReviewCatalog: assumptions, positionIds: [...positionIds] };
       const degradedPhases = new Set<CriticalPhase>();
       if (failedMembers.length > 0) degradedPhases.add("initial_analysis");
       const runPhase = async <T extends PhaseOutput>(phaseName: LaterPhase, context: unknown): Promise<T[]> => {
@@ -611,8 +647,18 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
         const outputs: T[] = [];
         const selected = phaseMembers(phaseName, roster, voices, strategy, diagnostics);
         if (selected.length === 0) degradedPhases.add(phaseName);
-        const lanePlan = buildPhaseLanePlan(phaseName, selected, opts.routes, 300000);
-        diagnostics.push(`phase_lane_plan: ${phaseName} concurrency=${lanePlan.effectiveConcurrency} batches=${lanePlan.executionBatches.length}`);
+        const lanePlan = plannedPhase(phaseName);
+        const contextBytes = stableJson(context);
+        const prompts = new Map(selected.map((entry) => {
+          const prompt = phasePrompt(phaseName, opts.input, entry, contextBytes, roleTemplates[phaseName]);
+          if (phaseName === "critique") {
+            const provenance = { memberId: entry.id, promptSha256: sha256(prompt), assumptionCatalogSha256 };
+            critiquePromptHashes.push(provenance);
+            diagnostics.push(`critique_prompt_hash: ${entry.id}=${provenance.promptSha256} assumption_catalog=${assumptionCatalogSha256}`);
+          }
+          return [entry.id, prompt];
+        }));
+        diagnostics.push(phaseLaneDiagnostic(lanePlan, selected, routeMap));
         const results = await executePhaseLanePlan(lanePlan, selected, async (entry) => {
           const memberDiagnostics: string[] = [];
           const route = routeMap.get(entry.route.routeId);
@@ -623,7 +669,7 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
             runOpts,
             route,
             entry,
-            phasePrompt(phaseName, opts.input, entry, context, roleTemplates[phaseName]),
+            prompts.get(entry.id) as string,
             schemaPath,
             lanePlan.memberTimeoutMs,
             memberDiagnostics,
@@ -665,15 +711,15 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
         const chair = selectPhaseEntries("chair", roster, strategy, new Set(voices.map((voice) => voice.member_id)))[0];
         const route = chair ? routeMap.get(chair.route.routeId) : undefined;
         if (chair && route) {
-          const chairLanePlan = buildPhaseLanePlan("chair", [chair], opts.routes, 420000);
-          diagnostics.push(`phase_lane_plan: chair concurrency=${chairLanePlan.effectiveConcurrency} batches=${chairLanePlan.executionBatches.length}`);
+          const chairLanePlan = plannedPhase("chair");
+          diagnostics.push(phaseLaneDiagnostic(chairLanePlan, [chair], routeMap));
           const [{ value: chairResult }] = await executePhaseLanePlan(chairLanePlan, [chair], async (entry) => {
             const memberDiagnostics: string[] = [];
             const value = await invokeStructured(
               runOpts,
               route,
               entry,
-              phasePrompt("chair", opts.input, entry, { synthesisBrief: brief, adversary, deterministicBrief: report }, roleTemplates.chair),
+              phasePrompt("chair", opts.input, entry, stableJson({ synthesisBrief: brief, adversary, deterministicBrief: report }), roleTemplates.chair),
               join(opts.packageRoot, "schemas/council-chair-report.json"),
               chairLanePlan.memberTimeoutMs,
               memberDiagnostics,
@@ -737,6 +783,7 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
       rememberedRosterWritten: opts.rememberedRosterWritten,
       executionIdentities: [...executionIdentities.values()],
       initialPromptHashes,
+      critiquePromptHashes,
       diagnostics
     });
     const reportPath = writeReport(opts.cwd, runId, markdown);

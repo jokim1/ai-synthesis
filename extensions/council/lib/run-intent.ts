@@ -38,7 +38,9 @@ export function buildRunPlan(
   const phaseSelections = new Map((["initial_analysis", "critique", "steelman", "adversary", "chair"] as const).map((phase) => {
     const selected = selectPhaseEntries(phase, roster, strategy);
     const dynamicSteelman = phase === "steelman" && !enabled.some((entry) => entry.id !== chairId && entry.role === "steelman");
-    const candidates = dynamicSteelman ? enabled.filter((entry) => entry.id !== chairId) : selected;
+    const candidates = phase === "initial_analysis" || phase === "chair"
+      ? selected
+      : enabled.filter((entry) => entry.id !== chairId);
     const billed = dynamicSteelman
       ? [...candidates].sort(compareCostEnvelope).slice(0, 1)
       : selected;
@@ -51,10 +53,15 @@ export function buildRunPlan(
   }));
   const phasePlans = [...phaseSelections.entries()].filter(([, selection]) => selection.selected.length > 0).map(([phase, selection]) => {
     const memberTimeoutMs = phase === "chair" ? 420000 : 300000;
-    return buildPhaseLanePlan(phase, selection.selected, routes, memberTimeoutMs, {
+    const candidatePlan = buildPhaseLanePlan(phase, selection.candidates, routes, memberTimeoutMs, {
       selectionMode: selection.selectionMode,
       candidateEntryIds: selection.candidates.map((entry) => entry.id)
     });
+    return {
+      ...candidatePlan,
+      selectedEntryIds: selection.selected.map((entry) => entry.id),
+      portableProviderInvokeMemberCount: selection.selected.length
+    };
   });
   const retryCostInputs = phasePlans.flatMap((phase) =>
     (phaseSelections.get(phase.phase)?.billed ?? []).map((entry) => {
@@ -87,7 +94,8 @@ export function buildRunPlan(
   );
   const known = retryCostInputs.every((item) => item.questionCostUpperBoundUsd !== null);
   const cost = known ? retryCostInputs.reduce((sum, item) => sum + (item.questionCostUpperBoundUsd ?? 0), 0) : null;
-  const expectedRunMs = phasePlans.reduce((sum, phase) => sum + phase.phaseBudgetMs, 0);
+  const expectedRunMs = phasePlans.reduce((sum, phase) => sum + phase.expectedPhaseMs, 0);
+  const worstCaseScheduledMs = phasePlans.reduce((sum, phase) => sum + phase.phaseBudgetMs, 0);
   return {
     version: 1,
     phasePlans,
@@ -96,7 +104,7 @@ export function buildRunPlan(
     retryAdjustedCostUpperBoundUsd: cost,
     retryAdjustedCostKnown: known,
     expectedRunMs,
-    worstCaseDeadlineMs: Math.max(1200000, expectedRunMs + 120000)
+    worstCaseDeadlineMs: Math.max(1200000, worstCaseScheduledMs + 120000)
   };
 }
 

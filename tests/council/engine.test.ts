@@ -55,8 +55,14 @@ describe("Phase 5 council engine", () => {
     expect(markdown).toContain(`${route.ref.routeId}:claude-fixture-resolved`);
     expect(markdown).toContain("initial_prompt_hashes:");
     expect(markdown).toContain("position_catalog_sha256:");
+    expect(markdown).toContain("critique_prompt_hashes:");
+    expect(markdown).toContain("assumption_review_catalog_sha256:");
     expect(markdown).toContain("Deterministic synthesis was produced by auditable aggregation code, not another model voice.");
     expect(result.diagnostics.filter((item) => item.startsWith("initial_prompt_hash:")).length).toBe(2);
+    expect(result.diagnostics.filter((item) => item.startsWith("critique_prompt_hash:")).length).toBe(1);
+    expect(result.diagnostics.find((item) => item.startsWith("phase_lane_plan: initial_analysis"))).toContain(
+      `${route.executionLaneKey}(width=1,members=2)`
+    );
   });
 
   it("does not add an engine retry for adapter-owned routes", async () => {

@@ -20,6 +20,11 @@ describe("run intent cost contract", () => {
     };
     const plan = buildRunPlan(input, roster, [route]);
     expect(requiresAcknowledgment(plan)).toBe(true);
+    expect(plan.expectedRunMs).toBe(plan.phasePlans.reduce((sum, phase) => sum + phase.expectedPhaseMs, 0));
+    expect(plan.expectedRunMs).toBeLessThan(plan.phasePlans.reduce((sum, phase) => sum + phase.phaseBudgetMs, 0));
+    expect(plan.worstCaseDeadlineMs).toBe(
+      Math.max(1200000, plan.phasePlans.reduce((sum, phase) => sum + phase.phaseBudgetMs, 0) + 120000)
+    );
     const token = ackToken(input, roster, [route], plan);
     const changed = { ...route, structuredOutput: { ...route.structuredOutput, maxProviderCalls: 1 as const } };
     const changedPlan = buildRunPlan(input, roster, [changed]);
@@ -34,8 +39,8 @@ describe("run intent cost contract", () => {
       updatedAt: "2026-01-01T00:00:00.000Z",
       scope: "explicit",
       entries: [
-        { id: "entry_chair", route: route.ref, role: "chair", effort: "medium", enabled: true },
-        { id: "entry_critic", route: route.ref, role: "risk-critic", effort: "medium", enabled: true }
+        { id: "entry_chair", route: route.ref, role: "risk-critic", effort: "medium", enabled: true },
+        { id: "entry_critic", route: route.ref, role: "architect", effort: "medium", enabled: true }
       ],
       reportStrategy: { kind: "deterministic" }
     };
@@ -44,10 +49,15 @@ describe("run intent cost contract", () => {
     expect(deterministic.phasePlans.find((phase) => phase.phase === "critique")?.portableProviderInvokeMemberCount).toBe(1);
     expect(deterministic.phasePlans.find((phase) => phase.phase === "steelman")).toMatchObject({
       selectionMode: "least_supported_position_fallback",
-      candidateEntryIds: ["entry_chair", "entry_critic"]
+      candidateEntryIds: ["entry_chair", "entry_critic"],
+      executionBatches: [["entry_chair"], ["entry_critic"]]
     });
     expect(deterministic.phasePlans.some((phase) => phase.phase === "chair")).toBe(false);
     expect(chair.phasePlans.find((phase) => phase.phase === "chair")?.memberTimeoutMs).toBe(420000);
+    expect(chair.phasePlans.find((phase) => phase.phase === "critique")).toMatchObject({
+      selectedEntryIds: ["entry_critic"],
+      candidateEntryIds: ["entry_critic"]
+    });
     expect(chair.worstCaseProviderCallCount).toBe(deterministic.worstCaseProviderCallCount + 2);
     expect(runPlanHashes(chair).runPlanHash).not.toBe(runPlanHashes(deterministic).runPlanHash);
   });

@@ -46,6 +46,7 @@ export function renderCouncilMarkdown(opts: {
   rememberedRosterWritten: boolean;
   executionIdentities: CouncilExecutionIdentityV1[];
   initialPromptHashes: Array<{ memberId: string; promptSha256: string; positionCatalogSha256: string }>;
+  critiquePromptHashes: Array<{ memberId: string; promptSha256: string; assumptionCatalogSha256: string }>;
   diagnostics: string[];
 }): string {
   const enabled = opts.roster.entries.filter((entry) => entry.enabled);
@@ -76,6 +77,8 @@ export function renderCouncilMarkdown(opts: {
     resolved_models: opts.executionIdentities.map((identity) => `${identity.routeId}:${identity.resolvedModel}`),
     initial_prompt_hashes: opts.initialPromptHashes.map((item) => `${item.memberId}:${item.promptSha256}`),
     position_catalog_sha256: opts.initialPromptHashes[0]?.positionCatalogSha256 ?? null,
+    critique_prompt_hashes: opts.critiquePromptHashes.map((item) => `${item.memberId}:${item.promptSha256}`),
+    assumption_review_catalog_sha256: opts.critiquePromptHashes[0]?.assumptionCatalogSha256 ?? null,
     families,
     decision_readiness: opts.report.decision_readiness,
     readiness_basis: "internal_input_grounded",

@@ -56,6 +56,14 @@ export function buildPhaseLanePlan(
     maxConcurrency: lane.maxConcurrency,
     budgetMs: Math.ceil(lane.memberCount / lane.maxConcurrency) * memberTimeoutMs
   }));
+  const expectedPhaseMs = executionBatches.reduce((total, batch) => total + Math.max(
+    0,
+    ...batch.map((entryId) => {
+      const entry = entries.find((candidate) => candidate.id === entryId);
+      const route = entry ? routeMap.get(entry.route.routeId) : undefined;
+      return Math.min(memberTimeoutMs, Math.max(0, route?.expectedLatencyMs ?? 90000));
+    })
+  ), 0);
   return {
     phase,
     selectionMode: options.selectionMode ?? "fixed",
@@ -68,6 +76,7 @@ export function buildPhaseLanePlan(
     providerInvokeLanes,
     portableProviderInvokeMemberCount: entries.length,
     phaseBudgetMs: executionBatches.length * memberTimeoutMs,
+    expectedPhaseMs,
     effectiveConcurrency: Math.max(0, ...executionBatches.map((batch) => batch.length))
   };
 }
@@ -78,9 +87,13 @@ export async function executePhaseLanePlan<T>(
   worker: (entry: CouncilRosterEntryV1) => Promise<T>
 ): Promise<Array<{ entry: CouncilRosterEntryV1; value: T }>> {
   const entriesById = new Map(entries.map((entry) => [entry.id, entry]));
+  const authorizedEntryIds = new Set(plan.candidateEntryIds);
+  for (const entry of entries) {
+    if (!authorizedEntryIds.has(entry.id)) throw new Error(`lane plan does not authorize entry: ${entry.id}`);
+  }
   const results = new Map<string, T>();
   for (const batch of plan.executionBatches) {
-    await Promise.all(batch.map(async (entryId) => {
+    await Promise.all(batch.filter((entryId) => entriesById.has(entryId)).map(async (entryId) => {
       const entry = entriesById.get(entryId);
       if (!entry) throw new Error(`lane plan references unknown entry: ${entryId}`);
       results.set(entryId, await worker(entry));

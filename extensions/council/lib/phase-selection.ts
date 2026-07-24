@@ -22,7 +22,7 @@ export function selectPhaseEntries(
   if (phase === "initial_analysis") return successful;
   if (phase === "chair") return strategy.kind === "chair" ? successful.filter((entry) => entry.id === strategy.chairEntryId) : [];
   if (phase === "critique") {
-    const preferred = successful.filter((entry) => ["implementation-critic", "risk-critic", "evidence-auditor"].includes(entry.role));
+    const preferred = nonChair.filter((entry) => ["implementation-critic", "risk-critic", "evidence-auditor"].includes(entry.role));
     return preferred.length > 0 ? preferred : strongest(nonChair, roster);
   }
   if (phase === "steelman") {
@@ -38,7 +38,7 @@ export function selectPhaseEntries(
     const leastSupport = Math.min(...eligible.map((entry) => support.get(canonicalPositionByEntryId.get(entry.id) as string) ?? 0));
     return strongest(eligible.filter((entry) => support.get(canonicalPositionByEntryId.get(entry.id) as string) === leastSupport), roster);
   }
-  const adversaries = successful.filter((entry) => entry.role === "adversary");
+  const adversaries = nonChair.filter((entry) => entry.role === "adversary");
   if (adversaries.length > 0) return adversaries;
   const riskCritic = nonChair.filter((entry) => entry.role === "risk-critic").slice(0, 1);
   return riskCritic.length > 0 ? riskCritic : strongest(nonChair, roster);

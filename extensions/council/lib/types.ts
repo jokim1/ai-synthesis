@@ -26,6 +26,7 @@ export interface CouncilRoute {
   ref: CouncilRouteRef;
   executionLaneKey: string;
   executionLaneMaxConcurrency: number;
+  expectedLatencyMs?: number;
   displayName: string;
   family: string;
   providerDisplayName: string;
@@ -249,6 +250,7 @@ export interface CouncilMvpLanePlanV1 {
   providerInvokeLanes: Array<{ laneKey: string; memberCount: number; maxConcurrency: number; budgetMs: number }>;
   portableProviderInvokeMemberCount: number;
   phaseBudgetMs: number;
+  expectedPhaseMs: number;
   effectiveConcurrency: number;
 }
 
