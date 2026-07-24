@@ -30,6 +30,8 @@ export function providerInvokeRoute(provider: "claude" | "codex", runnable: bool
   const isClaude = provider === "claude";
   return {
     ref: { executor: "provider-invoke", provider, model, routeId: id },
+    executionLaneKey: `provider-invoke:${provider}:${isClaude ? "subscription" : "default"}`,
+    executionLaneMaxConcurrency: 1,
     displayName: `${isClaude ? "Claude Code" : "Codex CLI"} (${model})`,
     family: familyFor(provider, model),
     providerDisplayName: isClaude ? "Claude Code" : "Codex CLI",

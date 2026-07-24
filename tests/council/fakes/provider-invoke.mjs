@@ -49,23 +49,34 @@ if (process.env.AISYNTH_FAKE_INVALID_ONCE === "1" && !seen.includes(key)) {
 let structured;
 if (schema === "council-voice.json") {
   const positions = JSON.parse(process.env.AISYNTH_FAKE_POSITION_BY_MEMBER ?? "{}");
+  const isPlan = prompt.includes("Review the immutable plan independently.");
+  const sourceType = isPlan ? "plan_line" : "issue_text";
+  const locatorPrefix = isPlan ? "plan.md" : "issue";
   structured = {
     ok: true,
     member_id: member,
     role,
     position_key: positions[member] ?? "other:approve",
     recommendation: "Proceed with the reviewed approach",
-    evidence: [{ claim: "The input identifies the decision", source_type: "issue_text", locator: "issue:L1" }],
+    evidence: [1, 2, 3].map((line) => ({ claim: `The input line ${line} informs the decision`, source_type: sourceType, locator: `${locatorPrefix}:L${line}` })),
     assumptions: [{ assumption_key: "inputs-hold", statement: "Inputs remain accurate", load_bearing: false, if_false_then: "Reassess", how_to_verify: "Confirm inputs" }],
     risks: ["Execution risk remains"],
-    what_would_change_my_view: ["Contradictory evidence"]
+    what_would_change_my_view: ["Contradictory evidence"],
+    next_action: "Start the smallest reversible rollout step"
   };
 } else if (schema === "council-critique.json") {
+  const assumptionIds = [...prompt.matchAll(/"id":"([^"]+:inputs-hold)"/g)].map((match) => match[1]);
   structured = {
     memberId: member,
     targetedChallenges: [{ canonicalPositionId: "other:approve", challenge: "Validate the execution assumption", evidenceIds: [`ev_initial_${member}_1`] }],
-    assumptionReviews: [{ assumptionId: `${member}:inputs-hold`, status: "verified_by_cited_evidence", rationale: "The cited input supports it", evidenceIds: [`ev_initial_${member}_1`] }]
+    assumptionReviews: [...new Set(assumptionIds)].map((assumptionId) => ({
+      assumptionId,
+      status: "verified_by_cited_evidence",
+      rationale: "The cited input supports it",
+      evidenceIds: [`ev_initial_${assumptionId.split(":")[0]}_1`]
+    }))
   };
+  if (process.env.AISYNTH_FAKE_PARTIAL_CRITIQUE === "1") structured.assumptionReviews = structured.assumptionReviews.slice(0, 1);
 } else if (schema === "council-steelman.json") {
   structured = { memberId: member, steelmans: [{ canonicalPositionId: "other:approve", improvedCase: "Best case is grounded", evidenceIds: [`ev_initial_${member}_1`], concededRisks: ["Execution risk remains"] }] };
 } else if (schema === "council-adversary.json") {
@@ -87,4 +98,4 @@ if (schema === "council-voice.json") {
     next_action: "Confirm inputs"
   };
 }
-console.log(JSON.stringify({ ok: true, status: "ok", structured, text: "", meta: { attempts: 1 } }));
+console.log(JSON.stringify({ ok: true, status: "ok", structured, text: "", model: process.env.AISYNTH_FAKE_RESOLVED_MODEL ?? "claude-fixture-resolved", meta: { attempts: 1 } }));

@@ -7,6 +7,8 @@ council_fake_routes() {
   "routes": [
     {
       "ref": { "executor": "provider-invoke", "provider": "claude", "model": "adapter-default", "routeId": "v1:provider-invoke:claude:adapter-default" },
+      "executionLaneKey": "provider-invoke:claude:subscription",
+      "executionLaneMaxConcurrency": 1,
       "displayName": "Fake Claude",
       "family": "claude",
       "providerDisplayName": "Claude",
@@ -55,7 +57,8 @@ jq -n --arg member "$member" --arg role "$role" --arg pos "$pos" --arg rec "$rec
     evidence:[{claim:"line supports the recommendation",source_type:"plan_line",locator:"plan.md:L1"}],
     assumptions:[{assumption_key:"scope",statement:"The reviewed scope is complete",load_bearing:true,if_false_then:"Recommendation changes",how_to_verify:"Compare plan scope"}],
     risks:["A hidden dependency may be missing"],
-    what_would_change_my_view:["A contradictory deployment constraint"]
+    what_would_change_my_view:["A contradictory deployment constraint"],
+    next_action:"Start the smallest reversible rollout step"
   },
   text:""
 }'

@@ -79,6 +79,10 @@ function print(json: boolean, value: unknown, human: string): void {
   else console.log(human);
 }
 
+export function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'"'"'`)}'`;
+}
+
 export async function main(argv = process.argv.slice(2), packageRoot = packageRootFrom(import.meta.url)): Promise<number> {
   const args = parseArgs(argv);
   const cwd = process.cwd();
@@ -116,7 +120,10 @@ export async function main(argv = process.argv.slice(2), packageRoot = packageRo
   const location = configLocationForPortable(cwd, rosterFile, process.env);
   const loaded = loadRosterConfig(location);
   if (!loaded.config) {
-    const command = `bin/council ${input.kind === "plan" ? `--plan-file ${input.sourcePath}` : `--issue ${JSON.stringify(input.text)}`} --emit-roster ./council-roster.json`;
+    const inputArg = input.kind === "plan"
+      ? `--plan-file ${shellQuote(input.sourcePath ?? "")}`
+      : `--issue ${shellQuote(input.text)}`;
+    const command = `bin/council ${inputArg} --emit-roster ${shellQuote("./council-roster.json")}`;
     print(args.json, { ok: false, status: "validation_failed", exitCode: loaded.diagnostics.includes("no_portable_roster") ? 4 : 3, diagnostics: loaded.diagnostics, next: command }, `no portable roster. Create one with:\n${command}`);
     return loaded.diagnostics.includes("no_portable_roster") ? 4 : 3;
   }
@@ -134,9 +141,9 @@ export async function main(argv = process.argv.slice(2), packageRoot = packageRo
   const staleInput = checkPlanDrift(input);
   const staleAccepted = !staleInput || args.acceptStaleInputSha === input.sha256;
   const acknowledgmentRequired = requiresAcknowledgment(runPlan);
-  const rosterArg = rosterFile ? ` --roster-file ${JSON.stringify(rosterFile)}` : "";
+  const rosterArg = rosterFile ? ` --roster-file ${shellQuote(rosterFile)}` : "";
   const strategyArg = strategyOverride
-    ? ` --report-strategy ${strategyOverride.kind === "chair" ? `chair:${strategyOverride.chairEntryId}` : strategyOverride.kind}`
+    ? ` --report-strategy ${shellQuote(strategyOverride.kind === "chair" ? `chair:${strategyOverride.chairEntryId}` : strategyOverride.kind)}`
     : "";
   const authArg = ` --auth-policy ${authPolicy === "subscription_only" ? "subscription-only" : "default"}`;
   if (savedIntent) {
@@ -156,7 +163,7 @@ export async function main(argv = process.argv.slice(2), packageRoot = packageRo
       return 2;
     }
     if (acknowledgmentRequired && args.ackLongRun !== token) {
-      const rerun = `bin/council --intent ${savedIntent.id}${rosterArg}${strategyArg}${authArg} --ack-long-run ${token}`;
+      const rerun = `bin/council --intent ${shellQuote(savedIntent.id)}${rosterArg}${strategyArg}${authArg} --ack-long-run ${shellQuote(token)}`;
       print(args.json, { ok: false, status: "ack_required", exitCode: 2, ackLongRun: token, intent: savedIntent.id, rerun, runPlan }, `long-run/cost acknowledgment required. Re-run with ${rerun}`);
       return 2;
     }
@@ -169,13 +176,13 @@ export async function main(argv = process.argv.slice(2), packageRoot = packageRo
       authPolicy,
       acceptStaleInputSha: staleInput ? input.sha256 : undefined
     });
-    const staleArg = staleInput ? ` --accept-stale-input-sha ${input.sha256}` : "";
-    const ackArg = acknowledgmentRequired ? ` --ack-long-run ${token}` : "";
+    const staleArg = staleInput ? ` --accept-stale-input-sha ${shellQuote(input.sha256)}` : "";
+    const ackArg = acknowledgmentRequired ? ` --ack-long-run ${shellQuote(token)}` : "";
     const status = staleInput ? "stale_input_confirmation_required" : "ack_required";
-    const rerun = `bin/council --intent ${intent}${rosterArg}${strategyArg}${authArg}${staleArg}${ackArg}`;
+    const rerun = `bin/council --intent ${shellQuote(intent)}${rosterArg}${strategyArg}${authArg}${staleArg}${ackArg}`;
     const inputArg = input.kind === "plan" && input.sourcePath
-      ? ` --plan-file ${JSON.stringify(input.sourcePath)}`
-      : ` --issue ${JSON.stringify(input.text)}`;
+      ? ` --plan-file ${shellQuote(input.sourcePath)}`
+      : ` --issue ${shellQuote(input.text)}`;
     const resnapshot = `bin/council${inputArg}${rosterArg}${strategyArg}${authArg}`;
     print(
       args.json,

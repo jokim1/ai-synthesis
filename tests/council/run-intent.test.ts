@@ -51,4 +51,38 @@ describe("run intent cost contract", () => {
     expect(chair.worstCaseProviderCallCount).toBe(deterministic.worstCaseProviderCallCount + 2);
     expect(runPlanHashes(chair).runPlanHash).not.toBe(runPlanHashes(deterministic).runPlanHash);
   });
+
+  it("prices dynamic steelman fallback by retry-adjusted candidate cost", () => {
+    const base = providerInvokeRoute("claude", true);
+    const twoCall = {
+      ...base,
+      ref: { ...base.ref, routeId: `${base.ref.routeId}:two`, model: "two-call" },
+      structuredOutput: { ...base.structuredOutput, maxProviderCalls: 2 as const },
+      cost: { known: true, inputPerMTok: 0, outputPerMTok: 1 },
+      limits: { maxTokens: 1_000_000 }
+    };
+    const oneCall = {
+      ...base,
+      ref: { ...base.ref, routeId: `${base.ref.routeId}:one`, model: "one-call" },
+      structuredOutput: { ...base.structuredOutput, maxProviderCalls: 1 as const },
+      cost: { known: true, inputPerMTok: 0, outputPerMTok: 1.5 },
+      limits: { maxTokens: 1_000_000 }
+    };
+    const roster: CouncilRosterConfigV1 = {
+      version: 1,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      scope: "explicit",
+      entries: [
+        { id: "entry_a", route: twoCall.ref, role: "architect", effort: "medium", enabled: true },
+        { id: "entry_b", route: oneCall.ref, role: "product-operator", effort: "medium", enabled: true }
+      ],
+      reportStrategy: { kind: "deterministic" }
+    };
+    const plan = buildRunPlan(input, roster, [twoCall, oneCall]);
+    expect(plan.retryCostInputs.find((item) => item.phase === "steelman")).toMatchObject({
+      routeId: twoCall.ref.routeId,
+      maxProviderCalls: 2,
+      questionCostUpperBoundUsd: 2
+    });
+  });
 });

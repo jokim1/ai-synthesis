@@ -12,15 +12,15 @@
       "id": "issue-explicit-alternatives",
       "kind": "issue",
       "description": "Choose between explicit alternatives.",
-      "input": "Choose one: A) ship immediately; B) run a staged rollout; C) defer pending load tests.",
-      "inputSha256": "3705836e540a82b41372901bd3eb0c30884d703041edda536a14f43e88428e02"
+      "input": "Choose between these options:\n- Option A: Ship immediately\n- Option B: Run a staged rollout\n- Option C: Defer pending load tests",
+      "inputSha256": "e2fd9bd52f6b67cfad5993d04e2059461c566c7918aa8b10c2e313bed0512fa0"
     },
     {
       "id": "issue-freeform",
       "kind": "issue",
       "description": "Analyze a free-form issue and preserve disagreement.",
-      "input": "How should we reduce deployment risk while preserving delivery speed?",
-      "inputSha256": "a9b5f1e5dfd8d056afff15deb9f87ee5e438a000b67b67b6607a2b0e6dee1453"
+      "input": "Goal: reduce deployment risk.\nConstraint: preserve delivery speed.\nQuestion: Which rollout policy balances both?",
+      "inputSha256": "84cd5ab1dcf87ef33352a9f7307d358b40c125b2642beb0624767d3792dec5a4"
     }
   ]
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runCouncil } from "../../extensions/council/lib/engine.js";
@@ -50,6 +50,8 @@ describe("Phase 5 council engine", () => {
     expect(result.report?.position_groups[0].objections.length).toBeGreaterThan(0);
     expect(result.diagnostics.filter((item) => item.startsWith("engine_json_retry:")).length).toBeGreaterThanOrEqual(4);
     expect(result.report?.decision_readiness).toBe("conditional");
+    expect(result.diagnostics).toContain(`resolved_model: ${route.ref.routeId}=claude-fixture-resolved (provider_envelope)`);
+    expect(readFileSync(result.reportPath as string, "utf8")).toContain(`${route.ref.routeId}:claude-fixture-resolved`);
   });
 
   it("does not add an engine retry for adapter-owned routes", async () => {
@@ -181,5 +183,155 @@ describe("Phase 5 council engine", () => {
     });
     expect(result.ok).toBe(true);
     expect(result.report?.decision_readiness).toBe("not_ready");
+  });
+
+  it("rejects critique output that omits supplied assumptions", async () => {
+    const route = providerInvokeRoute("claude", true);
+    const root = mkdtempSync(join(tmpdir(), "council-critique-coverage-"));
+    const result = await runCouncil({
+      cwd: root,
+      packageRoot: process.cwd(),
+      input: issueSnapshot("Goal one\nConstraint two\nDecision three"),
+      roster: {
+        version: 1,
+        updatedAt: new Date().toISOString(),
+        scope: "explicit",
+        entries: [
+          { id: "entry_a", route: route.ref, role: "architect", effort: "medium", enabled: true },
+          { id: "entry_b", route: route.ref, role: "risk-critic", effort: "medium", enabled: true }
+        ],
+        reportStrategy: { kind: "deterministic" }
+      },
+      routes: [route],
+      reportStrategySource: "roster_file",
+      rememberedRosterWritten: false,
+      env: {
+        ...process.env,
+        AISYNTH_COUNCIL_PROVIDER_INVOKE: join(process.cwd(), "tests/council/fakes/provider-invoke"),
+        AISYNTH_FAKE_PARTIAL_CRITIQUE: "1"
+      }
+    });
+    expect(result.ok).toBe(true);
+    expect(result.report?.decision_readiness).toBe("conditional");
+    expect(result.diagnostics.some((item) => item.includes("missing assumption reviews"))).toBe(true);
+  });
+
+  it("caps distinct routes that share one execution lane", async () => {
+    const base = providerInvokeRoute("claude", true);
+    const second = { ...base, ref: { ...base.ref, routeId: `${base.ref.routeId}:second`, model: "second" } };
+    const root = mkdtempSync(join(tmpdir(), "council-lane-cap-"));
+    const result = await runCouncil({
+      cwd: root,
+      packageRoot: process.cwd(),
+      input: issueSnapshot("Goal one\nConstraint two\nDecision three"),
+      roster: {
+        version: 1,
+        updatedAt: new Date().toISOString(),
+        scope: "explicit",
+        entries: [
+          { id: "entry_a", route: base.ref, role: "architect", effort: "medium", enabled: true },
+          { id: "entry_b", route: second.ref, role: "risk-critic", effort: "medium", enabled: true }
+        ],
+        reportStrategy: { kind: "deterministic" }
+      },
+      routes: [base, second],
+      reportStrategySource: "roster_file",
+      rememberedRosterWritten: false,
+      env: { ...process.env, AISYNTH_COUNCIL_PROVIDER_INVOKE: join(process.cwd(), "tests/council/fakes/provider-invoke") }
+    });
+    expect(result.report?.decision_readiness).toBe("conditional");
+    expect(result.diagnostics.some((item) => item.includes("single_lane"))).toBe(true);
+  });
+
+  it("uses the winning voice next action when readiness is ready", async () => {
+    const base = providerInvokeRoute("claude", true);
+    const second = {
+      ...base,
+      ref: { ...base.ref, routeId: `${base.ref.routeId}:second`, model: "second" },
+      executionLaneKey: `${base.executionLaneKey}:second`
+    };
+    const root = mkdtempSync(join(tmpdir(), "council-ready-action-"));
+    const result = await runCouncil({
+      cwd: root,
+      packageRoot: process.cwd(),
+      input: issueSnapshot("Goal one\nConstraint two\nDecision three"),
+      roster: {
+        version: 1,
+        updatedAt: new Date().toISOString(),
+        scope: "explicit",
+        entries: [
+          { id: "entry_a", route: base.ref, role: "architect", effort: "medium", enabled: true },
+          { id: "entry_b", route: second.ref, role: "risk-critic", effort: "medium", enabled: true }
+        ],
+        reportStrategy: { kind: "deterministic" }
+      },
+      routes: [base, second],
+      reportStrategySource: "roster_file",
+      rememberedRosterWritten: false,
+      env: { ...process.env, AISYNTH_COUNCIL_PROVIDER_INVOKE: join(process.cwd(), "tests/council/fakes/provider-invoke") }
+    });
+    expect(result.report?.decision_readiness).toBe("ready");
+    expect(result.report?.next_action).toBe("Start the smallest reversible rollout step");
+  });
+
+  it("caps readiness after initial-member or chair failure", async () => {
+    const base = providerInvokeRoute("claude", true);
+    const routes = ["a", "b", "c"].map((suffix) => ({
+      ...base,
+      ref: { ...base.ref, routeId: `${base.ref.routeId}:${suffix}`, model: suffix },
+      executionLaneKey: `${base.executionLaneKey}:${suffix}`
+    }));
+    const root = mkdtempSync(join(tmpdir(), "council-critical-failure-"));
+    const initialFailure = await runCouncil({
+      cwd: root,
+      packageRoot: process.cwd(),
+      input: issueSnapshot("Goal one\nConstraint two\nDecision three"),
+      roster: {
+        version: 1,
+        updatedAt: new Date().toISOString(),
+        scope: "explicit",
+        entries: [
+          { id: "entry_a", route: routes[0].ref, role: "architect", effort: "medium", enabled: true },
+          { id: "entry_b", route: routes[1].ref, role: "risk-critic", effort: "medium", enabled: true },
+          { id: "entry_c", route: routes[2].ref, role: "product-operator", effort: "medium", enabled: true }
+        ],
+        reportStrategy: { kind: "deterministic" }
+      },
+      routes,
+      reportStrategySource: "roster_file",
+      rememberedRosterWritten: false,
+      env: {
+        ...process.env,
+        AISYNTH_COUNCIL_PROVIDER_INVOKE: join(process.cwd(), "tests/council/fakes/provider-invoke"),
+        AISYNTH_FAKE_FAIL_KEY: "council-voice.json:entry_c"
+      }
+    });
+    expect(initialFailure.report?.decision_readiness).toBe("conditional");
+
+    const chairFailure = await runCouncil({
+      cwd: root,
+      packageRoot: process.cwd(),
+      input: issueSnapshot("Goal one\nConstraint two\nDecision three"),
+      roster: {
+        version: 1,
+        updatedAt: new Date().toISOString(),
+        scope: "explicit",
+        entries: [
+          { id: "entry_a", route: routes[0].ref, role: "chair", effort: "medium", enabled: true },
+          { id: "entry_b", route: routes[1].ref, role: "risk-critic", effort: "medium", enabled: true }
+        ],
+        reportStrategy: { kind: "chair", chairEntryId: "entry_a" }
+      },
+      routes: routes.slice(0, 2),
+      reportStrategySource: "roster_file",
+      rememberedRosterWritten: false,
+      env: {
+        ...process.env,
+        AISYNTH_COUNCIL_PROVIDER_INVOKE: join(process.cwd(), "tests/council/fakes/provider-invoke"),
+        AISYNTH_FAKE_FAIL_KEY: "council-chair-report.json:entry_a"
+      }
+    });
+    expect(chairFailure.report?.decision_readiness).toBe("conditional");
+    expect(chairFailure.diagnostics.some((item) => item.includes("chair synthesis degraded"))).toBe(true);
   });
 });

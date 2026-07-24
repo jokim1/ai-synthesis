@@ -24,6 +24,8 @@ export interface CouncilRouteRef {
 
 export interface CouncilRoute {
   ref: CouncilRouteRef;
+  executionLaneKey: string;
+  executionLaneMaxConcurrency: number;
   displayName: string;
   family: string;
   providerDisplayName: string;
@@ -182,6 +184,13 @@ export interface CouncilEvidenceLedgerV1 {
     groundingStatus: "engine_verified" | "engine_unverified";
     groundingReason: string;
   }>;
+}
+
+export interface CouncilExecutionIdentityV1 {
+  routeId: string;
+  configuredModel: string;
+  resolvedModel: string | "unknown";
+  modelResolutionSource: "explicit_route" | "provider_envelope" | "adapter_default_unreported";
 }
 
 export interface CouncilCritiqueOutputV1 {

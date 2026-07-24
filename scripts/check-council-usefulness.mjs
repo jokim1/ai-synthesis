@@ -1,36 +1,121 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createJiti } from "jiti";
 
 const root = new URL("..", import.meta.url).pathname;
 const readJson = (path) => JSON.parse(readFileSync(join(root, path), "utf8"));
 const set = readJson("docs/public/council-usefulness-set.v1.json");
 const scorecard = readJson("docs/public/council-usefulness-scorecard.v1.json");
 const evidence = readJson(scorecard.evidenceFile);
-const failures = [];
 const records = new Map(evidence.records.map((record) => [record.sampleId, record]));
+const jiti = createJiti(import.meta.url);
+const { runCouncil } = await jiti.import(join(root, "extensions/council/lib/engine.ts"));
+const { invokeProvider } = await jiti.import(join(root, "extensions/council/lib/executors/provider-invoke.ts"));
+const { issueSnapshot, lineMapFor } = await jiti.import(join(root, "extensions/council/lib/input.ts"));
+const { providerInvokeRoute } = await jiti.import(join(root, "extensions/council/lib/routes.ts"));
+const failures = [];
+const route = providerInvokeRoute("claude", true);
+const fakeInvoke = join(root, "tests/council/fakes/provider-invoke");
+if (evidence.evaluationMode !== "no_cost_engine_fixture") failures.push("usefulness evidence must use the no-cost engine fixture");
+
+function locatorFromEvidence(text) {
+  return text.match(/\((plan\.md|issue):L\d+(?:-L\d+)?\)$/)?.[0]?.slice(1, -1);
+}
+
+function locatorIsValid(locator, sample, lineCount) {
+  const expected = sample.kind === "plan" ? "plan.md" : "issue";
+  const match = locator?.match(/^(plan\.md|issue):L(\d+)(?:-L(\d+))?$/);
+  return Boolean(match && match[1] === expected && Number(match[2]) >= 1 && Number(match[3] ?? match[2]) <= lineCount);
+}
 
 for (const sample of set.samples) {
   const hash = createHash("sha256").update(sample.input).digest("hex");
-  if (hash !== sample.inputSha256) failures.push(`${sample.id}: input hash mismatch`);
   const record = records.get(sample.id);
-  if (!record) {
-    failures.push(`${sample.id}: missing evidence record`);
+  if (hash !== sample.inputSha256) failures.push(`${sample.id}: input hash mismatch`);
+  if (!record || record.inputSha256 !== sample.inputSha256) {
+    failures.push(`${sample.id}: missing or stale evidence record`);
     continue;
   }
-  if (record.inputSha256 !== sample.inputSha256) failures.push(`${sample.id}: evidence hash mismatch`);
-  if (!Array.isArray(record.routes) || record.routes.length < 2) failures.push(`${sample.id}: fewer than two recorded routes`);
-  const result = record.councilResult;
-  if (!result || typeof result.recommendation !== "string" || result.recommendation.length === 0) failures.push(`${sample.id}: missing recommendation`);
-  if (!Array.isArray(result?.verifiedCitations) || result.verifiedCitations.length < scorecard.passThreshold.verifiedCitations) failures.push(`${sample.id}: insufficient citations`);
-  if (typeof result?.strongestDissent !== "string" || result.strongestDissent.length === 0) failures.push(`${sample.id}: missing dissent`);
-  if ((result?.assumptions?.length ?? 0) + (result?.risks?.length ?? 0) < scorecard.passThreshold.assumptionsOrRisks) failures.push(`${sample.id}: insufficient assumptions or risks`);
-  if (typeof result?.nextAction !== "string" || result.nextAction.length === 0) failures.push(`${sample.id}: missing next action`);
-  const comparison = record.soloComparison;
-  if (!comparison || !Array.isArray(comparison.materialDeltas) || comparison.materialDeltas.length === 0 || comparison.usedByFinalReport !== true) failures.push(`${sample.id}: no used solo delta`);
-  if (!Array.isArray(record.revisionAttempts) || record.revisionAttempts.length > scorecard.sameRouteExit.maxRevisionAttempts) failures.push(`${sample.id}: invalid revision attempts`);
-  if (record.pass !== true) failures.push(`${sample.id}: record is not passing`);
+  for (const field of scorecard.requiredEvidenceFields) {
+    if (!(field in record)) failures.push(`${sample.id}: missing evidence field ${field}`);
+  }
+  if (!route.auth.runnable || route.auth.configured !== true) failures.push(`${sample.id}: fixture route is not executable`);
+  const input = sample.kind === "plan"
+    ? { kind: "plan", displayName: "plan.md", text: sample.input, lineMap: lineMapFor(sample.input), sha256: hash }
+    : issueSnapshot(sample.input);
+  const roster = {
+    version: 1,
+    updatedAt: evidence.generatedAt,
+    scope: "explicit",
+    entries: [
+      { id: "entry_a", route: route.ref, role: "architect", effort: "medium", enabled: true },
+      { id: "entry_b", route: route.ref, role: "risk-critic", effort: "medium", enabled: true }
+    ],
+    reportStrategy: sample.id === "issue-freeform" ? { kind: "structured_disagreement" } : { kind: "deterministic" }
+  };
+  const runRoot = mkdtempSync(join(tmpdir(), `council-usefulness-${sample.id}-`));
+  try {
+    const env = { ...process.env, AISYNTH_COUNCIL_PROVIDER_INVOKE: fakeInvoke };
+    const council = await runCouncil({
+      cwd: runRoot,
+      packageRoot: root,
+      input,
+      roster,
+      routes: [route],
+      reportStrategySource: "roster_file",
+      rememberedRosterWritten: false,
+      env
+    });
+    const soloEntry = { id: "entry_solo", route: route.ref, role: "architect", effort: "medium", enabled: true };
+    const solo = await invokeProvider(
+      root,
+      route,
+      soloEntry,
+      `You are council member entry_solo with role architect.\nImmutable ${sample.kind === "plan" ? "plan.md" : "issue"}:\n${sample.input}`,
+      join(root, "schemas/council-voice.json"),
+      30000,
+      env
+    );
+    if (!council.ok || !council.report || !solo.ok || !solo.structured) {
+      failures.push(`${sample.id}: fixture execution failed`);
+      continue;
+    }
+    const report = council.report;
+    const baseline = solo.structured;
+    const locators = [...new Set(report.evidence_summary.map(locatorFromEvidence).filter(Boolean))].sort();
+    const verifiedLocators = locators.filter((locator) => locatorIsValid(locator, sample, input.lineMap.length));
+    const deltas = [];
+    if (report.strongest_dissent && !JSON.stringify(baseline).includes(report.strongest_dissent)) deltas.push("dissent");
+    const soloClaims = new Set(baseline.evidence.map((item) => item.claim));
+    if (report.evidence_summary.some((item) => !soloClaims.has(item.replace(/\s+\([^)]+\)$/, "")))) deltas.push("evidence");
+    const soloAssumptions = new Set(baseline.assumptions.map((item) => item.statement));
+    if (report.assumptions.some((item) => !soloAssumptions.has(item.replace(/^[^:]+:\s*/, "")))) deltas.push("assumption");
+    if (report.next_action !== baseline.next_action) deltas.push("next_action");
+    const derivedPass = [
+      report.recommendation,
+      report.strongest_dissent,
+      report.next_action
+    ].every((value) => typeof value === "string" && value.length > 0)
+      && verifiedLocators.length >= scorecard.passThreshold.verifiedCitations
+      && report.assumptions.length + report.risks.length >= scorecard.passThreshold.assumptionsOrRisks
+      && deltas.length > 0;
+    const actualRoutes = roster.entries.map((entry) => entry.route.routeId);
+    if (JSON.stringify(record.routes) !== JSON.stringify(actualRoutes)) failures.push(`${sample.id}: recorded routes do not match execution`);
+    if (record.councilResult.recommendation !== report.recommendation) failures.push(`${sample.id}: recorded recommendation does not match execution`);
+    if (JSON.stringify(record.councilResult.verifiedCitationLocators) !== JSON.stringify(verifiedLocators)) failures.push(`${sample.id}: recorded citations do not match verified locators`);
+    if (record.councilResult.strongestDissent !== report.strongest_dissent) failures.push(`${sample.id}: recorded dissent does not match execution`);
+    if (record.councilResult.assumptionsOrRisksCount !== report.assumptions.length + report.risks.length) failures.push(`${sample.id}: recorded assumptions or risks do not match execution`);
+    if (record.councilResult.nextAction !== report.next_action) failures.push(`${sample.id}: recorded next action does not match execution`);
+    if (record.soloComparison.baselineRecommendation !== baseline.recommendation) failures.push(`${sample.id}: recorded solo baseline does not match execution`);
+    if (JSON.stringify(record.soloComparison.materialDeltas) !== JSON.stringify(deltas)) failures.push(`${sample.id}: recorded solo deltas do not match derivation`);
+    if (record.soloComparison.usedByFinalReport !== true || record.pass !== derivedPass || !derivedPass) failures.push(`${sample.id}: derived usefulness gate failed`);
+    if (!Array.isArray(record.revisionAttempts) || record.revisionAttempts.length > scorecard.sameRouteExit.maxRevisionAttempts) failures.push(`${sample.id}: invalid revision attempts`);
+  } finally {
+    rmSync(runRoot, { recursive: true, force: true });
+  }
 }
 
 if (records.size !== set.samples.length) failures.push("evidence contains unexpected sample records");
@@ -38,4 +123,4 @@ if (failures.length > 0) {
   console.error(failures.join("\n"));
   process.exit(1);
 }
-console.log(`council usefulness evidence ok (${set.samples.length} samples, ${evidence.evaluationMode})`);
+console.log(`council usefulness evidence derived (${set.samples.length} samples, ${evidence.evaluationMode})`);

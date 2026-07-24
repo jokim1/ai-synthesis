@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { CouncilFinalReportV1, CouncilInputSnapshotV1, CouncilReportStrategy, CouncilRosterConfigV1, CouncilRoute, CouncilTerminalReportV1 } from "./types.js";
+import type { CouncilExecutionIdentityV1, CouncilFinalReportV1, CouncilInputSnapshotV1, CouncilReportStrategy, CouncilRosterConfigV1, CouncilRoute, CouncilTerminalReportV1 } from "./types.js";
 import { validateModelJsonValue } from "./validate-json.js";
 
 export function validateFinalReport(report: CouncilFinalReportV1, schemaPath?: string): void {
@@ -44,6 +44,7 @@ export function renderCouncilMarkdown(opts: {
   effectiveStrategy: "chair" | "deterministic" | "structured_disagreement" | "single_survivor";
   reportStrategySource: "cli" | "roster_file" | "recommendation";
   rememberedRosterWritten: boolean;
+  executionIdentities: CouncilExecutionIdentityV1[];
   diagnostics: string[];
 }): string {
   const enabled = opts.roster.entries.filter((entry) => entry.enabled);
@@ -71,7 +72,7 @@ export function renderCouncilMarkdown(opts: {
     members_executed: enabled.length,
     providers,
     configured_models: models,
-    resolved_models: models.map((model) => `${model}:unknown`),
+    resolved_models: opts.executionIdentities.map((identity) => `${identity.routeId}:${identity.resolvedModel}`),
     families,
     decision_readiness: opts.report.decision_readiness,
     readiness_basis: "internal_input_grounded",

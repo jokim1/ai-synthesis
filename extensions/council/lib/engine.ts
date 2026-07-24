@@ -5,6 +5,7 @@ import type {
   CouncilAdversaryOutputV1,
   CouncilCritiqueOutputV1,
   CouncilEvidenceLedgerV1,
+  CouncilExecutionIdentityV1,
   CouncilFinalReportV1,
   CouncilInputSnapshotV1,
   CouncilPositionGroupReportV1,
@@ -35,6 +36,7 @@ interface Voice {
   assumptions: Array<{ assumption_key?: string; statement: string; load_bearing?: boolean; if_false_then?: string; how_to_verify?: string }>;
   risks: string[];
   what_would_change_my_view: string[];
+  next_action: string;
 }
 
 interface AssumptionRecord {
@@ -64,6 +66,7 @@ interface SynthesisBrief {
 }
 
 type LaterPhase = "critique" | "steelman" | "adversary";
+type CriticalPhase = "initial_analysis" | LaterPhase | "chair";
 type PhaseOutput = CouncilCritiqueOutputV1 | CouncilSteelmanOutputV1 | CouncilAdversaryOutputV1;
 
 interface RoleTemplates {
@@ -201,6 +204,31 @@ function extractValue(result: Awaited<ReturnType<typeof invokeProvider>>): unkno
   return extracted.ok ? extracted.value : undefined;
 }
 
+function executionIdentity(route: CouncilRoute, resolvedModel?: string): CouncilExecutionIdentityV1 {
+  if (resolvedModel) {
+    return {
+      routeId: route.ref.routeId,
+      configuredModel: route.ref.model,
+      resolvedModel,
+      modelResolutionSource: "provider_envelope"
+    };
+  }
+  if (route.ref.model !== "adapter-default") {
+    return {
+      routeId: route.ref.routeId,
+      configuredModel: route.ref.model,
+      resolvedModel: route.ref.model,
+      modelResolutionSource: "explicit_route"
+    };
+  }
+  return {
+    routeId: route.ref.routeId,
+    configuredModel: route.ref.model,
+    resolvedModel: "unknown",
+    modelResolutionSource: "adapter_default_unreported"
+  };
+}
+
 async function invokeStructured(
   opts: RunCouncilOptions,
   route: CouncilRoute,
@@ -210,7 +238,8 @@ async function invokeStructured(
   timeoutMs: number,
   diagnostics: string[],
   extraValidate?: (value: unknown) => string | undefined,
-  normalize?: (value: unknown) => unknown
+  normalize?: (value: unknown) => unknown,
+  onEnvelope?: (identity: CouncilExecutionIdentityV1) => void
 ): Promise<unknown | undefined> {
   const deadline = Date.now() + timeoutMs;
   const maxEngineAttempts = route.structuredOutput.retryOwner === "engine" ? route.structuredOutput.maxProviderCalls : 1;
@@ -224,6 +253,7 @@ async function invokeStructured(
       return undefined;
     }
     const result = await invokeProvider(opts.packageRoot, route, entry, attemptPrompt, schemaPath, remaining, opts.env, opts.signal);
+    onEnvelope?.(executionIdentity(route, result.model));
     const providerCalls = result.attempts ?? 1;
     cumulativeProviderCalls += providerCalls;
     if (cumulativeProviderCalls > route.structuredOutput.maxProviderCalls) {
@@ -287,6 +317,22 @@ function evidenceReferenceError(value: unknown, ledgerIds: Set<string>, assumpti
     return undefined;
   };
   return visit(value);
+}
+
+function critiqueCoverageError(value: unknown, assumptionIds: ReadonlySet<string>): string | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "critique output is not an object";
+  const reviews = (value as { assumptionReviews?: unknown }).assumptionReviews;
+  if (!Array.isArray(reviews)) return "critique output is missing assumptionReviews";
+  const reviewed = reviews.map((review) =>
+    review && typeof review === "object" && !Array.isArray(review)
+      ? (review as { assumptionId?: unknown }).assumptionId
+      : undefined
+  );
+  if (reviewed.some((id) => typeof id !== "string")) return "critique output contains an invalid assumption id";
+  const reviewedIds = new Set(reviewed as string[]);
+  if (reviewedIds.size !== reviewed.length) return "critique output contains duplicate assumption reviews";
+  const missing = [...assumptionIds].filter((id) => !reviewedIds.has(id));
+  return missing.length > 0 ? `critique output is missing assumption reviews: ${missing.join(",")}` : undefined;
 }
 
 function phaseMembers(
@@ -371,14 +417,22 @@ function positionGroups(
   }));
 }
 
+function capReadiness(report: CouncilFinalReportV1, ceiling: "conditional" | "not_ready"): CouncilFinalReportV1 {
+  const rank = { not_ready: 0, conditional: 1, ready: 2 } as const;
+  return rank[report.decision_readiness] > rank[ceiling]
+    ? { ...report, decision_readiness: ceiling }
+    : report;
+}
+
 function synthesize(
   input: CouncilInputSnapshotV1,
   roster: CouncilRosterConfigV1,
+  routes: CouncilRoute[],
   voices: Voice[],
   strategy: CouncilReportStrategy,
   brief: SynthesisBrief,
   adversary: CouncilAdversaryOutputV1[],
-  degradedPhases: ReadonlySet<LaterPhase>,
+  degradedPhases: ReadonlySet<CriticalPhase>,
   diagnostics: string[]
 ): CouncilFinalReportV1 {
   const positions = new Map(brief.groupedPositions.map((group) => [group.positionId, group.supporterMemberIds.map((id) => voices.find((voice) => voice.member_id === id)).filter(Boolean) as Voice[]]));
@@ -387,7 +441,15 @@ function synthesize(
   const catchAll = new Set(["propose_alternative", "defer_for_evidence", "needs_more_evidence"]);
   const routeIds = new Set(voices.map((voice) => roster.entries.find((entry) => entry.id === voice.member_id)?.route.routeId));
   const sameRoute = routeIds.size === 1;
+  const runtimeRoutes = new Map(routes.map((route) => [route.ref.routeId, route]));
+  const laneKeys = new Set(voices.map((voice) => {
+    const entry = roster.entries.find((candidate) => candidate.id === voice.member_id);
+    if (!entry) return undefined;
+    return runtimeRoutes.get(entry.route.routeId)?.executionLaneKey ?? entry.route.routeId;
+  }));
+  const sameLane = laneKeys.size === 1;
   if (sameRoute) diagnostics.push("route_correlation: single_route; readiness capped at conditional");
+  else if (sameLane) diagnostics.push("route_correlation: single_lane; readiness capped at conditional");
   const groundedEvidence = brief.evidenceLedger.items.filter((item) => item.grounded);
   const hasWinner = supporters.length >= 2 && !catchAll.has(winner) && (supporters.length > voices.length / 2 || supporters.length > (sorted[1]?.[1].length ?? 0));
   const noRecommendation = strategy.kind === "structured_disagreement" || !hasWinner || groundedEvidence.length === 0;
@@ -409,7 +471,7 @@ function synthesize(
   if (materialDissent) diagnostics.push("material_dissent: unresolved");
   const readiness = noRecommendation
     ? "not_ready"
-    : sameRoute || !phasesClean || unresolvedWinningAssumptions.length > 0 || materialDissent
+    : sameRoute || sameLane || !phasesClean || unresolvedWinningAssumptions.length > 0 || materialDissent
       ? "conditional"
       : "ready";
   return {
@@ -422,7 +484,9 @@ function synthesize(
     what_would_change_recommendation: [...voices.flatMap((voice) => voice.what_would_change_my_view), ...findings.critique].slice(0, 8),
     phase_findings: findings,
     position_groups: positionGroups(brief, adversary, voices.map((voice) => voice.member_id)),
-    next_action: unresolvedWinningAssumptions[0]?.howToVerify
+    next_action: readiness === "ready"
+      ? supporters[0]?.next_action ?? supporters[0]?.recommendation ?? "Proceed with the winning position."
+      : unresolvedWinningAssumptions[0]?.howToVerify
       ? `Verify: ${unresolvedWinningAssumptions[0].howToVerify}`
       : "Gather more grounded evidence before implementation.",
     implementation_authorized: false
@@ -474,6 +538,10 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
   const voiceSchemaPath = join(opts.packageRoot, "schemas/council-voice.json");
   const voices: Voice[] = [];
   const failedMembers: string[] = [];
+  const executionIdentities = new Map<string, CouncilExecutionIdentityV1>();
+  const recordExecutionIdentity = (identity: CouncilExecutionIdentityV1) => {
+    executionIdentities.set(identity.routeId, identity);
+  };
   try {
     for (const entry of selectPhaseEntries("initial_analysis", roster, strategy).filter((item) => validation.executableEntryIds.includes(item.id))) {
       const route = routeMap.get(entry.route.routeId);
@@ -491,7 +559,9 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
           if (voice.member_id !== entry.id || voice.role !== entry.role) return "voice identity does not match roster entry";
           if (canonicalPosition(opts.input, positionCatalog, voice.position_key) !== voice.position_key) return "position_key is outside the frozen catalog";
           return undefined;
-        }
+        },
+        undefined,
+        recordExecutionIdentity
       );
       if (value) voices.push(value as Voice);
       else failedMembers.push(entry.id);
@@ -512,7 +582,8 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
       const assumptionIds = new Set(assumptions.map((assumption) => assumption.id));
       const positionIds = new Set(voices.map((voice) => canonicalPosition(opts.input, positionCatalog, voice.position_key)));
       const initialContext = { positionCatalog, voices, evidenceLedger: ledger, assumptionCatalog: assumptions, positionIds: [...positionIds] };
-      const degradedPhases = new Set<LaterPhase>();
+      const degradedPhases = new Set<CriticalPhase>();
+      if (failedMembers.length > 0) degradedPhases.add("initial_analysis");
       const runPhase = async <T extends PhaseOutput>(phaseName: LaterPhase, context: unknown): Promise<T[]> => {
         phase = phaseName;
         const schemaPath = join(opts.packageRoot, `schemas/council-${phaseName}.json`);
@@ -537,13 +608,17 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
             (candidate) => {
               const output = candidate as PhaseOutput;
               if (output.memberId !== entry.id) return "phase memberId does not match roster entry";
-              return evidenceReferenceError(
+              const referenceError = evidenceReferenceError(
                 candidate,
                 ledgerIds,
                 phaseName === "critique" ? assumptionIds : undefined,
                 positionIds
               );
-            }
+              if (referenceError) return referenceError;
+              return phaseName === "critique" ? critiqueCoverageError(candidate, assumptionIds) : undefined;
+            },
+            undefined,
+            recordExecutionIdentity
           );
           if (value) outputs.push(value as T);
           else {
@@ -558,7 +633,7 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
       const brief = buildSynthesisBrief(opts.input, positionCatalog, voices, ledger, assumptions, critique, steelman);
       const adversary = await runPhase<CouncilAdversaryOutputV1>("adversary", brief);
       if (degradedPhases.size > 0 || failedMembers.length > 0) status = "degraded";
-      report = synthesize(opts.input, roster, voices, strategy, brief, adversary, degradedPhases, diagnostics);
+      report = synthesize(opts.input, roster, opts.routes, voices, strategy, brief, adversary, degradedPhases, diagnostics);
       if (strategy.kind === "chair") {
         phase = "chair";
         const chair = selectPhaseEntries("chair", roster, strategy, new Set(voices.map((voice) => voice.member_id)))[0];
@@ -578,7 +653,8 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
               const { implementation_authorized: ignored, ...rest } = candidate as Record<string, unknown>;
               if (ignored !== undefined) diagnostics.push("implementation_authorized_forced_false");
               return rest;
-            }
+            },
+            recordExecutionIdentity
           );
           if (draft) {
             const readinessRank = { not_ready: 0, conditional: 1, ready: 2 } as const;
@@ -594,13 +670,23 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
               implementation_authorized: false
             };
           } else {
+            degradedPhases.add("chair");
             status = "degraded";
+            report = capReadiness(report, "conditional");
             diagnostics.push("chair synthesis degraded; deterministic fallback used");
           }
+        } else {
+          degradedPhases.add("chair");
+          status = "degraded";
+          report = capReadiness(report, "conditional");
+          diagnostics.push("chair synthesis degraded; configured chair was unavailable");
         }
       }
     }
 
+    for (const identity of executionIdentities.values()) {
+      diagnostics.push(`resolved_model: ${identity.routeId}=${identity.resolvedModel} (${identity.modelResolutionSource})`);
+    }
     diagnostics.push(`worst_case_provider_calls: ${plan.worstCaseProviderCallCount}`);
     validateFinalReport(report, join(opts.packageRoot, "schemas/council-report.json"));
     const effectiveStrategy = voices.length === 1 ? "single_survivor" : strategy.kind;
@@ -615,6 +701,7 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
       effectiveStrategy,
       reportStrategySource: opts.reportStrategySource,
       rememberedRosterWritten: opts.rememberedRosterWritten,
+      executionIdentities: [...executionIdentities.values()],
       diagnostics
     });
     const reportPath = writeReport(opts.cwd, runId, markdown);

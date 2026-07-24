@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { main } from "../../extensions/council/cli.js";
+import { main, shellQuote } from "../../extensions/council/cli.js";
+import { spawnSync } from "node:child_process";
 import { providerInvokeRoute } from "../../extensions/council/lib/routes.js";
 
 const originalCwd = process.cwd();
@@ -15,6 +16,13 @@ afterEach(() => {
 });
 
 describe("portable intent lifecycle", () => {
+  it("quotes generated shell arguments without expansion", () => {
+    const value = "a'$(printf injected)`id`$HOME";
+    const result = spawnSync("/bin/sh", ["-c", `printf '%s' ${shellQuote(value)}`], { encoding: "utf8" });
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe(value);
+  });
+
   it("rejects and deletes an intent when the fresh route contract changes", async () => {
     const root = mkdtempSync(join(tmpdir(), "council-intent-cli-"));
     const configHome = join(root, "config");
