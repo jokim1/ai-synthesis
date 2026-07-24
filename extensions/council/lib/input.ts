@@ -1,6 +1,6 @@
 import { lstatSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, extname, isAbsolute, resolve } from "node:path";
+import { extname, isAbsolute, resolve } from "node:path";
 import type { CouncilInputSnapshotV1 } from "./types.js";
 import { sha256 } from "./util.js";
 
@@ -47,8 +47,7 @@ function isPathShaped(token: string, cwd: string): boolean {
   }
 }
 
-function assertAllowed(path: string, allowedRoots: string[]): void {
-  const real = realpathSync(path);
+function assertAllowed(real: string, allowedRoots: string[]): void {
   const roots = allowedRoots.map((root) => realpathSync(root));
   if (!roots.some((root) => real === root || real.startsWith(`${root}/`))) {
     throw Object.assign(new Error(`plan file is outside allowed roots: ${real}`), { exitCode: 2 });
@@ -57,14 +56,14 @@ function assertAllowed(path: string, allowedRoots: string[]): void {
 
 export function loadPlanSnapshot(path: string, cwd: string, allowedRoots = [cwd]): CouncilInputSnapshotV1 {
   const resolved = expandPath(path, cwd);
-  assertAllowed(dirname(resolved), allowedRoots);
-  const stat = statSync(resolved);
+  const realpath = realpathSync(resolved);
+  assertAllowed(realpath, allowedRoots);
+  const stat = statSync(realpath);
   if (!stat.isFile()) throw Object.assign(new Error(`plan path is not a regular file: ${path}`), { exitCode: 2 });
   if (stat.size > 512 * 1024) throw Object.assign(new Error(`plan file exceeds 512 KiB: ${path}`), { exitCode: 2 });
-  const bytes = readFileSync(resolved);
+  const bytes = readFileSync(realpath);
   if (bytes.includes(0)) throw Object.assign(new Error(`plan file looks binary: ${path}`), { exitCode: 2 });
   const text = bytes.toString("utf8").replace(/\r\n?/g, "\n");
-  const realpath = realpathSync(resolved);
   return {
     kind: "plan",
     displayName: "plan.md",

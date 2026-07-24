@@ -79,6 +79,9 @@ adapter_probe() {
     return 0
   fi
 
+  if [ "${AISYNTH_COUNCIL:-}" = "1" ] && [ "${A_AUTH:-auto}" = "subscription" ]; then
+    _claude_sanitize_subscription_env
+  fi
   status="$(aisynth_run_with_timeout 20 "$bin" auth status 2>/dev/null || true)"
   logged_in="$(printf '%s' "$status" | jq -r '.loggedIn // false' 2>/dev/null || echo false)"
   provider="$(printf '%s' "$status" | jq -r '.apiProvider // ""' 2>/dev/null || echo "")"

@@ -16,11 +16,15 @@ export function portableRememberedRosterPath(env: NodeJS.ProcessEnv = process.en
 
 export function configLocationForPortable(cwd: string, rosterFile?: string, env: NodeJS.ProcessEnv = process.env): CouncilConfigLocation {
   if (rosterFile) {
+    const rememberedWriteTarget = portableRememberedRosterPath(env);
     return {
       scope: "explicit",
       path: resolve(cwd, rosterFile),
       source: "portable_explicit",
-      rememberedWriteTarget: portableRememberedRosterPath(env)
+      rememberedWriteTarget,
+      rememberedGuardedState: existsSync(rememberedWriteTarget)
+        ? { kind: "present", sha256: fileHash(rememberedWriteTarget) }
+        : { kind: "absent" }
     };
   }
   return { scope: "user", path: portableRememberedRosterPath(env), source: "portable_user" };
@@ -71,7 +75,7 @@ export function writeRosterExplicit(path: string, config: CouncilRosterConfigV1,
 export function persistRememberedRoster(location: CouncilConfigLocation, config: CouncilRosterConfigV1): { written: boolean; warning?: string } {
   const target = location.rememberedWriteTarget ?? location.path;
   const guard = location.source === "portable_explicit"
-    ? (existsSync(target) ? { kind: "present" as const, sha256: fileHash(target) } : { kind: "absent" as const })
+    ? location.rememberedGuardedState
     : location.guardedState;
   try {
     if (guard?.kind === "present") {

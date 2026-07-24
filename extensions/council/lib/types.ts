@@ -98,6 +98,7 @@ export interface CouncilConfigLocation {
   rememberedWriteTarget?: string;
   seededFrom?: "user" | "project" | "portable-global" | "recommendations";
   guardedState?: { kind: "present"; sha256: string } | { kind: "absent" };
+  rememberedGuardedState?: { kind: "present"; sha256: string } | { kind: "absent" };
 }
 
 export interface CouncilConfigRootsV1 {
@@ -138,6 +139,8 @@ export interface CouncilRosterValidationResultV1 {
     suggestedEfforts?: CouncilEffort[];
   }>;
   compositionFeedback: Array<{ kind: "warning" | "suggestion"; message: string; entryIds?: string[] }>;
+  reconciliationDiagnostics: string[];
+  reconciledConfig: CouncilRosterConfigV1;
   reportStrategy: { ok: boolean; effective?: CouncilReportStrategy; source: "roster_file" | "cli" | "recommendation"; message?: string };
 }
 

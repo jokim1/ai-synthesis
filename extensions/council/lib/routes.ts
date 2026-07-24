@@ -72,6 +72,16 @@ function probe(packageRoot: string, provider: "claude" | "codex", auth: string, 
   }
 }
 
+function councilProbeEnv(provider: "claude" | "codex", env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const childEnv = { ...env, AISYNTH_COUNCIL: "1" };
+  if (provider === "claude") {
+    for (const key of Object.keys(childEnv)) {
+      if (key.startsWith("ANTHROPIC_")) delete childEnv[key];
+    }
+  }
+  return childEnv;
+}
+
 export function discoverRoutes(opts: DiscoverRoutesOptions): CouncilRouteProbeEnvelopeV1 {
   if (opts.env?.AISYNTH_COUNCIL_FAKE_ROUTES) {
     return JSON.parse(opts.env.AISYNTH_COUNCIL_FAKE_ROUTES) as CouncilRouteProbeEnvelopeV1;
@@ -84,12 +94,23 @@ export function discoverRoutes(opts: DiscoverRoutesOptions): CouncilRouteProbeEn
     routes.push(route);
     diagnostics.push({ executor: "provider-invoke", provider: "claude", status: "auth", message: route.auth.reason ?? "" });
   } else {
-    const claude = probe(opts.packageRoot, "claude", "subscription", env);
-    const reason = claude.ok ? undefined : (env.ANTHROPIC_API_KEY ? "Claude API key detected, but council requires subscription auth" : claude.message || "claude_subscription_login_required_after_env_token_scrub");
-    routes.push(providerInvokeRoute("claude", claude.ok, reason));
-    diagnostics.push({ executor: "provider-invoke", provider: "claude", status: claude.ok ? "ok" : (claude.status === "auth" ? "auth" : "unavailable"), message: reason ?? "claude subscription route ready" });
+    const toolPolicyProven = assertClaudeToolPolicy(opts.packageRoot);
+    const claude = toolPolicyProven
+      ? probe(opts.packageRoot, "claude", "subscription", councilProbeEnv("claude", env))
+      : { ok: false, status: "unavailable", message: "tool_policy_unproven" };
+    const reason = claude.ok
+      ? undefined
+      : !toolPolicyProven
+        ? "tool_policy_unproven"
+        : env.ANTHROPIC_API_KEY
+          ? "Claude API key detected, but council requires subscription auth"
+          : env.ANTHROPIC_OAUTH_TOKEN
+            ? "claude_subscription_login_required_after_env_token_scrub"
+            : claude.message || "claude_subscription_login_required_after_env_token_scrub";
+    routes.push(providerInvokeRoute("claude", claude.ok && toolPolicyProven, reason));
+    diagnostics.push({ executor: "provider-invoke", provider: "claude", status: claude.ok && toolPolicyProven ? "ok" : (claude.status === "auth" ? "auth" : "unavailable"), message: reason ?? "claude subscription route ready" });
   }
-  const codexProbe = probe(opts.packageRoot, "codex", "auto", env);
+  const codexProbe = probe(opts.packageRoot, "codex", "auto", councilProbeEnv("codex", env));
   const codex = providerInvokeRoute("codex", false, codexProbe.ok ? "tool_policy_unproven" : codexProbe.message);
   if (!existsSync("/usr/bin/python3") && !spawnSync("python3", ["--version"], { encoding: "utf8" }).stdout) {
     codex.auth.reason = "python3 is required for Codex adapter output parsing";

@@ -2,13 +2,15 @@ import { existsSync } from "node:fs";
 import { configLocationForPortable, loadRosterConfig, persistRememberedRoster } from "./lib/config.js";
 import { emitRoster } from "./lib/emit-roster.js";
 import { parseCouncilInput } from "./lib/input.js";
-import { ackToken, buildRunPlan, requiresAcknowledgment, writeIntent } from "./lib/run-intent.js";
+import { ackToken, buildRunPlan, deleteIntent, loadIntent, requiresAcknowledgment, runPlanHashes, writeIntent } from "./lib/run-intent.js";
 import { selfTest } from "./lib/runtime.js";
 import { packageRootFrom } from "./lib/runtime.js";
 import { discoverRoutes } from "./lib/routes.js";
 import { validateRoster } from "./lib/validate-roster.js";
 import { runCouncil } from "./lib/engine.js";
 import type { CouncilAuthPolicy, CouncilReportStrategy } from "./lib/types.js";
+import { rosterHash } from "./lib/config.js";
+import { sha256, stableJson } from "./lib/util.js";
 
 interface Args {
   command: "run" | "route-probe";
@@ -87,7 +89,20 @@ export async function main(argv = process.argv.slice(2), packageRoot = packageRo
     print(args.json, routes, routes.diagnostics.map((d) => `${d.provider}: ${d.message}`).join("\n"));
     return 0;
   }
-  const input = parseCouncilInput({ cwd, issue: args.issue, planFile: args.planFile, positional: args.positional });
+  let savedIntent;
+  if (args.intent) {
+    try {
+      savedIntent = loadIntent(cwd, args.intent);
+    } catch (error) {
+      throw Object.assign(new Error(`intent_invalid: ${(error as Error).message}`), { exitCode: 2 });
+    }
+    if (Date.parse(savedIntent.expiresAt) <= Date.now()) {
+      deleteIntent(cwd, args.intent);
+      print(args.json, { ok: false, status: "intent_expired", exitCode: 2 }, "saved council intent expired; review the fresh run estimate");
+      return 2;
+    }
+  }
+  const input = savedIntent?.inputSnapshot ?? parseCouncilInput({ cwd, issue: args.issue, planFile: args.planFile, positional: args.positional });
   if (args.emitRoster) {
     const result = emitRoster({ cwd, packageRoot, targetPath: args.emitRoster, overwrite: args.overwrite, authPolicy: args.authPolicy, input, env: process.env });
     print(args.json, { ok: true, path: result.path, roster: result.roster, routeProbe: result.routeProbe }, `wrote ${result.path}`);
@@ -107,28 +122,51 @@ export async function main(argv = process.argv.slice(2), packageRoot = packageRo
     print(args.json, { ok: false, status: "validation_failed", exitCode: 4, diagnostics: validation.blockingProblems, compositionFeedback: validation.compositionFeedback }, validation.blockingProblems.map((p) => p.message).join("\n"));
     return 4;
   }
-  const runPlan = buildRunPlan(input, loaded.config, routeProbe.routes);
-  if (requiresAcknowledgment(runPlan)) {
-    const token = ackToken(input, loaded.config, routeProbe.routes, runPlan);
+  const effectiveRoster = validation.reconciledConfig;
+  const runPlan = buildRunPlan(input, effectiveRoster, routeProbe.routes);
+  const token = ackToken(input, effectiveRoster, routeProbe.routes, runPlan);
+  if (savedIntent) {
+    const freshHashes = runPlanHashes(runPlan);
+    const changed = savedIntent.rosterHash !== rosterHash(effectiveRoster)
+      || savedIntent.routeCatalogHash !== sha256(stableJson(routeProbe.routes))
+      || savedIntent.runPlanHash !== freshHashes.runPlanHash
+      || savedIntent.retryAdjustedCostHash !== freshHashes.retryAdjustedCostHash
+      || savedIntent.estimatedCostBucket !== freshHashes.estimatedCostBucket;
+    if (changed) {
+      deleteIntent(cwd, savedIntent.id);
+      print(
+        args.json,
+        { ok: false, status: "intent_cost_contract_changed", exitCode: 2, ackLongRun: requiresAcknowledgment(runPlan) ? token : undefined, runPlan },
+        `intent_cost_contract_changed. Review the fresh estimate${requiresAcknowledgment(runPlan) ? ` and re-run with --ack-long-run ${token}` : ""}.`
+      );
+      return 2;
+    }
     if (args.ackLongRun !== token) {
-      const intent = writeIntent(cwd, input, loaded.config, routeProbe.routes, runPlan, token);
+      print(args.json, { ok: false, status: "ack_required", exitCode: 2, ackLongRun: token, intent: savedIntent.id, runPlan }, `long-run/cost acknowledgment required. Re-run with --intent ${savedIntent.id} --ack-long-run ${token}`);
+      return 2;
+    }
+  }
+  if (requiresAcknowledgment(runPlan)) {
+    if (!savedIntent) {
+      const intent = writeIntent(cwd, input, effectiveRoster, routeProbe.routes, runPlan, token);
       print(args.json, { ok: false, status: "ack_required", exitCode: 2, ackLongRun: token, intent, runPlan }, `long-run/cost acknowledgment required. Re-run with --intent ${intent} --ack-long-run ${token}`);
       return 2;
     }
   }
-  const persisted = persistRememberedRoster(loaded.location, loaded.config);
+  if (savedIntent) deleteIntent(cwd, savedIntent.id);
+  const persisted = persistRememberedRoster(loaded.location, effectiveRoster);
   const result = await runCouncil({
     cwd,
     packageRoot,
     input,
-    roster: loaded.config,
+    roster: effectiveRoster,
     routes: routeProbe.routes,
     reportStrategyOverride: strategyOverride,
     reportStrategySource: strategyOverride ? "cli" : "roster_file",
     rememberedRosterWritten: persisted.written,
     env: process.env
   });
-  const body = { ok: result.ok, reportPath: result.reportPath, report: result.report, diagnostics: [...result.diagnostics, persisted.warning].filter(Boolean) };
+  const body = { ok: result.ok, reportPath: result.reportPath, report: result.report, diagnostics: [...validation.reconciliationDiagnostics, ...result.diagnostics, persisted.warning].filter(Boolean) };
   print(args.json, body, `wrote council report: ${result.reportPath}`);
   return result.ok ? 0 : 5;
 }

@@ -31,4 +31,17 @@ describe("validateRoster", () => {
     expect(result.ok).toBe(false);
     expect(result.blockingProblems.map((item) => item.kind)).toEqual(expect.arrayContaining(["duplicate_entry_id", "unsupported_effort", "too_few_executable_members", "invalid_chair_strategy"]));
   });
+
+  it("reconciles a stale route id by the stable route tuple", () => {
+    const staleRef = { ...route.ref, routeId: "v1:provider-invoke:claude:stale" };
+    const config = roster([
+      { id: "entry_a", route: staleRef, role: "architect", effort: "medium", enabled: true },
+      { id: "entry_b", route: route.ref, role: "risk-critic", effort: "medium", enabled: true }
+    ]);
+    const result = validateRoster({ config, routes: [route], mode: "portable_cli" });
+    expect(result.ok).toBe(true);
+    expect(result.reconciliationDiagnostics).toContain(`route_id_mismatch: entry_a ${staleRef.routeId} -> ${route.ref.routeId}`);
+    expect(result.reconciledConfig.entries[0].route).toEqual(route.ref);
+    expect(config.entries[0].route.routeId).toBe(staleRef.routeId);
+  });
 });

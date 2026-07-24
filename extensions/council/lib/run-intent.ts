@@ -1,25 +1,33 @@
 import { mkdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import type { CouncilInputSnapshotV1, CouncilMvpRunPlanV1, CouncilRosterConfigV1, CouncilRoute } from "./types.js";
+import type { CouncilInputSnapshotV1, CouncilMvpRunPlanV1, CouncilRosterConfigV1, CouncilRoute, CouncilRunIntentV1 } from "./types.js";
 import { sha256, stableJson } from "./util.js";
 import { rosterHash, writeJsonAtomic } from "./config.js";
 
 export function buildRunPlan(input: CouncilInputSnapshotV1, roster: CouncilRosterConfigV1, routes: CouncilRoute[]): CouncilMvpRunPlanV1 {
   const routeMap = new Map(routes.map((route) => [route.ref.routeId, route]));
   const enabled = roster.entries.filter((entry) => entry.enabled);
-  const phasePlans = ["initial_analysis", "critique", "steelman", "adversary"].map((phase) => ({
-    phase: phase as "initial_analysis" | "critique" | "steelman" | "adversary",
-    memberTimeoutMs: 300000,
+  const chair = roster.reportStrategy.kind === "chair" ? enabled.find((entry) => entry.id === roster.reportStrategy.chairEntryId) : undefined;
+  const phaseMembers = new Map([
+    ["initial_analysis", enabled],
+    ["critique", enabled],
+    ["steelman", enabled],
+    ["adversary", enabled],
+    ["chair", chair ? [chair] : []]
+  ] as const);
+  const phasePlans = [...phaseMembers.entries()].filter(([, members]) => members.length > 0).map(([phase, members]) => ({
+    phase,
+    memberTimeoutMs: phase === "chair" ? 420000 : 300000,
     maxConcurrencyGlobalCeiling: 4,
     providerInvokeLanePolicy: "serial_same_account_by_default" as const,
-    providerInvokeLanes: [{ laneKey: "provider-invoke:shared", memberCount: enabled.length, maxConcurrency: 1, budgetMs: enabled.length * 300000 }],
-    portableProviderInvokeMemberCount: enabled.length,
-    phaseBudgetMs: enabled.length * 300000,
-    effectiveConcurrency: enabled.length > 0 ? 1 : 0
+    providerInvokeLanes: [{ laneKey: "provider-invoke:shared", memberCount: members.length, maxConcurrency: 1, budgetMs: members.length * (phase === "chair" ? 420000 : 300000) }],
+    portableProviderInvokeMemberCount: members.length,
+    phaseBudgetMs: members.length * (phase === "chair" ? 420000 : 300000),
+    effectiveConcurrency: members.length > 0 ? 1 : 0
   }));
-  const retryCostInputs = enabled.flatMap((entry) => {
-    const route = routeMap.get(entry.route.routeId);
-    return phasePlans.map((phase) => {
+  const retryCostInputs = phasePlans.flatMap((phase) =>
+    (phase.phase === "chair" ? (chair ? [chair] : []) : enabled).map((entry) => {
+      const route = routeMap.get(entry.route.routeId);
       const outputTokenCap = route?.limits.maxTokens ?? null;
       const inputPricePerMTok = route?.cost.inputPerMTok ?? null;
       const outputPricePerMTok = route?.cost.outputPerMTok ?? null;
@@ -43,8 +51,8 @@ export function buildRunPlan(input: CouncilInputSnapshotV1, roster: CouncilRoste
         perAttemptCostCeilingUsd: perAttempt,
         questionCostUpperBoundUsd: perAttempt === null ? null : perAttempt * maxProviderCalls
       };
-    });
-  });
+    })
+  );
   const known = retryCostInputs.every((item) => item.questionCostUpperBoundUsd !== null);
   const cost = known ? retryCostInputs.reduce((sum, item) => sum + (item.questionCostUpperBoundUsd ?? 0), 0) : null;
   const expectedRunMs = phasePlans.reduce((sum, phase) => sum + phase.phaseBudgetMs, 0);
@@ -106,10 +114,32 @@ export function writeIntent(cwd: string, input: CouncilInputSnapshotV1, roster: 
   return id;
 }
 
-export function loadIntent(cwd: string, id: string): unknown {
-  return JSON.parse(readFileSync(join(cwd, ".ai-synthesis", "council-intents", `${id}.json`), "utf8"));
+function intentPath(cwd: string, id: string): string {
+  if (!/^intent_[a-z0-9_]+$/.test(id)) {
+    throw Object.assign(new Error("invalid intent id"), { exitCode: 2 });
+  }
+  return join(cwd, ".ai-synthesis", "council-intents", `${id}.json`);
+}
+
+export function loadIntent(cwd: string, id: string): CouncilRunIntentV1 {
+  const parsed = JSON.parse(readFileSync(intentPath(cwd, id), "utf8")) as Partial<CouncilRunIntentV1>;
+  if (
+    parsed.version !== 1
+    || parsed.id !== id
+    || typeof parsed.expiresAt !== "string"
+    || !parsed.inputSnapshot
+    || typeof parsed.rosterHash !== "string"
+    || typeof parsed.routeCatalogHash !== "string"
+    || !parsed.runPlan
+    || typeof parsed.runPlanHash !== "string"
+    || typeof parsed.retryAdjustedCostHash !== "string"
+    || typeof parsed.estimatedCostBucket !== "string"
+  ) {
+    throw Object.assign(new Error("intent sidecar is invalid"), { exitCode: 2 });
+  }
+  return parsed as CouncilRunIntentV1;
 }
 
 export function deleteIntent(cwd: string, id: string): void {
-  rmSync(join(cwd, ".ai-synthesis", "council-intents", `${id}.json`), { force: true });
+  rmSync(intentPath(cwd, id), { force: true });
 }

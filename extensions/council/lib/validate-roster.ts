@@ -10,6 +10,19 @@ function validateStrategy(strategy: CouncilReportStrategy | undefined): strategy
 
 export function validateRoster(input: CouncilValidateRosterInputV1): CouncilRosterValidationResultV1 {
   const routes = new Map(input.routes.map((route) => [route.ref.routeId, route]));
+  const reconciliationDiagnostics: string[] = [];
+  const reconciledEntries = input.config.entries.map((entry) => {
+    if (routes.has(entry.route.routeId)) return entry;
+    const tupleMatch = input.routes.find((route) =>
+      route.ref.executor === entry.route.executor
+      && route.ref.provider === entry.route.provider
+      && route.ref.model === entry.route.model
+    );
+    if (!tupleMatch) return entry;
+    reconciliationDiagnostics.push(`route_id_mismatch: ${entry.id} ${entry.route.routeId} -> ${tupleMatch.ref.routeId}`);
+    return { ...entry, route: tupleMatch.ref };
+  });
+  const reconciledConfig = { ...input.config, entries: reconciledEntries };
   const blockingProblems: CouncilRosterValidationResultV1["blockingProblems"] = [];
   const compositionFeedback: CouncilRosterValidationResultV1["compositionFeedback"] = [];
   const executableEntryIds: string[] = [];
@@ -17,7 +30,7 @@ export function validateRoster(input: CouncilValidateRosterInputV1): CouncilRost
   const unsupportedEffortEntryIds: string[] = [];
   const seen = new Set<string>();
 
-  for (const entry of input.config.entries) {
+  for (const entry of reconciledConfig.entries) {
     if (seen.has(entry.id)) {
       blockingProblems.push({ kind: "duplicate_entry_id", entryId: entry.id, message: `duplicate roster entry id: ${entry.id}` });
       continue;
@@ -61,8 +74,8 @@ export function validateRoster(input: CouncilValidateRosterInputV1): CouncilRost
     blockingProblems.push({ kind: "too_few_executable_members", message: "at least two executable council members are required" });
   }
 
-  const providers = new Set(executableEntryIds.map((id) => input.config.entries.find((entry) => entry.id === id)?.route.provider));
-  const routeIds = new Set(executableEntryIds.map((id) => input.config.entries.find((entry) => entry.id === id)?.route.routeId));
+  const providers = new Set(executableEntryIds.map((id) => reconciledConfig.entries.find((entry) => entry.id === id)?.route.provider));
+  const routeIds = new Set(executableEntryIds.map((id) => reconciledConfig.entries.find((entry) => entry.id === id)?.route.routeId));
   if (routeIds.size === 1 && executableEntryIds.length >= 2) {
     compositionFeedback.push({ kind: "warning", message: "same-route council: outputs are correlated; readiness is capped at conditional", entryIds: executableEntryIds });
   } else if (providers.size === 1 && executableEntryIds.length >= 2) {
@@ -77,7 +90,7 @@ export function validateRoster(input: CouncilValidateRosterInputV1): CouncilRost
     blockingProblems.push({ kind: "missing_report_strategy", message: "reportStrategy is required" });
     reportStrategy = { ok: false, source: input.reportStrategyOverride ? "cli" : "roster_file", message: "reportStrategy is required" };
   } else if (effective.kind === "chair") {
-    const chair = input.config.entries.find((entry) => entry.id === effective.chairEntryId);
+    const chair = reconciledConfig.entries.find((entry) => entry.id === effective.chairEntryId);
     if (!chair || chair.role !== "chair" || !executableEntryIds.includes(chair.id)) {
       blockingProblems.push({ kind: "invalid_chair_strategy", entryId: effective.chairEntryId, message: "chair strategy requires an enabled executable entry whose role is chair" });
       reportStrategy = { ok: false, source: input.reportStrategyOverride ? "cli" : "roster_file", message: "invalid chair strategy" };
@@ -95,6 +108,8 @@ export function validateRoster(input: CouncilValidateRosterInputV1): CouncilRost
     unsupportedEffortEntryIds,
     blockingProblems,
     compositionFeedback,
+    reconciliationDiagnostics,
+    reconciledConfig,
     reportStrategy
   };
 }
