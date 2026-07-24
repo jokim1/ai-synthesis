@@ -33,8 +33,8 @@ describe("portable intent lifecycle", () => {
       updatedAt: new Date().toISOString(),
       scope: "explicit",
       entries: [
-        { id: "entry_a", route: route.ref, role: "architect", effort: "medium", enabled: true },
-        { id: "entry_b", route: route.ref, role: "risk-critic", effort: "medium", enabled: true }
+        { id: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", route: route.ref, role: "architect", effort: "medium", enabled: true },
+        { id: "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb", route: route.ref, role: "risk-critic", effort: "medium", enabled: true }
       ],
       reportStrategy: { kind: "deterministic" }
     }));
@@ -71,8 +71,8 @@ describe("portable intent lifecycle", () => {
       updatedAt: new Date().toISOString(),
       scope: "explicit",
       entries: [
-        { id: "entry_a", route: route.ref, role: "architect", effort: "medium", enabled: true },
-        { id: "entry_b", route: route.ref, role: "risk-critic", effort: "medium", enabled: true }
+        { id: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", route: route.ref, role: "architect", effort: "medium", enabled: true },
+        { id: "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb", route: route.ref, role: "risk-critic", effort: "medium", enabled: true }
       ],
       reportStrategy: { kind: "deterministic" }
     }));

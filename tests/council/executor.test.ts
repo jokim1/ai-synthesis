@@ -21,7 +21,7 @@ describe("provider-invoke executor", () => {
     const result = await invokeProvider(
       process.cwd(),
       route,
-      { id: "entry_a", route: route.ref, role: "architect", effort: "medium", enabled: true },
+      { id: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", route: route.ref, role: "architect", effort: "medium", enabled: true },
       "prompt",
       join(process.cwd(), "schemas/council-voice.json"),
       1000,

@@ -16,8 +16,8 @@ describe("Phase 5 council engine", () => {
       updatedAt: new Date().toISOString(),
       scope: "explicit" as const,
       entries: [
-        { id: "entry_architect", route: route.ref, role: "architect" as const, effort: "high" as const, enabled: true },
-        { id: "entry_critic", route: route.ref, role: "risk-critic" as const, effort: "medium" as const, enabled: true }
+        { id: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", route: route.ref, role: "architect" as const, effort: "high" as const, enabled: true },
+        { id: "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb", route: route.ref, role: "risk-critic" as const, effort: "medium" as const, enabled: true }
       ],
       reportStrategy: { kind: "deterministic" as const }
     };
@@ -44,7 +44,7 @@ describe("Phase 5 council engine", () => {
     expect(result.report?.phase_findings.adversary.length).toBeGreaterThan(0);
     expect(result.report?.position_groups[0]).toMatchObject({
       canonicalPositionId: "other:approve",
-      supporterMemberIds: ["entry_architect", "entry_critic"]
+      supporterMemberIds: ["entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb"]
     });
     expect(result.report?.position_groups[0].steelmans.length).toBeGreaterThan(0);
     expect(result.report?.position_groups[0].objections.length).toBeGreaterThan(0);
@@ -74,8 +74,8 @@ describe("Phase 5 council engine", () => {
       updatedAt: new Date().toISOString(),
       scope: "explicit" as const,
       entries: [
-        { id: "entry_a", route: route.ref, role: "architect" as const, effort: "medium" as const, enabled: true },
-        { id: "entry_b", route: route.ref, role: "risk-critic" as const, effort: "medium" as const, enabled: true }
+        { id: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", route: route.ref, role: "architect" as const, effort: "medium" as const, enabled: true },
+        { id: "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb", route: route.ref, role: "risk-critic" as const, effort: "medium" as const, enabled: true }
       ],
       reportStrategy: { kind: "deterministic" as const }
     };
@@ -113,8 +113,8 @@ describe("Phase 5 council engine", () => {
         updatedAt: new Date().toISOString(),
         scope: "explicit",
         entries: [
-          { id: "entry_a", route: route.ref, role: "architect", effort: "medium", enabled: true },
-          { id: "entry_b", route: route.ref, role: "risk-critic", effort: "medium", enabled: true }
+          { id: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", route: route.ref, role: "architect", effort: "medium", enabled: true },
+          { id: "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb", route: route.ref, role: "risk-critic", effort: "medium", enabled: true }
         ],
         reportStrategy: { kind: "deterministic" }
       },
@@ -145,8 +145,8 @@ describe("Phase 5 council engine", () => {
         updatedAt: new Date().toISOString(),
         scope: "explicit",
         entries: [
-          { id: "entry_a", route: route.ref, role: "architect", effort: "medium", enabled: true },
-          { id: "entry_b", route: route.ref, role: "risk-critic", effort: "medium", enabled: true }
+          { id: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", route: route.ref, role: "architect", effort: "medium", enabled: true },
+          { id: "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb", route: route.ref, role: "risk-critic", effort: "medium", enabled: true }
         ],
         reportStrategy: { kind: "deterministic" }
       },
@@ -177,7 +177,7 @@ describe("Phase 5 council engine", () => {
         updatedAt: new Date().toISOString(),
         scope: "explicit",
         entries: [
-          { id: "entry_a", route: route.ref, role: "architect", effort: "medium", enabled: true }
+          { id: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", route: route.ref, role: "architect", effort: "medium", enabled: true }
         ],
         reportStrategy: { kind: "deterministic" }
       },
@@ -204,9 +204,9 @@ describe("Phase 5 council engine", () => {
         updatedAt: new Date().toISOString(),
         scope: "explicit",
         entries: [
-          { id: "entry_a", route: routes[0].ref, role: "architect", effort: "medium", enabled: true },
-          { id: "entry_b", route: routes[1].ref, role: "steelman", effort: "medium", enabled: true },
-          { id: "entry_c", route: routes[2].ref, role: "steelman", effort: "medium", enabled: true }
+          { id: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", route: routes[0].ref, role: "architect", effort: "medium", enabled: true },
+          { id: "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb", route: routes[1].ref, role: "steelman", effort: "medium", enabled: true },
+          { id: "entry_cccccccccccccccccccccccccc", route: routes[2].ref, role: "steelman", effort: "medium", enabled: true }
         ],
         reportStrategy: { kind: "deterministic" }
       },
@@ -216,12 +216,12 @@ describe("Phase 5 council engine", () => {
       env: {
         ...process.env,
         AISYNTH_COUNCIL_PROVIDER_INVOKE: join(process.cwd(), "tests/council/fakes/provider-invoke"),
-        AISYNTH_FAKE_FAIL_KEY: "council-steelman.json:entry_c"
+        AISYNTH_FAKE_FAIL_KEY: "council-steelman.json:entry_cccccccccccccccccccccccccc"
       }
     });
     expect(result.ok).toBe(true);
     expect(result.report?.decision_readiness).toBe("conditional");
-    expect(result.diagnostics).toContain("steelman degraded for entry_c");
+    expect(result.diagnostics).toContain("steelman degraded for entry_cccccccccccccccccccccccccc");
   });
 
   it("does not let chair synthesis upgrade mechanical readiness", async () => {
@@ -237,10 +237,10 @@ describe("Phase 5 council engine", () => {
         updatedAt: new Date().toISOString(),
         scope: "explicit",
         entries: [
-          { id: "entry_a", route: base.ref, role: "chair", effort: "medium", enabled: true },
-          { id: "entry_b", route: second.ref, role: "risk-critic", effort: "medium", enabled: true }
+          { id: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", route: base.ref, role: "chair", effort: "medium", enabled: true },
+          { id: "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb", route: second.ref, role: "risk-critic", effort: "medium", enabled: true }
         ],
-        reportStrategy: { kind: "chair", chairEntryId: "entry_a" }
+        reportStrategy: { kind: "chair", chairEntryId: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa" }
       },
       routes: [base, second],
       reportStrategySource: "roster_file",
@@ -248,7 +248,7 @@ describe("Phase 5 council engine", () => {
       env: {
         ...process.env,
         AISYNTH_COUNCIL_PROVIDER_INVOKE: join(process.cwd(), "tests/council/fakes/provider-invoke"),
-        AISYNTH_FAKE_POSITION_BY_MEMBER: JSON.stringify({ entry_a: "issue_option_1", entry_b: "issue_option_2" }),
+        AISYNTH_FAKE_POSITION_BY_MEMBER: JSON.stringify({ entry_aaaaaaaaaaaaaaaaaaaaaaaaaa: "issue_option_1", entry_bbbbbbbbbbbbbbbbbbbbbbbbbb: "issue_option_2" }),
         AISYNTH_FAKE_CHAIR_READINESS: "ready"
       }
     });
@@ -268,8 +268,8 @@ describe("Phase 5 council engine", () => {
         updatedAt: new Date().toISOString(),
         scope: "explicit",
         entries: [
-          { id: "entry_a", route: route.ref, role: "architect", effort: "medium", enabled: true },
-          { id: "entry_b", route: route.ref, role: "risk-critic", effort: "medium", enabled: true }
+          { id: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", route: route.ref, role: "architect", effort: "medium", enabled: true },
+          { id: "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb", route: route.ref, role: "risk-critic", effort: "medium", enabled: true }
         ],
         reportStrategy: { kind: "deterministic" }
       },
@@ -300,8 +300,8 @@ describe("Phase 5 council engine", () => {
         updatedAt: new Date().toISOString(),
         scope: "explicit",
         entries: [
-          { id: "entry_a", route: base.ref, role: "architect", effort: "medium", enabled: true },
-          { id: "entry_b", route: second.ref, role: "risk-critic", effort: "medium", enabled: true }
+          { id: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", route: base.ref, role: "architect", effort: "medium", enabled: true },
+          { id: "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb", route: second.ref, role: "risk-critic", effort: "medium", enabled: true }
         ],
         reportStrategy: { kind: "deterministic" }
       },
@@ -331,8 +331,8 @@ describe("Phase 5 council engine", () => {
         updatedAt: new Date().toISOString(),
         scope: "explicit",
         entries: [
-          { id: "entry_a", route: base.ref, role: "architect", effort: "medium", enabled: true },
-          { id: "entry_b", route: second.ref, role: "risk-critic", effort: "medium", enabled: true }
+          { id: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", route: base.ref, role: "architect", effort: "medium", enabled: true },
+          { id: "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb", route: second.ref, role: "risk-critic", effort: "medium", enabled: true }
         ],
         reportStrategy: { kind: "deterministic" }
       },
@@ -366,9 +366,9 @@ describe("Phase 5 council engine", () => {
         updatedAt: new Date().toISOString(),
         scope: "explicit",
         entries: [
-          { id: "entry_a", route: routes[0].ref, role: "architect", effort: "medium", enabled: true },
-          { id: "entry_b", route: routes[1].ref, role: "risk-critic", effort: "medium", enabled: true },
-          { id: "entry_c", route: routes[2].ref, role: "product-operator", effort: "medium", enabled: true }
+          { id: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", route: routes[0].ref, role: "architect", effort: "medium", enabled: true },
+          { id: "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb", route: routes[1].ref, role: "risk-critic", effort: "medium", enabled: true },
+          { id: "entry_cccccccccccccccccccccccccc", route: routes[2].ref, role: "product-operator", effort: "medium", enabled: true }
         ],
         reportStrategy: { kind: "deterministic" }
       },
@@ -378,7 +378,7 @@ describe("Phase 5 council engine", () => {
       env: {
         ...process.env,
         AISYNTH_COUNCIL_PROVIDER_INVOKE: join(process.cwd(), "tests/council/fakes/provider-invoke"),
-        AISYNTH_FAKE_FAIL_KEY: "council-voice.json:entry_c"
+        AISYNTH_FAKE_FAIL_KEY: "council-voice.json:entry_cccccccccccccccccccccccccc"
       }
     });
     expect(initialFailure.report?.decision_readiness).toBe("conditional");
@@ -392,10 +392,10 @@ describe("Phase 5 council engine", () => {
         updatedAt: new Date().toISOString(),
         scope: "explicit",
         entries: [
-          { id: "entry_a", route: routes[0].ref, role: "chair", effort: "medium", enabled: true },
-          { id: "entry_b", route: routes[1].ref, role: "risk-critic", effort: "medium", enabled: true }
+          { id: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", route: routes[0].ref, role: "chair", effort: "medium", enabled: true },
+          { id: "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb", route: routes[1].ref, role: "risk-critic", effort: "medium", enabled: true }
         ],
-        reportStrategy: { kind: "chair", chairEntryId: "entry_a" }
+        reportStrategy: { kind: "chair", chairEntryId: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa" }
       },
       routes: routes.slice(0, 2),
       reportStrategySource: "roster_file",
@@ -403,7 +403,7 @@ describe("Phase 5 council engine", () => {
       env: {
         ...process.env,
         AISYNTH_COUNCIL_PROVIDER_INVOKE: join(process.cwd(), "tests/council/fakes/provider-invoke"),
-        AISYNTH_FAKE_FAIL_KEY: "council-chair-report.json:entry_a"
+        AISYNTH_FAKE_FAIL_KEY: "council-chair-report.json:entry_aaaaaaaaaaaaaaaaaaaaaaaaaa"
       }
     });
     expect(chairFailure.report?.decision_readiness).toBe("conditional");
@@ -427,8 +427,8 @@ describe("Phase 5 council engine", () => {
         updatedAt: new Date().toISOString(),
         scope: "explicit",
         entries: [
-          { id: "entry_a", route: base.ref, role: "architect", effort: "medium", enabled: true },
-          { id: "entry_b", route: second.ref, role: "risk-critic", effort: "medium", enabled: true }
+          { id: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", route: base.ref, role: "architect", effort: "medium", enabled: true },
+          { id: "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb", route: second.ref, role: "risk-critic", effort: "medium", enabled: true }
         ],
         reportStrategy: { kind: "deterministic" }
       },
@@ -438,7 +438,7 @@ describe("Phase 5 council engine", () => {
       env: {
         ...process.env,
         AISYNTH_COUNCIL_PROVIDER_INVOKE: join(process.cwd(), "tests/council/fakes/provider-invoke"),
-        AISYNTH_FAKE_FAIL_KEY: "council-voice.json:entry_b"
+        AISYNTH_FAKE_FAIL_KEY: "council-voice.json:entry_bbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
     });
     const markdown = readFileSync(result.reportPath as string, "utf8");

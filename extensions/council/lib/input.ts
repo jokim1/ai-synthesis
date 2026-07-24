@@ -48,7 +48,13 @@ function isPathShaped(token: string, cwd: string): boolean {
 }
 
 function assertAllowed(real: string, allowedRoots: string[]): void {
-  const roots = allowedRoots.map((root) => realpathSync(root));
+  const roots = allowedRoots.map((root) => {
+    try {
+      return realpathSync(root);
+    } catch {
+      throw Object.assign(new Error(`allowed root is not readable: ${root}`), { exitCode: 2 });
+    }
+  });
   if (!roots.some((root) => real === root || real.startsWith(`${root}/`))) {
     throw Object.assign(new Error(`plan file is outside allowed roots: ${real}`), { exitCode: 2 });
   }
@@ -56,9 +62,19 @@ function assertAllowed(real: string, allowedRoots: string[]): void {
 
 export function loadPlanSnapshot(path: string, cwd: string, allowedRoots = [cwd]): CouncilInputSnapshotV1 {
   const resolved = expandPath(path, cwd);
-  const realpath = realpathSync(resolved);
+  let realpath: string;
+  try {
+    realpath = realpathSync(resolved);
+  } catch {
+    throw Object.assign(new Error(`plan file is not readable: ${path}`), { exitCode: 2 });
+  }
   assertAllowed(realpath, allowedRoots);
-  const stat = statSync(realpath);
+  let stat;
+  try {
+    stat = statSync(realpath);
+  } catch {
+    throw Object.assign(new Error(`plan file is not readable: ${path}`), { exitCode: 2 });
+  }
   if (!stat.isFile()) throw Object.assign(new Error(`plan path is not a regular file: ${path}`), { exitCode: 2 });
   if (stat.size > 512 * 1024) throw Object.assign(new Error(`plan file exceeds 512 KiB: ${path}`), { exitCode: 2 });
   const bytes = readFileSync(realpath);

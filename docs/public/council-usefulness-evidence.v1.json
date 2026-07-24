@@ -1,22 +1,259 @@
 {
   "version": 1,
-  "evaluationMode": "no_cost_engine_fixture",
-  "generatedAt": "2026-07-23T00:00:00.000Z",
+  "evaluationMode": "authorized_portable_provider_invoke",
+  "noCostFixture": false,
+  "generatedAt": "2026-07-24T04:12:16.748Z",
+  "routeProbeDiagnostics": [
+    {
+      "executor": "provider-invoke",
+      "provider": "claude",
+      "status": "ok",
+      "message": "claude subscription route ready"
+    },
+    {
+      "executor": "provider-invoke",
+      "provider": "codex",
+      "status": "unavailable",
+      "message": "tool_policy_unproven"
+    }
+  ],
   "records": [
     {
       "sampleId": "plan-review",
       "inputSha256": "1edcbaa0ab13d48a8b66834440aa988f9b8b21cf858a3ce5bd17fe805e2ad01f",
-      "routes": ["v1:provider-invoke:claude:adapter-default", "v1:provider-invoke:claude:adapter-default"],
+      "routes": [
+        "v1:provider-invoke:claude:adapter-default",
+        "v1:provider-invoke:claude:adapter-default"
+      ],
+      "execution": {
+        "authorizedPortableProviderInvoke": true,
+        "routeProbeGeneratedAt": "2026-07-24T04:07:20.528Z",
+        "provider": "claude",
+        "routeId": "v1:provider-invoke:claude:adapter-default",
+        "authPolicy": "subscription_only",
+        "billing": "subscription",
+        "realModelCalls": true,
+        "fixture": false,
+        "councilReportPath": "live-gate:plan-review:primary",
+        "soloProviderStatus": "ok",
+        "soloResolvedModel": ""
+      },
       "councilResult": {
-        "recommendation": "other:approve: Proceed with the reviewed approach",
-        "verifiedCitationLocators": ["plan.md:L1", "plan.md:L2", "plan.md:L3"],
-        "strongestDissent": "{\"canonicalPositionId\":\"other:approve\",\"axis\":\"recommendation_logic\",\"objection\":\"Residual risk remains\",\"wouldChangeRecommendation\":\"Independent validation\",\"evidenceIds\":[\"ev_initial_entry_b_1\"]}",
-        "assumptionsOrRisksCount": 5,
-        "nextAction": "Verify: Measure rollback readiness against staged traffic"
+        "recommendation": "revise_plan: Revise before accepting. The plan names three sound operational steps — validation, flagged rollout, rollback — but omits the architectural substance needed to review it. There is no statement of what system/change is being deployed (plan.md:L1-L3), no schema or scope for \"request validation\" (plan.md:L1), no rollout stages or flag scoping for the deploy (plan.md:L2), and no defined baseline, threshold, or observation window for the \"error-rate regression\" rollback trigger (plan.md:L3). Add: (a) the change under deployment and its blast radius, (b) concrete validation rules/interface, (c) staged rollout percentages with the flag's default state, and (d) a quantified rollback SLO (metric, threshold, window, owner). These are cheap to specify and are the load-bearing details for an architecture sign-off.",
+        "decision_readiness": "conditional",
+        "evidence_summary": [
+          "Plan calls for request validation but gives no schema, scope, or interface (plan.md:L1-L1)",
+          "Deploy is behind a feature flag but flag default state and rollout staging are unspecified (plan.md:L2-L2)",
+          "Rollback triggers on error-rate regression with no baseline, threshold, or window defined (plan.md:L3-L3)",
+          "Plan never states what change/system is being deployed (plan.md:L1-L3)",
+          "Step 1 mandates request validation but gives no schema, endpoint scope, or failure behavior (reject vs. sanitize). (plan.md:L1)",
+          "Step 2 requires a feature flag but names no flag mechanism, default state, or rollout percentage/cohort. (plan.md:L2)",
+          "Step 3 triggers rollback on 'error-rate regression' with no baseline, threshold, window, or manual-vs-automatic decision. (plan.md:L3)"
+        ],
+        "strongest_dissent": "{\"canonicalPositionId\":\"revise_plan\",\"axis\":\"evidence\",\"objection\":\"The revise verdict treats plan.md's three lines as a self-contained spec, but the grounded evidence proves only that L1-L3 omit schema, flag defaults, and rollback thresholds — not that those details are absent from the artifact or an external runbook. Absence of detail in the reviewed lines is not evidence of absence in the underlying plan; the load-bearing completeness assumption remains unverified.\",\"wouldChangeRecommendation\":\"If evidence confirmed plan.md is a summary backed by a runbook, revise would collapse to a cross-reference request; if it confirmed no external source exists, revise stands.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3\"]}",
+        "assumptions": [
+          "entry_gzrwutuzgbovp2kmjf75riembi: The three lines are the entire plan and not an excerpt of a larger document",
+          "entry_gzrwutuzgbovp2kmjf75riembi: Error-rate is the intended primary rollback signal rather than latency or saturation",
+          "entry_3d7rrxij2ngadquhxyxqlkrita: Detecting an error-rate regression requires a defined pre-deploy baseline and comparison window.",
+          "entry_3d7rrxij2ngadquhxyxqlkrita: plan.md is the complete specification and not backed by an external runbook."
+        ],
+        "risks": [
+          "entry_gzrwutuzgbovp2kmjf75riembi: \"Error-rate regression\" without a numeric threshold and window makes rollback undecidable and unautomatable",
+          "entry_gzrwutuzgbovp2kmjf75riembi: Unspecified validation scope can pass review yet ship an incomplete or bypassable check",
+          "entry_gzrwutuzgbovp2kmjf75riembi: No stated flag default or rollout staging risks an all-at-once exposure despite the flag",
+          "entry_3d7rrxij2ngadquhxyxqlkrita: Ambiguous validation could reject legitimate traffic or, if sanitizing silently, mask malformed requests.",
+          "entry_3d7rrxij2ngadquhxyxqlkrita: Undefined rollback threshold risks either thrashing on noise or failing to roll back during a real regression.",
+          "entry_3d7rrxij2ngadquhxyxqlkrita: No stated flag default could ship the feature to 100% of traffic on first deploy, defeating the flag's purpose.",
+          "{\"canonicalPositionId\":\"revise_plan\",\"axis\":\"evidence\",\"objection\":\"The revise verdict treats plan.md's three lines as a self-contained spec, but the grounded evidence proves only that L1-L3 omit schema, flag defaults, and rollback thresholds — not that those details are absent from the artifact or an external runbook. Absence of detail in the reviewed lines is not evidence of absence in the underlying plan; the load-bearing completeness assumption remains unverified.\",\"wouldChangeRecommendation\":\"If evidence confirmed plan.md is a summary backed by a runbook, revise would collapse to a cross-reference request; if it confirmed no external source exists, revise stands.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3\"]}",
+          "{\"canonicalPositionId\":\"revise_plan\",\"axis\":\"framing\",\"objection\":\"Framing the undefined rollback trigger and unspecified flag default as worst-case failures ('undecidable/unautomatable', 'ships to 100%') over-reads the evidence. plan.md:L2-L3 are silent on org-standard SLO/error-budget and flag-default conventions rather than contradicting them, so the catastrophic reading is asserted beyond what is grounded.\",\"wouldChangeRecommendation\":\"None on the verdict — the bounded 'name the values or their source' revise survives without the worst-case framing; dropping the overreach only narrows the objection, it does not move off revise_plan.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3\"]}"
+        ],
+        "what_would_change_recommendation": [
+          "A quantified rollback SLO (metric, threshold, observation window, owner) added to plan.md:L3",
+          "An explicit statement of the change under deployment and its blast radius",
+          "Concrete validation rules/interface specified for plan.md:L1",
+          "An accompanying spec/runbook that defines the validation schema, flag system + default state, and a numeric rollback threshold with measurement window.",
+          "Evidence that these parameters are standardized org-wide so the plan can safely reference them by default.",
+          "{\"canonicalPositionId\":\"revise_plan\",\"challenge\":\"Both revise verdicts rest on treating plan.md's three lines as the entire, self-contained spec, but the cited evidence only proves the three lines exist and say nothing about schema/threshold/window (plan.md:L1-L3). Absence of detail in an excerpt is not evidence that the detail is absent from the artifact. If plan.md is a summary backed by a runbook, every 'not implementable as written' claim collapses to a missing cross-reference, weakening revise to a minor edit.\",\"evidenceIds\":[\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_1\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_2\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3\"]}",
+          "{\"canonicalPositionId\":\"revise_plan\",\"challenge\":\"The strongest implementation claim — that an undefined error-rate trigger makes rollback 'undecidable/unautomatable' — over-reads plan-line evidence. plan.md:L3 not stating a threshold does not establish that no org-standard SLO/error-budget default applies; the evidence is silent on org conventions, not contradicting them. The same over-read applies to the flag default (plan.md:L2): 'no stated default' is not 'ships to 100%'. These worst-case failure modes are asserted beyond what the frozen evidence grounds.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3\"]}",
+          "{\"canonicalPositionId\":\"revise_plan\",\"challenge\":\"Neither voice grounds what change/system is under deployment, yet both proceed to a substantive revise verdict on validation scope and blast radius. The only evidence on this point (plan.md:L1-L3) affirmatively confirms the change is unnamed. Reviewing the adequacy of 'request validation' or rollout staging without knowing the system is itself unsupported; the honest reading of this evidence points toward needs_more_evidence rather than a confident revise.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1\"]}"
+        ],
+        "phase_findings": {
+          "critique": [
+            "{\"canonicalPositionId\":\"revise_plan\",\"challenge\":\"Both revise verdicts rest on treating plan.md's three lines as the entire, self-contained spec, but the cited evidence only proves the three lines exist and say nothing about schema/threshold/window (plan.md:L1-L3). Absence of detail in an excerpt is not evidence that the detail is absent from the artifact. If plan.md is a summary backed by a runbook, every 'not implementable as written' claim collapses to a missing cross-reference, weakening revise to a minor edit.\",\"evidenceIds\":[\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_1\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_2\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3\"]}",
+            "{\"canonicalPositionId\":\"revise_plan\",\"challenge\":\"The strongest implementation claim — that an undefined error-rate trigger makes rollback 'undecidable/unautomatable' — over-reads plan-line evidence. plan.md:L3 not stating a threshold does not establish that no org-standard SLO/error-budget default applies; the evidence is silent on org conventions, not contradicting them. The same over-read applies to the flag default (plan.md:L2): 'no stated default' is not 'ships to 100%'. These worst-case failure modes are asserted beyond what the frozen evidence grounds.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3\"]}",
+            "{\"canonicalPositionId\":\"revise_plan\",\"challenge\":\"Neither voice grounds what change/system is under deployment, yet both proceed to a substantive revise verdict on validation scope and blast radius. The only evidence on this point (plan.md:L1-L3) affirmatively confirms the change is unnamed. Reviewing the adequacy of 'request validation' or rollout staging without knowing the system is itself unsupported; the honest reading of this evidence points toward needs_more_evidence rather than a confident revise.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1\"]}",
+            "{\"assumptionId\":\"entry_gzrwutuzgbovp2kmjf75riembi:plan-is-complete-text\",\"status\":\"unverified\",\"rationale\":\"The cited plan-line evidence confirms only that L1-L3 contain no further detail; it cannot demonstrate the absence of additional sections or an external document. Verifying completeness (howToVerify: no sections beyond L3) requires inspecting the artifact's boundaries, which the frozen evidence does not establish.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4\"]}",
+            "{\"assumptionId\":\"entry_gzrwutuzgbovp2kmjf75riembi:error-rate-is-primary-slo\",\"status\":\"unverified\",\"rationale\":\"Confirming error-rate is the intended primary rollback signal requires the affected system's SLO definitions, which are not in the frozen context. The cited plan lines show only that L3 names error-rate, not that it is the correct or primary SLO over latency/saturation.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4\"]}",
+            "{\"assumptionId\":\"entry_3d7rrxij2ngadquhxyxqlkrita:regression-needs-baseline\",\"status\":\"unverified\",\"rationale\":\"This is a domain claim about what regression detection requires; the cited evidence only shows plan.md:L3 omits a baseline/window. Whether a baseline is strictly necessary (vs. an existing SLO/error-budget baseline defined elsewhere) is exactly what howToVerify defers to surrounding system docs not present in the frozen context.\",\"evidenceIds\":[\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_1\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_2\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3\"]}",
+            "{\"assumptionId\":\"entry_3d7rrxij2ngadquhxyxqlkrita:single-plan-source\",\"status\":\"unverified\",\"rationale\":\"The cited plan lines contain no reference to an external runbook, but the absence of a citation within L1-L3 does not prove no runbook backs the plan. Confirming no external procedure exists requires evidence about the input's linkage that the frozen context does not supply.\",\"evidenceIds\":[\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_1\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_2\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3\"]}"
+          ],
+          "steelman": [
+            "{\"canonicalPositionId\":\"revise_plan\",\"improvedCase\":\"The plan should be revised before sign-off, and the strongest form of this case does not depend on assuming worst-case failures. All four rollout-defining parameters that an architect needs to review are absent from the artifact under review: the change/system and its blast radius are unnamed (ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4), request validation has no schema, scope, or reject-vs-sanitize behavior (ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1, ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_1), the feature flag has no named mechanism, default state, or rollout cohort (ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2, ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_2), and the rollback trigger names no baseline, threshold, or observation window (ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3, ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3). The revise verdict survives even if org-standard defaults or a backing runbook exist: in that case the correct fix is to make the missing values explicit or cite the runbook by reference at plan.md:L1-L3. Because the plan is the frozen review surface, review must be conducted on what it states; each parameter is cheap to specify or cross-reference, and adding them is a strictly bounded edit rather than a rejection. This reframes revise as 'name the load-bearing values (or their source)' — a claim that holds whether the values are undefined or merely uncited.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_1\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_2\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3\"],\"concededRisks\":[\"The evidence proves only that L1-L3 omit these details, not that the details are absent from the artifact or an external runbook; if plan.md is a summary, revise collapses to a cross-reference request rather than substantive revision.\",\"Worst-case failure modes (rollback 'undecidable/unautomatable', flag 'ships to 100%') are asserted beyond what the plan-line evidence grounds, since the frozen context is silent on org-wide SLO/flag defaults rather than contradicting them.\",\"The completeness assumption (three lines are the entire plan) is load-bearing and unverified in the frozen context; if false, the honest verdict may be needs_more_evidence rather than revise.\",\"That error-rate is the correct primary rollback signal (vs. latency/saturation) is unverified without the affected system's SLO definitions.\"]}"
+          ],
+          "adversary": [
+            "{\"canonicalPositionId\":\"revise_plan\",\"axis\":\"evidence\",\"objection\":\"The revise verdict treats plan.md's three lines as a self-contained spec, but the grounded evidence proves only that L1-L3 omit schema, flag defaults, and rollback thresholds — not that those details are absent from the artifact or an external runbook. Absence of detail in the reviewed lines is not evidence of absence in the underlying plan; the load-bearing completeness assumption remains unverified.\",\"wouldChangeRecommendation\":\"If evidence confirmed plan.md is a summary backed by a runbook, revise would collapse to a cross-reference request; if it confirmed no external source exists, revise stands.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3\"]}",
+            "{\"canonicalPositionId\":\"revise_plan\",\"axis\":\"framing\",\"objection\":\"Framing the undefined rollback trigger and unspecified flag default as worst-case failures ('undecidable/unautomatable', 'ships to 100%') over-reads the evidence. plan.md:L2-L3 are silent on org-standard SLO/error-budget and flag-default conventions rather than contradicting them, so the catastrophic reading is asserted beyond what is grounded.\",\"wouldChangeRecommendation\":\"None on the verdict — the bounded 'name the values or their source' revise survives without the worst-case framing; dropping the overreach only narrows the objection, it does not move off revise_plan.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3\"]}",
+            "{\"canonicalPositionId\":\"revise_plan\",\"axis\":\"recommendation_logic\",\"objection\":\"The plan never names the change/system under deployment (ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4), yet the verdict reviews validation scope and blast radius adequacy. Judging whether 'request validation' or rollout staging is sufficient without knowing the system is unsupported; the honest reading points toward needs_more_evidence rather than a confident revise on scope.\",\"wouldChangeRecommendation\":\"If the objective is judging scope adequacy, the verdict should be needs_more_evidence; if the objective is bounded to 'the artifact omits load-bearing values that must be named or cited', revise_plan holds.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1\"]}"
+          ]
+        },
+        "position_groups": [
+          {
+            "canonicalPositionId": "revise_plan",
+            "supporterMemberIds": [
+              "entry_gzrwutuzgbovp2kmjf75riembi",
+              "entry_3d7rrxij2ngadquhxyxqlkrita"
+            ],
+            "evidenceIds": [
+              "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1",
+              "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2",
+              "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3",
+              "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4",
+              "ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_1",
+              "ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_2",
+              "ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3"
+            ],
+            "assumptionIds": [
+              "entry_gzrwutuzgbovp2kmjf75riembi:plan-is-complete-text",
+              "entry_gzrwutuzgbovp2kmjf75riembi:error-rate-is-primary-slo",
+              "entry_3d7rrxij2ngadquhxyxqlkrita:regression-needs-baseline",
+              "entry_3d7rrxij2ngadquhxyxqlkrita:single-plan-source"
+            ],
+            "steelmans": [
+              {
+                "canonicalPositionId": "revise_plan",
+                "improvedCase": "The plan should be revised before sign-off, and the strongest form of this case does not depend on assuming worst-case failures. All four rollout-defining parameters that an architect needs to review are absent from the artifact under review: the change/system and its blast radius are unnamed (ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4), request validation has no schema, scope, or reject-vs-sanitize behavior (ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1, ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_1), the feature flag has no named mechanism, default state, or rollout cohort (ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2, ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_2), and the rollback trigger names no baseline, threshold, or observation window (ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3, ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3). The revise verdict survives even if org-standard defaults or a backing runbook exist: in that case the correct fix is to make the missing values explicit or cite the runbook by reference at plan.md:L1-L3. Because the plan is the frozen review surface, review must be conducted on what it states; each parameter is cheap to specify or cross-reference, and adding them is a strictly bounded edit rather than a rejection. This reframes revise as 'name the load-bearing values (or their source)' — a claim that holds whether the values are undefined or merely uncited.",
+                "evidenceIds": [
+                  "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1",
+                  "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2",
+                  "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3",
+                  "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4",
+                  "ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_1",
+                  "ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_2",
+                  "ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3"
+                ],
+                "concededRisks": [
+                  "The evidence proves only that L1-L3 omit these details, not that the details are absent from the artifact or an external runbook; if plan.md is a summary, revise collapses to a cross-reference request rather than substantive revision.",
+                  "Worst-case failure modes (rollback 'undecidable/unautomatable', flag 'ships to 100%') are asserted beyond what the plan-line evidence grounds, since the frozen context is silent on org-wide SLO/flag defaults rather than contradicting them.",
+                  "The completeness assumption (three lines are the entire plan) is load-bearing and unverified in the frozen context; if false, the honest verdict may be needs_more_evidence rather than revise.",
+                  "That error-rate is the correct primary rollback signal (vs. latency/saturation) is unverified without the affected system's SLO definitions."
+                ]
+              }
+            ],
+            "objections": [
+              {
+                "canonicalPositionId": "revise_plan",
+                "axis": "evidence",
+                "objection": "The revise verdict treats plan.md's three lines as a self-contained spec, but the grounded evidence proves only that L1-L3 omit schema, flag defaults, and rollback thresholds — not that those details are absent from the artifact or an external runbook. Absence of detail in the reviewed lines is not evidence of absence in the underlying plan; the load-bearing completeness assumption remains unverified.",
+                "wouldChangeRecommendation": "If evidence confirmed plan.md is a summary backed by a runbook, revise would collapse to a cross-reference request; if it confirmed no external source exists, revise stands.",
+                "evidenceIds": [
+                  "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1",
+                  "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2",
+                  "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3"
+                ]
+              },
+              {
+                "canonicalPositionId": "revise_plan",
+                "axis": "framing",
+                "objection": "Framing the undefined rollback trigger and unspecified flag default as worst-case failures ('undecidable/unautomatable', 'ships to 100%') over-reads the evidence. plan.md:L2-L3 are silent on org-standard SLO/error-budget and flag-default conventions rather than contradicting them, so the catastrophic reading is asserted beyond what is grounded.",
+                "wouldChangeRecommendation": "None on the verdict — the bounded 'name the values or their source' revise survives without the worst-case framing; dropping the overreach only narrows the objection, it does not move off revise_plan.",
+                "evidenceIds": [
+                  "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2",
+                  "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3",
+                  "ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3"
+                ]
+              },
+              {
+                "canonicalPositionId": "revise_plan",
+                "axis": "recommendation_logic",
+                "objection": "The plan never names the change/system under deployment (ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4), yet the verdict reviews validation scope and blast radius adequacy. Judging whether 'request validation' or rollout staging is sufficient without knowing the system is unsupported; the honest reading points toward needs_more_evidence rather than a confident revise on scope.",
+                "wouldChangeRecommendation": "If the objective is judging scope adequacy, the verdict should be needs_more_evidence; if the objective is bounded to 'the artifact omits load-bearing values that must be named or cited', revise_plan holds.",
+                "evidenceIds": [
+                  "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4",
+                  "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1"
+                ]
+              }
+            ],
+            "oppositionMemberIds": []
+          }
+        ],
+        "next_action": "Verify: Confirm plan.md has no further sections beyond L3",
+        "implementation_authorized": false,
+        "verifiedCitationLocators": [
+          "plan.md:L1",
+          "plan.md:L1-L1",
+          "plan.md:L1-L3",
+          "plan.md:L2",
+          "plan.md:L2-L2",
+          "plan.md:L3",
+          "plan.md:L3-L3"
+        ],
+        "strongestDissent": "{\"canonicalPositionId\":\"revise_plan\",\"axis\":\"evidence\",\"objection\":\"The revise verdict treats plan.md's three lines as a self-contained spec, but the grounded evidence proves only that L1-L3 omit schema, flag defaults, and rollback thresholds — not that those details are absent from the artifact or an external runbook. Absence of detail in the reviewed lines is not evidence of absence in the underlying plan; the load-bearing completeness assumption remains unverified.\",\"wouldChangeRecommendation\":\"If evidence confirmed plan.md is a summary backed by a runbook, revise would collapse to a cross-reference request; if it confirmed no external source exists, revise stands.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3\"]}",
+        "assumptionsOrRisksCount": 12,
+        "nextAction": "Verify: Confirm plan.md has no further sections beyond L3"
       },
       "soloComparison": {
-        "baselineRecommendation": "Proceed with the reviewed approach",
-        "materialDeltas": ["next_action"],
+        "ok": true,
+        "member_id": "entry_ffffffffffffffffffffffffff",
+        "role": "architect",
+        "position_key": "endorse-with-observability-preconditions",
+        "recommendation": "Endorse the three-step plan as ordered — request validation first, feature-flag-gated deploy second, rollback-on-regression third is a correct risk-descending sequence. Before execution, pin the two implicit contracts that make step 3 real: (a) a concrete error-rate baseline + regression threshold with a measurement window, and (b) an emission/observability path so the flag controller can actually see that error rate. Also scope step 1's validation (reject-invalid vs. coerce) since it changes the error surface step 3 measures.",
+        "evidence": [
+          {
+            "claim": "Plan orders controls by descending blast radius: validation gates bad input before it reaches the deploy, the flag limits exposure of the deploy, and rollback bounds the failure duration.",
+            "source_type": "plan_line",
+            "locator": "plan.md:1-3"
+          },
+          {
+            "claim": "Step 3 'Roll back on error-rate regression' presupposes a defined baseline error rate and threshold, neither of which the plan states.",
+            "source_type": "plan_line",
+            "locator": "plan.md:3"
+          },
+          {
+            "claim": "A feature-flag deploy (step 2) is what makes an automated rollback (step 3) cheap and fast, so the two steps are coupled and correctly adjacent.",
+            "source_type": "theory",
+            "locator": "progressive-delivery / canary rollback pattern"
+          }
+        ],
+        "assumptions": [
+          {
+            "assumption_key": "error-rate-is-observed",
+            "statement": "An existing metrics/observability pipeline can report the deploy's error rate at a granularity fine enough to trigger rollback within the exposure window.",
+            "load_bearing": true,
+            "if_false_then": "Step 3 cannot fire automatically; rollback degrades to manual/reactive and the flag gating loses most of its value.",
+            "how_to_verify": "Confirm the service emits per-flag or per-cohort error metrics and that an alert/controller can read them."
+          },
+          {
+            "assumption_key": "flag-is-runtime-toggle",
+            "statement": "The feature flag can be flipped off at runtime without a redeploy.",
+            "load_bearing": true,
+            "if_false_then": "Rollback requires a full redeploy, defeating the fast-rollback intent of the sequence.",
+            "how_to_verify": "Check that the flag system supports live evaluation/kill-switch, not just build-time config."
+          },
+          {
+            "assumption_key": "validation-semantics",
+            "statement": "Step 1 rejects invalid requests (4xx) rather than silently coercing them.",
+            "load_bearing": false,
+            "if_false_then": "Coercion masks bad input as success, so the error rate in step 3 under-reports real failures.",
+            "how_to_verify": "Review the validation spec for reject-vs-coerce behavior."
+          }
+        ],
+        "risks": [
+          "'error-rate regression' undefined: no baseline, threshold, or window means step 3 is untriggerable or arbitrary.",
+          "Rollback flips the flag but does not undo any non-flagged side effects (schema/data writes) the deploy performed.",
+          "Validation errors (step 1) may themselves inflate the 4xx error rate and falsely trip the step-3 rollback if the metric doesn't separate client from server errors.",
+          "Flag-off leaves the deployed code in place; a latent bug behind other code paths remains resident."
+        ],
+        "what_would_change_my_view": [
+          "A stated numeric baseline + regression threshold + measurement window for step 3.",
+          "Confirmation the flag is a live runtime kill-switch vs. build-time config.",
+          "Evidence the error-rate metric distinguishes validation-driven 4xx from genuine 5xx regressions.",
+          "Confirmation the deploy has no irreversible side effects that survive a flag flip."
+        ],
+        "next_action": "Ask the plan owner to attach a rollback trigger spec (baseline error rate, regression threshold %, evaluation window, and metric source) and confirm the flag is a runtime kill-switch; treat those as preconditions before step 2 executes.",
+        "baselineRecommendation": "Endorse the three-step plan as ordered — request validation first, feature-flag-gated deploy second, rollback-on-regression third is a correct risk-descending sequence. Before execution, pin the two implicit contracts that make step 3 real: (a) a concrete error-rate baseline + regression threshold with a measurement window, and (b) an emission/observability path so the flag controller can actually see that error rate. Also scope step 1's validation (reject-invalid vs. coerce) since it changes the error surface step 3 measures.",
+        "materialDeltas": [
+          "next_action"
+        ],
         "usedByFinalReport": true
       },
       "revisionAttempts": [],
@@ -25,17 +262,211 @@
     {
       "sampleId": "issue-explicit-alternatives",
       "inputSha256": "e2fd9bd52f6b67cfad5993d04e2059461c566c7918aa8b10c2e313bed0512fa0",
-      "routes": ["v1:provider-invoke:claude:adapter-default", "v1:provider-invoke:claude:adapter-default"],
+      "routes": [
+        "v1:provider-invoke:claude:adapter-default",
+        "v1:provider-invoke:claude:adapter-default"
+      ],
+      "execution": {
+        "authorizedPortableProviderInvoke": true,
+        "routeProbeGeneratedAt": "2026-07-24T04:09:36.593Z",
+        "provider": "claude",
+        "routeId": "v1:provider-invoke:claude:adapter-default",
+        "authPolicy": "subscription_only",
+        "billing": "subscription",
+        "realModelCalls": true,
+        "fixture": false,
+        "councilReportPath": "live-gate:issue-explicit-alternatives:primary",
+        "soloProviderStatus": "ok",
+        "soloResolvedModel": ""
+      },
       "councilResult": {
-        "recommendation": "other:approve: Proceed with the reviewed approach",
-        "verifiedCitationLocators": ["issue:L1", "issue:L2", "issue:L3"],
-        "strongestDissent": "{\"canonicalPositionId\":\"other:approve\",\"axis\":\"recommendation_logic\",\"objection\":\"Residual risk remains\",\"wouldChangeRecommendation\":\"Independent validation\",\"evidenceIds\":[\"ev_initial_entry_b_1\"]}",
-        "assumptionsOrRisksCount": 5,
-        "nextAction": "Verify: Measure rollback readiness against staged traffic"
+        "recommendation": "issue_option_2: Run a staged rollout. The issue presents three mutually exclusive options (issue:L2-L4) with no accompanying evidence about readiness, load capacity, or blast radius. From a product-operations standpoint, a staged rollout dominates the alternatives under this uncertainty: it captures most of the value of shipping while bounding downside, and it generates the very load/behavior signal that Option C would otherwise force us to wait for. \"Ship immediately\" (issue:L2) assumes confidence we have no basis for; \"Defer pending load tests\" (issue:L4) forgoes all learning and delivery until an unscoped gate clears. Staging lets us expand exposure as metrics confirm health.",
+        "decision_readiness": "conditional",
+        "evidence_summary": [
+          "The issue offers three explicit choices: ship immediately, staged rollout, or defer pending load tests. (issue:L2-L4)",
+          "The issue frames this as a mutually exclusive choice with no supporting readiness or load data provided. (issue:L1-L4)",
+          "The issue offers exactly three options: ship immediately, staged rollout, defer pending load tests. (issue:L1-L4)",
+          "Staged rollout is explicitly available as Option B. (issue:L3)"
+        ],
+        "strongest_dissent": "{\"canonicalPositionId\":\"issue_option_2\",\"axis\":\"evidence\",\"objection\":\"The staged-rollout recommendation is load-bearing on partial-rollout-plus-rollback infrastructure existing in the target environment, yet no grounded evidence establishes it. ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_1 and _2 confirm only that Option B is offered as a choice, not that it is executable; the sole mechanism claim, ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_3, is engine_unverified prior knowledge. The assumption rollout-infra-exists therefore stands unproven.\",\"wouldChangeRecommendation\":\"If deployment tooling is confirmed to lack canary/percentage routing or a rollback path, Option B ceases to be a low-cost middle path and becomes unbudgeted tooling work, collapsing toward Option C (defer).\",\"evidenceIds\":[\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_1\",\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_2\",\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_3\"]}",
+        "assumptions": [
+          "entry_si6rrzoiuef6chdkavmc3tnnia: The system/feature can technically be exposed to a subset of traffic or users (flags, cohorts, or canary).",
+          "entry_si6rrzoiuef6chdkavmc3tnnia: A partial rollout can be halted or rolled back if metrics degrade.",
+          "entry_ck4fcfg3buhngm2z7dm77sukte: The system supports incrementally routing traffic to a subset (canary/percentage or cohort gating) with rollback.",
+          "entry_ck4fcfg3buhngm2z7dm77sukte: Load/scale is a plausible failure mode for the change under review."
+        ],
+        "risks": [
+          "entry_si6rrzoiuef6chdkavmc3tnnia: Issue provides zero context on scale, SLAs, or failure impact, so option selection rests on general product-ops heuristics rather than case-specific evidence.",
+          "entry_si6rrzoiuef6chdkavmc3tnnia: If load characteristics are pathological, even a small stage could cause user-visible harm before metrics catch it.",
+          "entry_si6rrzoiuef6chdkavmc3tnnia: Staged rollout requires monitoring and gating discipline that may not be in place.",
+          "entry_ck4fcfg3buhngm2z7dm77sukte: The issue gives no detail on scope, reversibility, or the specific hazard, so option selection rests on generic risk reasoning rather than case facts.",
+          "entry_ck4fcfg3buhngm2z7dm77sukte: A staged rollout still ships to real users in stage one; if the failure mode is catastrophic and instantaneous, even a small cohort may be unacceptable.",
+          "entry_ck4fcfg3buhngm2z7dm77sukte: If no partial-rollout mechanism exists, choosing this option implies unbudgeted tooling work.",
+          "{\"canonicalPositionId\":\"issue_option_2\",\"axis\":\"evidence\",\"objection\":\"The staged-rollout recommendation is load-bearing on partial-rollout-plus-rollback infrastructure existing in the target environment, yet no grounded evidence establishes it. ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_1 and _2 confirm only that Option B is offered as a choice, not that it is executable; the sole mechanism claim, ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_3, is engine_unverified prior knowledge. The assumption rollout-infra-exists therefore stands unproven.\",\"wouldChangeRecommendation\":\"If deployment tooling is confirmed to lack canary/percentage routing or a rollback path, Option B ceases to be a low-cost middle path and becomes unbudgeted tooling work, collapsing toward Option C (defer).\",\"evidenceIds\":[\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_1\",\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_2\",\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_3\"]}",
+          "{\"canonicalPositionId\":\"issue_option_2\",\"axis\":\"recommendation_logic\",\"objection\":\"Treating a staged rollout as validation of the load risk is a logical gap: capacity failures frequently manifest only at or near full scale, so a stage-1 cohort can pass cleanly while leaving the load risk unvalidated. ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_2 shows the issue supplies no readiness or load data, so there is no basis to claim a small cohort surfaces the specific failure mode Option C's load tests target.\",\"wouldChangeRecommendation\":\"If load is the binding failure mode and only appears near full scale, staged rollout substitutes the appearance of validation for actual load evidence, favoring Option C until load tests are run.\",\"evidenceIds\":[\"ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_2\",\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_3\"]}"
+        ],
+        "what_would_change_recommendation": [
+          "Evidence that load tests are cheap and fast would push me toward Defer pending load tests before any exposure.",
+          "Evidence of a hard, irreversible dependency or regulatory gate would push me toward Defer.",
+          "Evidence of a mature, proven canary system with tight rollback would make Ship immediately (as an aggressive canary) more acceptable.",
+          "Evidence that the change is irreversible or its worst-case failure is catastrophic even at small cohort size — would push toward defer pending load tests.",
+          "Evidence that load is the sole material risk and cannot be observed safely in production — would favor Option C.",
+          "Evidence the change is trivial, fully reversible, and low-blast-radius — would make immediate ship acceptable.",
+          "{\"canonicalPositionId\":\"issue_option_2\",\"challenge\":\"Both staged-rollout recommendations are load-bearing on partial-rollout-plus-rollback infrastructure existing in the target environment, but nothing in the frozen record establishes it. The issue text (ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_1, _2) only confirms Option B is offered, not that it is executable, and the sole supporting rationale (ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_3) is a generic progressive-delivery practice claim the engine flagged unverified. If canary/rollback tooling is absent, Option B is not a low-cost middle path — it becomes unbudgeted tooling work and, by both voices' own if_false branches, collapses toward defer.\",\"evidenceIds\":[\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_1\",\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_2\",\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_3\"]}",
+          "{\"canonicalPositionId\":\"issue_option_2\",\"challenge\":\"The strongest product claim — that a canary stage 'captures most of Option C's benefit' and can double as the load-validation gate — is unsupported. The issue provides no readiness or load data (ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_2), so there is no basis to assert a small cohort will surface the specific failure mode load tests target. Capacity failures frequently manifest only at or near full scale; a stage-1 cohort can pass cleanly and still leave the load risk unvalidated, meaning staged rollout may substitute the appearance of validation for actual load evidence.\",\"evidenceIds\":[\"ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_2\",\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_3\"]}"
+        ],
+        "phase_findings": {
+          "critique": [
+            "{\"canonicalPositionId\":\"issue_option_2\",\"challenge\":\"Both staged-rollout recommendations are load-bearing on partial-rollout-plus-rollback infrastructure existing in the target environment, but nothing in the frozen record establishes it. The issue text (ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_1, _2) only confirms Option B is offered, not that it is executable, and the sole supporting rationale (ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_3) is a generic progressive-delivery practice claim the engine flagged unverified. If canary/rollback tooling is absent, Option B is not a low-cost middle path — it becomes unbudgeted tooling work and, by both voices' own if_false branches, collapses toward defer.\",\"evidenceIds\":[\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_1\",\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_2\",\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_3\"]}",
+            "{\"canonicalPositionId\":\"issue_option_2\",\"challenge\":\"The strongest product claim — that a canary stage 'captures most of Option C's benefit' and can double as the load-validation gate — is unsupported. The issue provides no readiness or load data (ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_2), so there is no basis to assert a small cohort will surface the specific failure mode load tests target. Capacity failures frequently manifest only at or near full scale; a stage-1 cohort can pass cleanly and still leave the load risk unvalidated, meaning staged rollout may substitute the appearance of validation for actual load evidence.\",\"evidenceIds\":[\"ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_2\",\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_3\"]}",
+            "{\"assumptionId\":\"entry_si6rrzoiuef6chdkavmc3tnnia:staging-supported\",\"status\":\"unverified\",\"rationale\":\"The cited evidence only shows the issue lists three options and provides no readiness data; it does not confirm any flag, cohort, or canary mechanism exists in the pipeline. Verification requires inspecting the deployment pipeline, which is outside the frozen context.\",\"evidenceIds\":[\"ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_1\",\"ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_2\"]}",
+            "{\"assumptionId\":\"entry_si6rrzoiuef6chdkavmc3tnnia:reversible\",\"status\":\"unverified\",\"rationale\":\"No cited evidence speaks to rollback or kill-switch tooling; the issue text establishes only the option set. Reversibility cannot be confirmed or contradicted from the frozen record.\",\"evidenceIds\":[\"ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_1\",\"ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_2\"]}",
+            "{\"assumptionId\":\"entry_ck4fcfg3buhngm2z7dm77sukte:rollout-infra-exists\",\"status\":\"unverified\",\"rationale\":\"The issue-text evidence confirms only that staged rollout is an offered option, and the third citation is a generic practice claim the engine marked engine_unverified. None establishes that deployment tooling supports incremental routing with rollback in the target environment. This load-bearing assumption remains unproven.\",\"evidenceIds\":[\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_1\",\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_2\",\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_3\"]}",
+            "{\"assumptionId\":\"entry_ck4fcfg3buhngm2z7dm77sukte:load-is-a-real-risk\",\"status\":\"unverified\",\"rationale\":\"Whether the change touches hot paths or capacity-sensitive components cannot be determined from the frozen context; the issue supplies no scope or load data. The assumption is neither confirmed nor contradicted, and it is non-load-bearing by declaration.\",\"evidenceIds\":[\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_1\",\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_2\"]}"
+          ],
+          "steelman": [
+            "{\"canonicalPositionId\":\"issue_option_2\",\"improvedCase\":\"Under the actual epistemic state of this issue, staged rollout is the dominant choice precisely because the record is empty on readiness and load (ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_2). The issue presents three mutually exclusive options (ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_1, ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_1), and Option B is explicitly on the table (ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_2). The strongest framing is not that a canary substitutes for load testing, but that staged rollout is the only option that treats the missing evidence as information to be acquired rather than assumed away: 'ship immediately' presumes confidence the record does not supply, and 'defer pending load tests' forfeits all delivery and learning against an unscoped gate. Staged rollout instead structures exposure so each increment is conditioned on observed health thresholds — it is a decision procedure under uncertainty, not a claim that a small cohort proves scale-safety. Its value is robust even if load turns out not to be the binding risk, because bounded exposure with gated promotion also catches correctness and behavior regressions.\",\"evidenceIds\":[\"ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_1\",\"ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_2\",\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_1\",\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_2\"],\"concededRisks\":[\"The load-bearing assumption that a flag/cohort/canary mechanism exists in the pipeline is unverified in the frozen record; if no staging mechanism exists, the real choice collapses to ship-now vs. defer and this recommendation weakens toward Defer.\",\"Reversibility (halt/rollback if metrics degrade) is likewise unverified; without a rollback path, staged exposure gives little safety benefit and implies unbudgeted tooling work.\",\"Capacity failures frequently manifest only at or near full scale, so a stage-1 cohort can pass cleanly while leaving the load risk unvalidated — staged rollout must not be treated as a substitute for actual load evidence.\",\"The claim that canary/staged rollout bounds blast radius (ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_3) is engine_unverified prior knowledge, not grounded in the frozen input.\",\"Option selection rests on general product-ops heuristics rather than case-specific readiness, SLA, or failure-impact data, none of which the issue provides.\"]}"
+          ],
+          "adversary": [
+            "{\"canonicalPositionId\":\"issue_option_2\",\"axis\":\"evidence\",\"objection\":\"The staged-rollout recommendation is load-bearing on partial-rollout-plus-rollback infrastructure existing in the target environment, yet no grounded evidence establishes it. ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_1 and _2 confirm only that Option B is offered as a choice, not that it is executable; the sole mechanism claim, ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_3, is engine_unverified prior knowledge. The assumption rollout-infra-exists therefore stands unproven.\",\"wouldChangeRecommendation\":\"If deployment tooling is confirmed to lack canary/percentage routing or a rollback path, Option B ceases to be a low-cost middle path and becomes unbudgeted tooling work, collapsing toward Option C (defer).\",\"evidenceIds\":[\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_1\",\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_2\",\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_3\"]}",
+            "{\"canonicalPositionId\":\"issue_option_2\",\"axis\":\"recommendation_logic\",\"objection\":\"Treating a staged rollout as validation of the load risk is a logical gap: capacity failures frequently manifest only at or near full scale, so a stage-1 cohort can pass cleanly while leaving the load risk unvalidated. ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_2 shows the issue supplies no readiness or load data, so there is no basis to claim a small cohort surfaces the specific failure mode Option C's load tests target.\",\"wouldChangeRecommendation\":\"If load is the binding failure mode and only appears near full scale, staged rollout substitutes the appearance of validation for actual load evidence, favoring Option C until load tests are run.\",\"evidenceIds\":[\"ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_2\",\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_3\"]}",
+            "{\"canonicalPositionId\":\"issue_option_2\",\"axis\":\"framing\",\"objection\":\"The framing that Option B is the dominant choice rests on general product-ops heuristics rather than case-specific readiness, SLA, or failure-impact data, none of which the frozen record provides (ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_2). The reversibility assumption (halt/rollback if metrics degrade) is unverified; without a rollback path, staged exposure gives little safety benefit over shipping.\",\"wouldChangeRecommendation\":\"If reversibility cannot be confirmed, the safety premise distinguishing Option B from Option A dissolves and the decision reduces to ship-now vs. defer.\",\"evidenceIds\":[\"ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_1\",\"ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_2\"]}"
+          ]
+        },
+        "position_groups": [
+          {
+            "canonicalPositionId": "issue_option_2",
+            "supporterMemberIds": [
+              "entry_si6rrzoiuef6chdkavmc3tnnia",
+              "entry_ck4fcfg3buhngm2z7dm77sukte"
+            ],
+            "evidenceIds": [
+              "ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_1",
+              "ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_2",
+              "ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_1",
+              "ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_2"
+            ],
+            "assumptionIds": [
+              "entry_si6rrzoiuef6chdkavmc3tnnia:staging-supported",
+              "entry_si6rrzoiuef6chdkavmc3tnnia:reversible",
+              "entry_ck4fcfg3buhngm2z7dm77sukte:rollout-infra-exists",
+              "entry_ck4fcfg3buhngm2z7dm77sukte:load-is-a-real-risk"
+            ],
+            "steelmans": [
+              {
+                "canonicalPositionId": "issue_option_2",
+                "improvedCase": "Under the actual epistemic state of this issue, staged rollout is the dominant choice precisely because the record is empty on readiness and load (ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_2). The issue presents three mutually exclusive options (ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_1, ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_1), and Option B is explicitly on the table (ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_2). The strongest framing is not that a canary substitutes for load testing, but that staged rollout is the only option that treats the missing evidence as information to be acquired rather than assumed away: 'ship immediately' presumes confidence the record does not supply, and 'defer pending load tests' forfeits all delivery and learning against an unscoped gate. Staged rollout instead structures exposure so each increment is conditioned on observed health thresholds — it is a decision procedure under uncertainty, not a claim that a small cohort proves scale-safety. Its value is robust even if load turns out not to be the binding risk, because bounded exposure with gated promotion also catches correctness and behavior regressions.",
+                "evidenceIds": [
+                  "ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_1",
+                  "ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_2",
+                  "ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_1",
+                  "ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_2"
+                ],
+                "concededRisks": [
+                  "The load-bearing assumption that a flag/cohort/canary mechanism exists in the pipeline is unverified in the frozen record; if no staging mechanism exists, the real choice collapses to ship-now vs. defer and this recommendation weakens toward Defer.",
+                  "Reversibility (halt/rollback if metrics degrade) is likewise unverified; without a rollback path, staged exposure gives little safety benefit and implies unbudgeted tooling work.",
+                  "Capacity failures frequently manifest only at or near full scale, so a stage-1 cohort can pass cleanly while leaving the load risk unvalidated — staged rollout must not be treated as a substitute for actual load evidence.",
+                  "The claim that canary/staged rollout bounds blast radius (ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_3) is engine_unverified prior knowledge, not grounded in the frozen input.",
+                  "Option selection rests on general product-ops heuristics rather than case-specific readiness, SLA, or failure-impact data, none of which the issue provides."
+                ]
+              }
+            ],
+            "objections": [
+              {
+                "canonicalPositionId": "issue_option_2",
+                "axis": "evidence",
+                "objection": "The staged-rollout recommendation is load-bearing on partial-rollout-plus-rollback infrastructure existing in the target environment, yet no grounded evidence establishes it. ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_1 and _2 confirm only that Option B is offered as a choice, not that it is executable; the sole mechanism claim, ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_3, is engine_unverified prior knowledge. The assumption rollout-infra-exists therefore stands unproven.",
+                "wouldChangeRecommendation": "If deployment tooling is confirmed to lack canary/percentage routing or a rollback path, Option B ceases to be a low-cost middle path and becomes unbudgeted tooling work, collapsing toward Option C (defer).",
+                "evidenceIds": [
+                  "ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_1",
+                  "ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_2",
+                  "ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_3"
+                ]
+              },
+              {
+                "canonicalPositionId": "issue_option_2",
+                "axis": "recommendation_logic",
+                "objection": "Treating a staged rollout as validation of the load risk is a logical gap: capacity failures frequently manifest only at or near full scale, so a stage-1 cohort can pass cleanly while leaving the load risk unvalidated. ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_2 shows the issue supplies no readiness or load data, so there is no basis to claim a small cohort surfaces the specific failure mode Option C's load tests target.",
+                "wouldChangeRecommendation": "If load is the binding failure mode and only appears near full scale, staged rollout substitutes the appearance of validation for actual load evidence, favoring Option C until load tests are run.",
+                "evidenceIds": [
+                  "ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_2",
+                  "ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_3"
+                ]
+              },
+              {
+                "canonicalPositionId": "issue_option_2",
+                "axis": "framing",
+                "objection": "The framing that Option B is the dominant choice rests on general product-ops heuristics rather than case-specific readiness, SLA, or failure-impact data, none of which the frozen record provides (ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_2). The reversibility assumption (halt/rollback if metrics degrade) is unverified; without a rollback path, staged exposure gives little safety benefit over shipping.",
+                "wouldChangeRecommendation": "If reversibility cannot be confirmed, the safety premise distinguishing Option B from Option A dissolves and the decision reduces to ship-now vs. defer.",
+                "evidenceIds": [
+                  "ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_1",
+                  "ev_initial_entry_si6rrzoiuef6chdkavmc3tnnia_2"
+                ]
+              }
+            ],
+            "oppositionMemberIds": []
+          }
+        ],
+        "next_action": "Verify: Confirm a feature-flag or canary/rollout mechanism exists in the deployment pipeline.",
+        "implementation_authorized": false,
+        "verifiedCitationLocators": [
+          "issue:L1-L4",
+          "issue:L2-L4",
+          "issue:L3"
+        ],
+        "strongestDissent": "{\"canonicalPositionId\":\"issue_option_2\",\"axis\":\"evidence\",\"objection\":\"The staged-rollout recommendation is load-bearing on partial-rollout-plus-rollback infrastructure existing in the target environment, yet no grounded evidence establishes it. ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_1 and _2 confirm only that Option B is offered as a choice, not that it is executable; the sole mechanism claim, ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_3, is engine_unverified prior knowledge. The assumption rollout-infra-exists therefore stands unproven.\",\"wouldChangeRecommendation\":\"If deployment tooling is confirmed to lack canary/percentage routing or a rollback path, Option B ceases to be a low-cost middle path and becomes unbudgeted tooling work, collapsing toward Option C (defer).\",\"evidenceIds\":[\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_1\",\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_2\",\"ev_initial_entry_ck4fcfg3buhngm2z7dm77sukte_3\"]}",
+        "assumptionsOrRisksCount": 12,
+        "nextAction": "Verify: Confirm a feature-flag or canary/rollout mechanism exists in the deployment pipeline."
       },
       "soloComparison": {
-        "baselineRecommendation": "Proceed with the reviewed approach",
-        "materialDeltas": ["next_action"],
+        "ok": true,
+        "member_id": "entry_ffffffffffffffffffffffffff",
+        "role": "architect",
+        "position_key": "option_b",
+        "recommendation": "Choose Option B: run a staged rollout. From an architecture standpoint it is the only option that both delivers value and bounds risk. Option A (ship immediately) exposes the full user base to unvalidated behavior under production load with no rollback checkpoint; Option C (defer pending load tests) buys certainty but stalls delivery and often produces synthetic load results that diverge from real traffic. A staged rollout (e.g., canary → percentage ramp → full) gives real production signal at controlled blast radius, provides natural abort/rollback gates, and effectively runs the load test against live traffic incrementally. Gate each stage on explicit health SLOs (error rate, latency p99, saturation) with an automated rollback trigger.",
+        "evidence": [
+          {
+            "claim": "The three options are ship immediately, staged rollout, or defer pending load tests.",
+            "source_type": "issue_text",
+            "locator": "Immutable issue: Options A/B/C"
+          },
+          {
+            "claim": "Staged/canary rollouts limit blast radius and provide production-representative signal, which pure pre-release load tests cannot fully replicate.",
+            "source_type": "theory",
+            "locator": "progressive delivery / canary release practice"
+          }
+        ],
+        "assumptions": [
+          {
+            "assumption_key": "rollout_infra_exists",
+            "statement": "The system supports incremental traffic shifting and rollback (feature flags, canary, or percentage routing).",
+            "load_bearing": true,
+            "if_false_then": "If no staged-rollout mechanism exists, Option B collapses toward A; then Option C (defer) becomes the safer choice until such controls exist.",
+            "how_to_verify": "Check deployment/release tooling for canary, feature-flag, or weighted-routing support."
+          },
+          {
+            "assumption_key": "load_is_the_main_risk",
+            "statement": "The primary open concern is behavior/performance under real load rather than correctness bugs.",
+            "load_bearing": false,
+            "if_false_then": "If correctness is the risk, staging still helps but must be paired with strong monitoring and quick rollback.",
+            "how_to_verify": "Review the risk log or issue rationale behind offering a load-test defer option."
+          }
+        ],
+        "risks": [
+          "No canary/flag infrastructure means a 'staged' rollout is not truly incremental.",
+          "Insufficient observability could let a bad stage cause harm before rollback triggers.",
+          "Staged rollout adds operational overhead and a longer total release timeline than shipping immediately."
+        ],
+        "what_would_change_my_view": [
+          "Evidence that no incremental rollout/rollback mechanism is available, favoring C.",
+          "A hard external deadline plus low load risk that makes immediate ship (A) acceptable.",
+          "Known correctness defects that make any production exposure unacceptable until fixed."
+        ],
+        "next_action": "Confirm staged-rollout tooling and per-stage SLO/rollback gates exist; if so, define canary → ramp → full stages and proceed with Option B.",
+        "baselineRecommendation": "Choose Option B: run a staged rollout. From an architecture standpoint it is the only option that both delivers value and bounds risk. Option A (ship immediately) exposes the full user base to unvalidated behavior under production load with no rollback checkpoint; Option C (defer pending load tests) buys certainty but stalls delivery and often produces synthetic load results that diverge from real traffic. A staged rollout (e.g., canary → percentage ramp → full) gives real production signal at controlled blast radius, provides natural abort/rollback gates, and effectively runs the load test against live traffic incrementally. Gate each stage on explicit health SLOs (error rate, latency p99, saturation) with an automated rollback trigger.",
+        "materialDeltas": [
+          "next_action"
+        ],
         "usedByFinalReport": true
       },
       "revisionAttempts": [],
@@ -44,21 +475,288 @@
     {
       "sampleId": "issue-freeform",
       "inputSha256": "84cd5ab1dcf87ef33352a9f7307d358b40c125b2642beb0624767d3792dec5a4",
-      "routes": ["v1:provider-invoke:claude:adapter-default", "v1:provider-invoke:claude:adapter-default"],
+      "routes": [
+        "v1:provider-invoke:claude:adapter-default",
+        "v1:provider-invoke:claude:adapter-default"
+      ],
+      "execution": {
+        "authorizedPortableProviderInvoke": true,
+        "routeProbeGeneratedAt": "2026-07-24T04:12:16.748Z",
+        "provider": "claude",
+        "routeId": "v1:provider-invoke:claude:adapter-default",
+        "authPolicy": "subscription_only",
+        "billing": "subscription",
+        "realModelCalls": true,
+        "fixture": false,
+        "councilReportPath": "live-gate:issue-freeform:primary",
+        "soloProviderStatus": "ok",
+        "soloResolvedModel": ""
+      },
       "councilResult": {
         "recommendation": "No deterministic recommendation; see structured disagreement",
-        "verifiedCitationLocators": ["issue:L1", "issue:L2", "issue:L3"],
-        "strongestDissent": "{\"canonicalPositionId\":\"other:approve\",\"axis\":\"recommendation_logic\",\"objection\":\"Residual risk remains\",\"wouldChangeRecommendation\":\"Independent validation\",\"evidenceIds\":[\"ev_initial_entry_b_1\"]}",
-        "assumptionsOrRisksCount": 5,
-        "nextAction": "Verify: Measure rollback readiness against staged traffic"
+        "decision_readiness": "not_ready",
+        "evidence_summary": [
+          "The stated goal is reducing deployment risk, which frames what the policy must improve. (issue:L1)",
+          "A hard constraint requires preserving delivery speed, so any risk control that adds latency is bounded. (issue:L2)",
+          "The question asks which policy balances both objectives, implying a tradeoff that requires measurement to resolve. (issue:L3)"
+        ],
+        "strongest_dissent": "entry_vrejv6bmz27trrkxjtke75ya3a: Adopt a progressive-delivery rollout: ship behind feature flags and release via automated canary stages (e.g., 1% → 10% → 50% → 100%) gated on health metrics with automatic rollback. This directly reduces deployment risk (issue:1) by limiting blast radius and enabling fast reversion, while preserving delivery speed (issue:2) because code merges and deploys continuously — exposure is decoupled from deploy, so teams keep shipping without a slow manual gate. This answers the balance question (issue:3) better than a binary blue/green or a slow staged manual sign-off, because the risk control is automated rather than trading speed for review overhead. Concretely: define the health SLOs (error rate, latency, saturation) that gate promotion, and a rollback threshold, before choosing stage percentages.",
+        "assumptions": [
+          "entry_vrejv6bmz27trrkxjtke75ya3a: The delivery pipeline can route a percentage of traffic and support feature flags.",
+          "entry_vrejv6bmz27trrkxjtke75ya3a: There are health metrics/SLOs available to gate promotion and trigger rollback.",
+          "entry_yuw3h6djelufwlnepps2bqjs5u: No current deployment failure rate, rollback time, or release-cadence data accompanies the issue.",
+          "entry_yuw3h6djelufwlnepps2bqjs5u: The delivery-speed constraint is a real limit, not aspirational, so policy overhead can disqualify options."
+        ],
+        "risks": [
+          "entry_vrejv6bmz27trrkxjtke75ya3a: Issue is underspecified (3 lines) — no data on service type, traffic, team maturity, or existing tooling, so the recommended policy may not fit.",
+          "entry_vrejv6bmz27trrkxjtke75ya3a: Canary requires observability and traffic-splitting; without them the risk control is illusory.",
+          "entry_vrejv6bmz27trrkxjtke75ya3a: Feature-flag sprawl adds its own maintenance and cleanup cost that can erode delivery speed if ungoverned.",
+          "entry_yuw3h6djelufwlnepps2bqjs5u: Choosing a policy now (e.g. canary) could add gating overhead that violates the speed constraint (issue:L2) undetected.",
+          "entry_yuw3h6djelufwlnepps2bqjs5u: Absent a defined risk metric, 'reduced deployment risk' (issue:L1) cannot be verified, making the policy unfalsifiable.",
+          "entry_yuw3h6djelufwlnepps2bqjs5u: Deferral itself has cost: prolonged status quo may keep an existing risky rollout in place.",
+          "{\"canonicalPositionId\":\"propose_alternative\",\"axis\":\"evidence\",\"objection\":\"The progressive-delivery recommendation is grounded on only three issue-text lines (goal/constraint/question) and a single prior-knowledge claim about canary practice, all of which are engine_unverified. None of the cited evidence speaks to the actual deploy stack, so the load-bearing assumptions that the pipeline can split traffic and gate on flags, and that per-release health SLOs exist, are asserted rather than shown.\",\"wouldChangeRecommendation\":\"Confirm via the issuer that the pipeline supports traffic-splitting/flags and that per-release error-rate/latency/saturation signals are measured. If both are confirmed, the evidence objection is resolved; if either is absent, the automated control collapses to a manual staged rollout and the position should not stand.\",\"evidenceIds\":[\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_1\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_3\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4\"]}",
+          "{\"canonicalPositionId\":\"propose_alternative\",\"axis\":\"recommendation_logic\",\"objection\":\"The claim that progressive delivery 'preserves delivery speed because exposure is decoupled from deploy' is derived from general canary practice, not from any measured change-failure rate or lead-time budget for this system. If the baseline failure rate is already low, the added flag/canary machinery is net-negative on speed, violating the binding constraint the recommendation claims to satisfy.\",\"wouldChangeRecommendation\":\"Obtain the current change-failure rate and an acceptable added lead-time budget. If baseline risk is materially high and the overhead fits the budget, the speed tradeoff holds; if baseline risk is low or no budget is defined, the recommendation logic fails and defer is preferable.\",\"evidenceIds\":[\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2\",\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_2\"]}"
+        ],
+        "what_would_change_recommendation": [
+          "Evidence that the deploy target cannot split traffic or support flags (would push me to blue/green + fast rollback).",
+          "Evidence of low change failure rate today, making the added canary machinery net-negative on speed.",
+          "A defined risk appetite or SLO that a simpler manual gate already satisfies.",
+          "Baseline change-failure rate, MTTR, and deploy-frequency numbers to ground the tradeoff.",
+          "A stated numeric speed budget (max added lead time per release) that bounds acceptable policy overhead.",
+          "Blast-radius / rollback-cost data indicating whether incremental exposure (canary/ring) is even necessary.",
+          "{\"canonicalPositionId\":\"propose_alternative\",\"challenge\":\"The progressive-delivery recommendation rests on the pipeline being able to split traffic and gate on flags, but the only cited support is three issue-text lines stating the goal/constraint/question plus one prior-knowledge claim about canary practice — none of which speak to the actual deploy stack. If traffic-splitting is unavailable, the automated canary control is illusory and collapses to a manual staged rollout that spends the delivery-speed budget the constraint forbids.\",\"evidenceIds\":[\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_1\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_3\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4\"]}",
+          "{\"canonicalPositionId\":\"propose_alternative\",\"challenge\":\"Automated promotion and rollback presuppose per-release health SLOs (error rate, latency, saturation), yet no cited evidence establishes that such signals are measured. Without them the promised 'reduced deployment risk' is unfalsifiable and the automatic-rollback safety story is unsupported by anything in the frozen context.\",\"evidenceIds\":[\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4\"]}"
+        ],
+        "phase_findings": {
+          "critique": [
+            "{\"canonicalPositionId\":\"propose_alternative\",\"challenge\":\"The progressive-delivery recommendation rests on the pipeline being able to split traffic and gate on flags, but the only cited support is three issue-text lines stating the goal/constraint/question plus one prior-knowledge claim about canary practice — none of which speak to the actual deploy stack. If traffic-splitting is unavailable, the automated canary control is illusory and collapses to a manual staged rollout that spends the delivery-speed budget the constraint forbids.\",\"evidenceIds\":[\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_1\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_3\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4\"]}",
+            "{\"canonicalPositionId\":\"propose_alternative\",\"challenge\":\"Automated promotion and rollback presuppose per-release health SLOs (error rate, latency, saturation), yet no cited evidence establishes that such signals are measured. Without them the promised 'reduced deployment risk' is unfalsifiable and the automatic-rollback safety story is unsupported by anything in the frozen context.\",\"evidenceIds\":[\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4\"]}",
+            "{\"canonicalPositionId\":\"propose_alternative\",\"challenge\":\"The claim that progressive delivery 'preserves delivery speed because exposure is decoupled from deploy' is grounded only in general canary practice (prior knowledge), not in any measured change-failure rate or lead-time budget for this system. If baseline failure rate is already low, the added flag/canary machinery is net-negative on speed — a tradeoff the recommendation asserts rather than measures.\",\"evidenceIds\":[\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2\"]}",
+            "{\"assumptionId\":\"entry_vrejv6bmz27trrkxjtke75ya3a:deploy-infra-supports-canary\",\"status\":\"unverified\",\"rationale\":\"Load-bearing, but the cited evidence is only issue-text lines (goal/constraint/question) and a prior-knowledge canary claim. The issue supplies no infrastructure detail, so traffic-splitting and flag support are assumed, not shown.\",\"evidenceIds\":[\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_1\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_3\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4\"]}",
+            "{\"assumptionId\":\"entry_vrejv6bmz27trrkxjtke75ya3a:observability-exists\",\"status\":\"unverified\",\"rationale\":\"Load-bearing for automated gating and rollback, yet no cited evidence confirms per-release health metrics/SLOs are measured. The issue text does not mention observability, so the assumption is unsupported either way.\",\"evidenceIds\":[\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_1\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_3\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4\"]}",
+            "{\"assumptionId\":\"entry_yuw3h6djelufwlnepps2bqjs5u:no-baseline-metrics\",\"status\":\"verified_by_cited_evidence\",\"rationale\":\"The cited issue-text evidence is engine-verified and resolves in the frozen input; the issue contains only goal, constraint, and question with no failure-rate, rollback-time, or cadence data. The absence claim is directly confirmed by what the issue does and does not state.\",\"evidenceIds\":[\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_1\",\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_2\",\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_3\"]}",
+            "{\"assumptionId\":\"entry_yuw3h6djelufwlnepps2bqjs5u:speed-is-binding\",\"status\":\"unverified\",\"rationale\":\"The cited evidence confirms delivery speed is stated as a constraint (issue:L2) but does not establish that it is a hard, non-aspirational limit with a defined budget. Whether policy overhead can disqualify options depends on an acceptable added lead-time figure that the frozen context does not supply.\",\"evidenceIds\":[\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_2\"]}"
+          ],
+          "steelman": [
+            "{\"canonicalPositionId\":\"propose_alternative\",\"improvedCase\":\"Progressive delivery is the policy that most directly answers the balance question (issue:3), because it attacks the two objectives on different axes rather than trading one for the other. Deployment risk (issue:1) is reduced by bounding blast radius: a fault reaches 1% before it reaches 100%, and automated rollback reverts exposure without a human in the loop. Delivery speed (issue:2) is preserved because exposure is decoupled from merge/deploy — code ships continuously behind flags, so the risk control adds no manual sign-off gate to the release path. This is a structurally stronger answer than binary blue/green or a manual staged sign-off, both of which buy safety with speed. The recommendation is deliberately conditional and self-limiting: it names the exact next step — define the gating health SLOs (error rate, latency, saturation) and a rollback threshold, then confirm the pipeline supports traffic-splitting and flags — before committing stage percentages, so adoption is staged behind its own verification rather than asserted.\",\"evidenceIds\":[\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_1\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_3\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4\"],\"concededRisks\":[\"The traffic-splitting/flag capability and per-release observability are load-bearing but unverified — the issue supplies no infra detail, and the only cited support is issue-text lines plus a prior-knowledge canary claim; if either is absent the automated control collapses to a manual staged rollout that spends the speed budget.\",\"The speed-preservation benefit is asserted from general canary practice, not measured against this system's change-failure rate; if baseline failure rate is already low, the added flag/canary machinery is net-negative on speed.\",\"Feature-flag sprawl carries its own maintenance and cleanup cost that can erode delivery speed if ungoverned.\",\"The issue is underspecified (3 lines) with no data on service type, traffic, team maturity, or tooling, so the recommended policy may not fit.\"]}",
+            "{\"canonicalPositionId\":\"defer_for_evidence\",\"improvedCase\":\"Deferral is the disciplined move precisely because the issue frames a tradeoff (issue:L3) between reducing deployment risk (issue:L1) and preserving delivery speed (issue:L2) yet supplies no change-failure rate, rollback cost, or release-cadence data to locate where the balance actually lies. Every named policy — canary, blue/green, progressive/ring, flag gating — is an unfalsifiable guess until those baselines exist: 'reduced risk' cannot be verified without a risk metric, and 'preserved speed' cannot be checked without a lead-time budget. The load-bearing danger is committing to a policy whose gating overhead silently violates the speed constraint, or whose safety benefit is unmeasurable. This position is not passive: it specifies the minimal, cheap baseline to gather (change-failure rate, MTTR, deploy frequency) that converts issue:L3 from an assertion into a measured decision, after which a specific policy can be chosen against real numbers.\",\"evidenceIds\":[\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_1\",\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_2\",\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_3\"],\"concededRisks\":[\"Deferral itself has cost: prolonging the status quo may keep an existing risky rollout in place while data is collected.\",\"If baseline metrics already exist, the defer collapses and a specific policy could have been recommended directly, making the delay pure overhead.\",\"Whether speed is a hard, budget-bounded limit rather than aspirational is unverified; if speed is soft, heavier safety policies are acceptable now and the case for waiting weakens.\"]}"
+          ],
+          "adversary": [
+            "{\"canonicalPositionId\":\"propose_alternative\",\"axis\":\"evidence\",\"objection\":\"The progressive-delivery recommendation is grounded on only three issue-text lines (goal/constraint/question) and a single prior-knowledge claim about canary practice, all of which are engine_unverified. None of the cited evidence speaks to the actual deploy stack, so the load-bearing assumptions that the pipeline can split traffic and gate on flags, and that per-release health SLOs exist, are asserted rather than shown.\",\"wouldChangeRecommendation\":\"Confirm via the issuer that the pipeline supports traffic-splitting/flags and that per-release error-rate/latency/saturation signals are measured. If both are confirmed, the evidence objection is resolved; if either is absent, the automated control collapses to a manual staged rollout and the position should not stand.\",\"evidenceIds\":[\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_1\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_3\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4\"]}",
+            "{\"canonicalPositionId\":\"propose_alternative\",\"axis\":\"recommendation_logic\",\"objection\":\"The claim that progressive delivery 'preserves delivery speed because exposure is decoupled from deploy' is derived from general canary practice, not from any measured change-failure rate or lead-time budget for this system. If the baseline failure rate is already low, the added flag/canary machinery is net-negative on speed, violating the binding constraint the recommendation claims to satisfy.\",\"wouldChangeRecommendation\":\"Obtain the current change-failure rate and an acceptable added lead-time budget. If baseline risk is materially high and the overhead fits the budget, the speed tradeoff holds; if baseline risk is low or no budget is defined, the recommendation logic fails and defer is preferable.\",\"evidenceIds\":[\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2\",\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_2\"]}",
+            "{\"canonicalPositionId\":\"propose_alternative\",\"axis\":\"framing\",\"objection\":\"Framing progressive delivery as the answer that 'reduces deployment risk' presupposes a risk metric to reduce, but no baseline change-failure rate, MTTR, or rollback cost accompanies the issue. Without a measured baseline the promised risk reduction is unfalsifiable, and the position frames a measurement problem as a policy-selection problem.\",\"wouldChangeRecommendation\":\"If the issuer supplies change-failure rate, MTTR, and deploy frequency, the risk claim becomes falsifiable and the framing is legitimate. Absent those numbers the question is premature and defer_for_evidence is the sound framing.\",\"evidenceIds\":[\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_1\",\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_3\"]}",
+            "{\"canonicalPositionId\":\"defer_for_evidence\",\"axis\":\"recommendation_logic\",\"objection\":\"Deferral treats the speed constraint as a hard, budget-bounded limit that could disqualify options, but the cited evidence only shows speed is stated as a constraint (issue:L2); it does not establish an acceptable added lead-time figure. If speed is aspirational rather than binding, waiting to gather baselines is pure overhead that prolongs the status-quo rollout risk.\",\"wouldChangeRecommendation\":\"Verify whether the speed constraint carries a defined lead-time budget and whether baseline metrics already exist. If baselines already exist or speed is soft, the case for deferral collapses and a specific policy can be chosen now.\",\"evidenceIds\":[\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_2\",\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_1\"]}"
+          ]
+        },
+        "position_groups": [
+          {
+            "canonicalPositionId": "propose_alternative",
+            "supporterMemberIds": [
+              "entry_vrejv6bmz27trrkxjtke75ya3a"
+            ],
+            "evidenceIds": [],
+            "assumptionIds": [
+              "entry_vrejv6bmz27trrkxjtke75ya3a:deploy-infra-supports-canary",
+              "entry_vrejv6bmz27trrkxjtke75ya3a:observability-exists"
+            ],
+            "steelmans": [
+              {
+                "canonicalPositionId": "propose_alternative",
+                "improvedCase": "Progressive delivery is the policy that most directly answers the balance question (issue:3), because it attacks the two objectives on different axes rather than trading one for the other. Deployment risk (issue:1) is reduced by bounding blast radius: a fault reaches 1% before it reaches 100%, and automated rollback reverts exposure without a human in the loop. Delivery speed (issue:2) is preserved because exposure is decoupled from merge/deploy — code ships continuously behind flags, so the risk control adds no manual sign-off gate to the release path. This is a structurally stronger answer than binary blue/green or a manual staged sign-off, both of which buy safety with speed. The recommendation is deliberately conditional and self-limiting: it names the exact next step — define the gating health SLOs (error rate, latency, saturation) and a rollback threshold, then confirm the pipeline supports traffic-splitting and flags — before committing stage percentages, so adoption is staged behind its own verification rather than asserted.",
+                "evidenceIds": [
+                  "ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_1",
+                  "ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2",
+                  "ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_3",
+                  "ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4"
+                ],
+                "concededRisks": [
+                  "The traffic-splitting/flag capability and per-release observability are load-bearing but unverified — the issue supplies no infra detail, and the only cited support is issue-text lines plus a prior-knowledge canary claim; if either is absent the automated control collapses to a manual staged rollout that spends the speed budget.",
+                  "The speed-preservation benefit is asserted from general canary practice, not measured against this system's change-failure rate; if baseline failure rate is already low, the added flag/canary machinery is net-negative on speed.",
+                  "Feature-flag sprawl carries its own maintenance and cleanup cost that can erode delivery speed if ungoverned.",
+                  "The issue is underspecified (3 lines) with no data on service type, traffic, team maturity, or tooling, so the recommended policy may not fit."
+                ]
+              }
+            ],
+            "objections": [
+              {
+                "canonicalPositionId": "propose_alternative",
+                "axis": "evidence",
+                "objection": "The progressive-delivery recommendation is grounded on only three issue-text lines (goal/constraint/question) and a single prior-knowledge claim about canary practice, all of which are engine_unverified. None of the cited evidence speaks to the actual deploy stack, so the load-bearing assumptions that the pipeline can split traffic and gate on flags, and that per-release health SLOs exist, are asserted rather than shown.",
+                "wouldChangeRecommendation": "Confirm via the issuer that the pipeline supports traffic-splitting/flags and that per-release error-rate/latency/saturation signals are measured. If both are confirmed, the evidence objection is resolved; if either is absent, the automated control collapses to a manual staged rollout and the position should not stand.",
+                "evidenceIds": [
+                  "ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_1",
+                  "ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2",
+                  "ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_3",
+                  "ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4"
+                ]
+              },
+              {
+                "canonicalPositionId": "propose_alternative",
+                "axis": "recommendation_logic",
+                "objection": "The claim that progressive delivery 'preserves delivery speed because exposure is decoupled from deploy' is derived from general canary practice, not from any measured change-failure rate or lead-time budget for this system. If the baseline failure rate is already low, the added flag/canary machinery is net-negative on speed, violating the binding constraint the recommendation claims to satisfy.",
+                "wouldChangeRecommendation": "Obtain the current change-failure rate and an acceptable added lead-time budget. If baseline risk is materially high and the overhead fits the budget, the speed tradeoff holds; if baseline risk is low or no budget is defined, the recommendation logic fails and defer is preferable.",
+                "evidenceIds": [
+                  "ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4",
+                  "ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2",
+                  "ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_2"
+                ]
+              },
+              {
+                "canonicalPositionId": "propose_alternative",
+                "axis": "framing",
+                "objection": "Framing progressive delivery as the answer that 'reduces deployment risk' presupposes a risk metric to reduce, but no baseline change-failure rate, MTTR, or rollback cost accompanies the issue. Without a measured baseline the promised risk reduction is unfalsifiable, and the position frames a measurement problem as a policy-selection problem.",
+                "wouldChangeRecommendation": "If the issuer supplies change-failure rate, MTTR, and deploy frequency, the risk claim becomes falsifiable and the framing is legitimate. Absent those numbers the question is premature and defer_for_evidence is the sound framing.",
+                "evidenceIds": [
+                  "ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_1",
+                  "ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_3"
+                ]
+              }
+            ],
+            "oppositionMemberIds": [
+              "entry_yuw3h6djelufwlnepps2bqjs5u"
+            ]
+          },
+          {
+            "canonicalPositionId": "defer_for_evidence",
+            "supporterMemberIds": [
+              "entry_yuw3h6djelufwlnepps2bqjs5u"
+            ],
+            "evidenceIds": [
+              "ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_1",
+              "ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_2",
+              "ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_3"
+            ],
+            "assumptionIds": [
+              "entry_yuw3h6djelufwlnepps2bqjs5u:no-baseline-metrics",
+              "entry_yuw3h6djelufwlnepps2bqjs5u:speed-is-binding"
+            ],
+            "steelmans": [
+              {
+                "canonicalPositionId": "defer_for_evidence",
+                "improvedCase": "Deferral is the disciplined move precisely because the issue frames a tradeoff (issue:L3) between reducing deployment risk (issue:L1) and preserving delivery speed (issue:L2) yet supplies no change-failure rate, rollback cost, or release-cadence data to locate where the balance actually lies. Every named policy — canary, blue/green, progressive/ring, flag gating — is an unfalsifiable guess until those baselines exist: 'reduced risk' cannot be verified without a risk metric, and 'preserved speed' cannot be checked without a lead-time budget. The load-bearing danger is committing to a policy whose gating overhead silently violates the speed constraint, or whose safety benefit is unmeasurable. This position is not passive: it specifies the minimal, cheap baseline to gather (change-failure rate, MTTR, deploy frequency) that converts issue:L3 from an assertion into a measured decision, after which a specific policy can be chosen against real numbers.",
+                "evidenceIds": [
+                  "ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_1",
+                  "ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_2",
+                  "ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_3"
+                ],
+                "concededRisks": [
+                  "Deferral itself has cost: prolonging the status quo may keep an existing risky rollout in place while data is collected.",
+                  "If baseline metrics already exist, the defer collapses and a specific policy could have been recommended directly, making the delay pure overhead.",
+                  "Whether speed is a hard, budget-bounded limit rather than aspirational is unverified; if speed is soft, heavier safety policies are acceptable now and the case for waiting weakens."
+                ]
+              }
+            ],
+            "objections": [
+              {
+                "canonicalPositionId": "defer_for_evidence",
+                "axis": "recommendation_logic",
+                "objection": "Deferral treats the speed constraint as a hard, budget-bounded limit that could disqualify options, but the cited evidence only shows speed is stated as a constraint (issue:L2); it does not establish an acceptable added lead-time figure. If speed is aspirational rather than binding, waiting to gather baselines is pure overhead that prolongs the status-quo rollout risk.",
+                "wouldChangeRecommendation": "Verify whether the speed constraint carries a defined lead-time budget and whether baseline metrics already exist. If baselines already exist or speed is soft, the case for deferral collapses and a specific policy can be chosen now.",
+                "evidenceIds": [
+                  "ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_2",
+                  "ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_1"
+                ]
+              }
+            ],
+            "oppositionMemberIds": [
+              "entry_vrejv6bmz27trrkxjtke75ya3a"
+            ]
+          }
+        ],
+        "next_action": "Gather more grounded evidence before implementation.",
+        "implementation_authorized": false,
+        "verifiedCitationLocators": [
+          "issue:L1",
+          "issue:L2",
+          "issue:L3"
+        ],
+        "strongestDissent": "entry_vrejv6bmz27trrkxjtke75ya3a: Adopt a progressive-delivery rollout: ship behind feature flags and release via automated canary stages (e.g., 1% → 10% → 50% → 100%) gated on health metrics with automatic rollback. This directly reduces deployment risk (issue:1) by limiting blast radius and enabling fast reversion, while preserving delivery speed (issue:2) because code merges and deploys continuously — exposure is decoupled from deploy, so teams keep shipping without a slow manual gate. This answers the balance question (issue:3) better than a binary blue/green or a slow staged manual sign-off, because the risk control is automated rather than trading speed for review overhead. Concretely: define the health SLOs (error rate, latency, saturation) that gate promotion, and a rollback threshold, before choosing stage percentages.",
+        "assumptionsOrRisksCount": 12,
+        "nextAction": "Gather more grounded evidence before implementation."
       },
       "soloComparison": {
-        "baselineRecommendation": "Proceed with the reviewed approach",
-        "materialDeltas": ["next_action"],
-        "usedByFinalReport": true
+        "ok": true,
+        "member_id": "entry_ffffffffffffffffffffffffff",
+        "role": "architect",
+        "position_key": "progressive-delivery-canary",
+        "recommendation": "Adopt a progressive-delivery (canary) rollout gated by automated health metrics, with automatic rollback. Ship to a small traffic slice (e.g., 1% → 5% → 25% → 100%), promote automatically when SLO/error-budget metrics stay green for a short bake window, and auto-roll-back on regression. This reduces deployment risk by limiting blast radius and catching failures before full exposure, while preserving delivery speed because promotion is automated (no manual gate) and healthy releases reach 100% quickly. Pair with feature flags to decouple deploy from release, so risky changes can be dark-launched and enabled independently. Avoid blue/green-only or manual staged approvals, which trade more speed for safety than needed.",
+        "evidence": [
+          {
+            "claim": "Canary releases limit blast radius by exposing changes to a small population first, reducing incident impact.",
+            "source_type": "prior_knowledge",
+            "locator": "progressive delivery / SRE canary analysis practice"
+          },
+          {
+            "claim": "Automated metric-gated promotion keeps throughput high because healthy builds advance without human approval delays.",
+            "source_type": "theory",
+            "locator": "error-budget-driven promotion"
+          },
+          {
+            "claim": "Feature flags decouple deploy from release, allowing fast deploys with independent, reversible enablement.",
+            "source_type": "prior_knowledge",
+            "locator": "trunk-based / flag-driven release"
+          }
+        ],
+        "assumptions": [
+          {
+            "assumption_key": "observability",
+            "statement": "The system emits reliable per-slice health/SLO metrics (error rate, latency) usable as promotion gates.",
+            "load_bearing": true,
+            "if_false_then": "Canary gating cannot be automated; fall back to timed bake windows plus manual smoke checks, which slows delivery.",
+            "how_to_verify": "Confirm existence of per-deployment metric dashboards and alert thresholds."
+          },
+          {
+            "assumption_key": "traffic-splitting",
+            "statement": "The delivery platform can route a fractional traffic slice to a new version.",
+            "load_bearing": true,
+            "if_false_then": "Use blue/green with quick cutover plus flag-based percentage rollout at app layer instead.",
+            "how_to_verify": "Check load balancer / service mesh / deploy tooling for weighted routing support."
+          },
+          {
+            "assumption_key": "rollback",
+            "statement": "Rollback (or flag disable) is fast and low-risk.",
+            "load_bearing": true,
+            "if_false_then": "Auto-rollback safety net weakens; require stronger pre-prod gates, reducing speed.",
+            "how_to_verify": "Measure MTTR for a rehearsed rollback."
+          }
+        ],
+        "risks": [
+          "Insufficient traffic on low-volume services makes canary metrics statistically noisy, delaying or misjudging promotion.",
+          "Stateful or schema-changing deploys need expand/contract migrations; naive canary can break on shared DB state.",
+          "Poorly chosen SLO thresholds cause flapping between promote/rollback, hurting both safety and speed."
+        ],
+        "what_would_change_my_view": [
+          "Evidence the platform lacks traffic-splitting or reliable metrics, favoring blue/green + flags instead.",
+          "Deployments are dominated by irreversible data migrations, favoring expand/contract with manual gates.",
+          "Extremely low request volume, favoring time-based staged rollout over metric-based canary."
+        ],
+        "next_action": "Confirm the three load-bearing assumptions (traffic-splitting, per-slice metrics, fast rollback) against the actual deploy platform, then pilot a metric-gated canary on one representative service before rolling the policy out fleet-wide.",
+        "baselineRecommendation": "Adopt a progressive-delivery (canary) rollout gated by automated health metrics, with automatic rollback. Ship to a small traffic slice (e.g., 1% → 5% → 25% → 100%), promote automatically when SLO/error-budget metrics stay green for a short bake window, and auto-roll-back on regression. This reduces deployment risk by limiting blast radius and catching failures before full exposure, while preserving delivery speed because promotion is automated (no manual gate) and healthy releases reach 100% quickly. Pair with feature flags to decouple deploy from release, so risky changes can be dark-launched and enabled independently. Avoid blue/green-only or manual staged approvals, which trade more speed for safety than needed.",
+        "materialDeltas": [],
+        "usedByFinalReport": false
       },
-      "revisionAttempts": [],
-      "pass": true
+      "revisionAttempts": [
+        {
+          "attempt": 1,
+          "strategy": "structured_disagreement",
+          "outcome": "correlated_no_added_value",
+          "realModelCalls": true,
+          "reportPath": "live-gate:issue-freeform:attempt-1"
+        },
+        {
+          "attempt": 2,
+          "strategy": "deterministic",
+          "outcome": "correlated_no_added_value",
+          "realModelCalls": true,
+          "reportPath": "live-gate:issue-freeform:attempt-2"
+        }
+      ],
+      "pass": true,
+      "sameRouteExit": {
+        "result": "same_route_added_value:not_demonstrated",
+        "disclosure": "same_route_added_value: not_demonstrated",
+        "reason": "Two real same-route Claude subscription attempts produced no material delta absent from the solo baseline; Codex remained unavailable with tool_policy_unproven, so no authorized independent route was available."
+      }
     }
   ]
 }

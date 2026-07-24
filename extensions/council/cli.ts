@@ -1,4 +1,6 @@
 import { configLocationForPortable, loadRosterConfig, persistRememberedRoster } from "./lib/config.js";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { emitRoster } from "./lib/emit-roster.js";
 import { checkPlanDrift, parseCouncilInput } from "./lib/input.js";
 import { ackToken, buildRunPlan, deleteIntent, loadIntent, requiresAcknowledgment, runPlanHashes, writeIntent } from "./lib/run-intent.js";
@@ -217,7 +219,7 @@ export async function main(argv = process.argv.slice(2), packageRoot = packageRo
   return result.ok ? 0 : 5;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (resolve(fileURLToPath(import.meta.url)) === resolve(process.argv[1] ?? "")) {
   main().then((code) => process.exit(code)).catch((error) => {
     const exitCode = Number.isInteger((error as { exitCode?: number }).exitCode) ? (error as { exitCode: number }).exitCode : 1;
     if (exitCode === 0) console.log((error as Error).message);

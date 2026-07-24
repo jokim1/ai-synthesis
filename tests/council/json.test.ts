@@ -17,7 +17,7 @@ describe("validate-json", () => {
 
   it("rejects empty nested phase objects", () => {
     const schema = join(process.cwd(), "schemas/council-critique.json");
-    const invalid = validateModelJson(schema, JSON.stringify({ memberId: "entry_a", targetedChallenges: [{}], assumptionReviews: [] }));
+    const invalid = validateModelJson(schema, JSON.stringify({ memberId: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", targetedChallenges: [{}], assumptionReviews: [] }));
     expect(invalid.ok).toBe(false);
   });
 });

@@ -3,6 +3,7 @@ import { isCouncilEffort, nearestEffort } from "./effort.js";
 import { routeFitsInput } from "./context-fit.js";
 
 const roles = new Set<CouncilRole>(["chair", "architect", "implementation-critic", "risk-critic", "evidence-auditor", "steelman", "product-operator", "adversary"]);
+export const COUNCIL_ROSTER_ENTRY_ID_PATTERN = /^entry_[a-z2-7]{26}$/;
 
 function validateStrategy(strategy: CouncilReportStrategy | undefined): strategy is CouncilReportStrategy {
   return strategy?.kind === "deterministic" || strategy?.kind === "structured_disagreement" || (strategy?.kind === "chair" && typeof strategy.chairEntryId === "string");
@@ -46,7 +47,7 @@ export function validateRoster(input: CouncilValidateRosterInputV1): CouncilRost
       continue;
     }
     seen.add(entry.id);
-    if (!entry.id || !roles.has(entry.role) || !isCouncilEffort(entry.effort)) {
+    if (!entry.id || !COUNCIL_ROSTER_ENTRY_ID_PATTERN.test(entry.id) || !roles.has(entry.role) || !isCouncilEffort(entry.effort)) {
       blockingProblems.push({ kind: "stale_dogfood_roster_shape", entryId: entry.id, message: `entry ${entry.id || "(missing)"} is not canonical v1` });
       continue;
     }
@@ -139,6 +140,7 @@ export function assertRosterShape(value: unknown): asserts value is CouncilRoste
   for (const rawEntry of roster.entries as Array<Record<string, unknown>>) {
     if ("chair" in rawEntry) throw new Error("entry-level chair is stale dogfood; use reportStrategy.kind=chair");
     if (!rawEntry.id || typeof rawEntry.id !== "string") throw new Error("entry id is required");
+    if (!COUNCIL_ROSTER_ENTRY_ID_PATTERN.test(rawEntry.id)) throw new Error("entry id must match entry_<26 lowercase base32 chars>");
     if (!rawEntry.route || typeof rawEntry.route !== "object" || typeof (rawEntry.route as Record<string, unknown>).routeId !== "string") {
       throw new Error("entry route.routeId is required");
     }

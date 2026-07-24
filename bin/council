@@ -6,6 +6,10 @@ if ! command -v node >/dev/null 2>&1; then
   echo "Node >=22.19.0 is required. Install Node, then run npm install from $ROOT." >&2
   exit 5
 fi
+if ! node -e 'const want=[22,19,0]; const got=process.versions.node.split(".").map(Number); process.exit(got[0]>want[0] || (got[0]===want[0] && (got[1]>want[1] || (got[1]===want[1] && got[2]>=want[2]))) ? 0 : 1)' >/dev/null 2>&1; then
+  echo "Node >=22.19.0 is required. Current: $(node -p 'process.version'). Install Node, then run npm install from $ROOT." >&2
+  exit 5
+fi
 if [ ! -d "$ROOT/node_modules/jiti" ]; then
   echo "Council dependencies are missing. Run: npm install from $ROOT" >&2
   exit 5

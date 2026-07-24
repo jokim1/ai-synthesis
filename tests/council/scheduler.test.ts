@@ -46,7 +46,7 @@ describe("council phase lane scheduler", () => {
 
   it("executes a runtime subset only through candidate-authorized batches", async () => {
     const route = providerInvokeRoute("claude", true);
-    const entries = ["entry_a", "entry_b"].map((id) => ({
+    const entries = ["entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb"].map((id) => ({
       id,
       route: route.ref,
       role: "architect" as const,
@@ -62,9 +62,9 @@ describe("council phase lane scheduler", () => {
       called.push(entry.id);
       return entry.id;
     });
-    expect(called).toEqual(["entry_b"]);
-    expect(results.map((result) => result.value)).toEqual(["entry_b"]);
-    await expect(executePhaseLanePlan(plan, [{ ...entries[0], id: "entry_c" }], async (entry) => entry.id))
-      .rejects.toThrow("lane plan does not authorize entry: entry_c");
+    expect(called).toEqual(["entry_bbbbbbbbbbbbbbbbbbbbbbbbbb"]);
+    expect(results.map((result) => result.value)).toEqual(["entry_bbbbbbbbbbbbbbbbbbbbbbbbbb"]);
+    await expect(executePhaseLanePlan(plan, [{ ...entries[0], id: "entry_cccccccccccccccccccccccccc" }], async (entry) => entry.id))
+      .rejects.toThrow("lane plan does not authorize entry: entry_cccccccccccccccccccccccccc");
   });
 });

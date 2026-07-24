@@ -136,8 +136,9 @@ export interface CouncilRosterValidationResultV1 {
       | "invalid_roster_cap"
       | "missing_report_strategy"
       | "invalid_chair_strategy"
-      | "input_context_overflow"
-      | "stale_dogfood_roster_shape";
+	      | "input_context_overflow"
+	      | "invalid_entry_id"
+	      | "stale_dogfood_roster_shape";
     entryId?: string;
     routeId?: string;
     message: string;

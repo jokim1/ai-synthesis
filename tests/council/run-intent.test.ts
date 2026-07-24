@@ -13,8 +13,8 @@ describe("run intent cost contract", () => {
       updatedAt: "2026-01-01T00:00:00.000Z",
       scope: "explicit",
       entries: [
-        { id: "entry_a", route: route.ref, role: "architect", effort: "medium", enabled: true },
-        { id: "entry_b", route: route.ref, role: "risk-critic", effort: "medium", enabled: true }
+        { id: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", route: route.ref, role: "architect", effort: "medium", enabled: true },
+        { id: "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb", route: route.ref, role: "risk-critic", effort: "medium", enabled: true }
       ],
       reportStrategy: { kind: "deterministic" }
     };
@@ -39,24 +39,24 @@ describe("run intent cost contract", () => {
       updatedAt: "2026-01-01T00:00:00.000Z",
       scope: "explicit",
       entries: [
-        { id: "entry_chair", route: route.ref, role: "risk-critic", effort: "medium", enabled: true },
-        { id: "entry_critic", route: route.ref, role: "architect", effort: "medium", enabled: true }
+        { id: "entry_cccccccccccccccccccccccccc", route: route.ref, role: "risk-critic", effort: "medium", enabled: true },
+        { id: "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb", route: route.ref, role: "architect", effort: "medium", enabled: true }
       ],
       reportStrategy: { kind: "deterministic" }
     };
     const deterministic = buildRunPlan(input, roster, [route]);
-    const chair = buildRunPlan(input, roster, [route], { kind: "chair", chairEntryId: "entry_chair" });
+    const chair = buildRunPlan(input, roster, [route], { kind: "chair", chairEntryId: "entry_cccccccccccccccccccccccccc" });
     expect(deterministic.phasePlans.find((phase) => phase.phase === "critique")?.portableProviderInvokeMemberCount).toBe(1);
     expect(deterministic.phasePlans.find((phase) => phase.phase === "steelman")).toMatchObject({
       selectionMode: "least_supported_position_fallback",
-      candidateEntryIds: ["entry_chair", "entry_critic"],
-      executionBatches: [["entry_chair"], ["entry_critic"]]
+      candidateEntryIds: ["entry_cccccccccccccccccccccccccc", "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb"],
+      executionBatches: [["entry_cccccccccccccccccccccccccc"], ["entry_bbbbbbbbbbbbbbbbbbbbbbbbbb"]]
     });
     expect(deterministic.phasePlans.some((phase) => phase.phase === "chair")).toBe(false);
     expect(chair.phasePlans.find((phase) => phase.phase === "chair")?.memberTimeoutMs).toBe(420000);
     expect(chair.phasePlans.find((phase) => phase.phase === "critique")).toMatchObject({
-      selectedEntryIds: ["entry_critic"],
-      candidateEntryIds: ["entry_critic"]
+      selectedEntryIds: ["entry_bbbbbbbbbbbbbbbbbbbbbbbbbb"],
+      candidateEntryIds: ["entry_bbbbbbbbbbbbbbbbbbbbbbbbbb"]
     });
     expect(chair.worstCaseProviderCallCount).toBe(deterministic.worstCaseProviderCallCount + 2);
     expect(runPlanHashes(chair).runPlanHash).not.toBe(runPlanHashes(deterministic).runPlanHash);
@@ -83,8 +83,8 @@ describe("run intent cost contract", () => {
       updatedAt: "2026-01-01T00:00:00.000Z",
       scope: "explicit",
       entries: [
-        { id: "entry_a", route: twoCall.ref, role: "architect", effort: "medium", enabled: true },
-        { id: "entry_b", route: oneCall.ref, role: "product-operator", effort: "medium", enabled: true }
+        { id: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", route: twoCall.ref, role: "architect", effort: "medium", enabled: true },
+        { id: "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb", route: oneCall.ref, role: "product-operator", effort: "medium", enabled: true }
       ],
       reportStrategy: { kind: "deterministic" }
     };
@@ -117,8 +117,8 @@ describe("run intent cost contract", () => {
       updatedAt: "2026-01-01T00:00:00.000Z",
       scope: "explicit",
       entries: [
-        { id: "entry_cheap", route: cheap.ref, role: "risk-critic", effort: "medium", enabled: true },
-        { id: "entry_fallback", route: expensiveFallback.ref, role: "architect", effort: "medium", enabled: true }
+        { id: "entry_dddddddddddddddddddddddddd", route: cheap.ref, role: "risk-critic", effort: "medium", enabled: true },
+        { id: "entry_eeeeeeeeeeeeeeeeeeeeeeeeee", route: expensiveFallback.ref, role: "architect", effort: "medium", enabled: true }
       ],
       reportStrategy: { kind: "deterministic" }
     };

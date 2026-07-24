@@ -10,13 +10,13 @@ describe("council phase selection", () => {
       updatedAt: new Date().toISOString(),
       scope: "explicit" as const,
       entries: [
-        { id: "entry_a", route: route.ref, role: "architect" as const, effort: "max" as const, enabled: true },
-        { id: "entry_b", route: route.ref, role: "product-operator" as const, effort: "medium" as const, enabled: true },
-        { id: "entry_c", route: route.ref, role: "architect" as const, effort: "high" as const, enabled: true }
+        { id: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", route: route.ref, role: "architect" as const, effort: "max" as const, enabled: true },
+        { id: "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb", route: route.ref, role: "product-operator" as const, effort: "medium" as const, enabled: true },
+        { id: "entry_cccccccccccccccccccccccccc", route: route.ref, role: "architect" as const, effort: "high" as const, enabled: true }
       ],
       reportStrategy: { kind: "deterministic" as const }
     };
-    const positions = new Map([["entry_a", "issue_option_1"], ["entry_b", "issue_option_1"], ["entry_c", "issue_option_2"]]);
-    expect(selectPhaseEntries("steelman", roster, roster.reportStrategy, undefined, positions).map((entry) => entry.id)).toEqual(["entry_c"]);
+    const positions = new Map([["entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", "issue_option_1"], ["entry_bbbbbbbbbbbbbbbbbbbbbbbbbb", "issue_option_1"], ["entry_cccccccccccccccccccccccccc", "issue_option_2"]]);
+    expect(selectPhaseEntries("steelman", roster, roster.reportStrategy, undefined, positions).map((entry) => entry.id)).toEqual(["entry_cccccccccccccccccccccccccc"]);
   });
 });

@@ -17,8 +17,8 @@ describe("remembered roster persistence", () => {
       updatedAt: new Date().toISOString(),
       scope: "explicit" as const,
       entries: [
-        { id: "entry_a", route: route.ref, role: "architect" as const, effort: "medium" as const, enabled: true },
-        { id: "entry_b", route: route.ref, role: "risk-critic" as const, effort: "medium" as const, enabled: true }
+        { id: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", route: route.ref, role: "architect" as const, effort: "medium" as const, enabled: true },
+        { id: "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb", route: route.ref, role: "risk-critic" as const, effort: "medium" as const, enabled: true }
       ],
       reportStrategy: { kind: "deterministic" as const }
     };

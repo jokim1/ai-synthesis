@@ -23,4 +23,12 @@ describe("plan input boundaries", () => {
     mkdirSync(directory);
     expect(() => parseCouncilInput({ cwd: root, positional: ["./plan"] })).toThrow("not a regular file");
   });
+
+  it("wraps explicit missing plan files as validation errors", async () => {
+    const { parseCouncilInput } = await import("../../extensions/council/lib/input.js");
+    const root = mkdtempSync(join(tmpdir(), "council-missing-plan-"));
+    expect(() => loadPlanSnapshot("missing.md", root, [root])).toThrow("plan file is not readable: missing.md");
+    expect(() => parseCouncilInput({ cwd: root, planFile: "missing.md" })).toThrow("plan file is not readable: missing.md");
+    expect(() => parseCouncilInput({ cwd: root, positional: ["@missing.md"] })).toThrow("plan file is not readable: missing.md");
+  });
 });
