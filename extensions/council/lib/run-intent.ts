@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import type { CouncilAuthPolicy, CouncilInputSnapshotV1, CouncilMvpRunPlanV1, CouncilReportStrategy, CouncilRosterConfigV1, CouncilRoute, CouncilRunIntentV1 } from "./types.js";
+import type { CouncilAuthPolicy, CouncilInputSnapshotV1, CouncilMvpLanePlanV1, CouncilMvpRunPlanV1, CouncilReportStrategy, CouncilRosterConfigV1, CouncilRoute, CouncilRunIntentV1 } from "./types.js";
 import { sha256, stableJson } from "./util.js";
 import { rosterHash, writeJsonAtomic } from "./config.js";
 import { selectPhaseEntries } from "./phase-selection.js";
@@ -17,37 +17,15 @@ export function buildRunPlan(
   const chairId = strategy.kind === "chair" ? strategy.chairEntryId : undefined;
   const inputTokenCeiling = Math.ceil(((input.text.length + 24000) / 3) * 1.2);
   const retryInstructionTokenOverhead = 256;
-  const routeCostRank = (entry: CouncilRosterConfigV1["entries"][number]): number => {
-    const route = routeMap.get(entry.route.routeId);
-    if (!route?.cost.known || route.cost.inputPerMTok === undefined || route.cost.outputPerMTok === undefined || route.limits.maxTokens === undefined) return Number.POSITIVE_INFINITY;
-    const perAttempt = route.cost.inputPerMTok * (inputTokenCeiling + retryInstructionTokenOverhead)
-      + route.cost.outputPerMTok * route.limits.maxTokens;
-    return perAttempt * route.structuredOutput.maxProviderCalls;
-  };
-  const compareCostEnvelope = (
-    a: CouncilRosterConfigV1["entries"][number],
-    b: CouncilRosterConfigV1["entries"][number]
-  ): number => {
-    const aRank = routeCostRank(a);
-    const bRank = routeCostRank(b);
-    if (aRank !== bRank && !(Number.isNaN(aRank - bRank))) return bRank - aRank;
-    const aCalls = routeMap.get(a.route.routeId)?.structuredOutput.maxProviderCalls ?? 2;
-    const bCalls = routeMap.get(b.route.routeId)?.structuredOutput.maxProviderCalls ?? 2;
-    return bCalls - aCalls || roster.entries.indexOf(a) - roster.entries.indexOf(b);
-  };
   const phaseSelections = new Map((["initial_analysis", "critique", "steelman", "adversary", "chair"] as const).map((phase) => {
     const selected = selectPhaseEntries(phase, roster, strategy);
     const dynamicSteelman = phase === "steelman" && !enabled.some((entry) => entry.id !== chairId && entry.role === "steelman");
     const candidates = phase === "initial_analysis" || phase === "chair"
       ? selected
       : enabled.filter((entry) => entry.id !== chairId);
-    const billed = dynamicSteelman
-      ? [...candidates].sort(compareCostEnvelope).slice(0, 1)
-      : selected;
     return [phase, {
       selected,
       candidates,
-      billed,
       selectionMode: dynamicSteelman ? "least_supported_position_fallback" as const : "fixed" as const
     }];
   }));
@@ -63,10 +41,19 @@ export function buildRunPlan(
       portableProviderInvokeMemberCount: selection.selected.length
     };
   });
-  const retryCostInputs = phasePlans.flatMap((phase) =>
-    (phaseSelections.get(phase.phase)?.billed ?? []).map((entry) => {
+  const retryCostInputs = phasePlans.flatMap((phase) => {
+    const selection = phaseSelections.get(phase.phase);
+    if (!selection) return [];
+    const scheduled = phase.phase === "initial_analysis" || phase.phase === "chair";
+    const entries = scheduled
+      ? selection.selected.map((entry) => ({ entry, executionCase: "scheduled" as const }))
+      : [
+          ...selection.selected.map((entry) => ({ entry, executionCase: "selected" as const })),
+          ...selection.candidates.map((entry) => ({ entry, executionCase: "fallback" as const }))
+        ];
+    return entries.map(({ entry, executionCase }) => {
       const route = routeMap.get(entry.route.routeId);
-      const candidateRouteIds = [...new Set((phaseSelections.get(phase.phase)?.candidates ?? [entry]).map((candidate) => candidate.route.routeId))].sort();
+      const candidateRouteIds = [...new Set(selection.candidates.map((candidate) => candidate.route.routeId))].sort();
       const outputTokenCap = route?.limits.maxTokens ?? null;
       const inputPricePerMTok = route?.cost.inputPerMTok ?? null;
       const outputPricePerMTok = route?.cost.outputPerMTok ?? null;
@@ -78,6 +65,7 @@ export function buildRunPlan(
         routeId: entry.route.routeId,
         candidateRouteIds,
         phase: phase.phase,
+        executionCase,
         structuredQuestionCount: 1,
         inputTokenCeiling,
         retryInstructionTokenOverhead,
@@ -90,17 +78,40 @@ export function buildRunPlan(
         perAttemptCostCeilingUsd: perAttempt,
         questionCostUpperBoundUsd: perAttempt === null ? null : perAttempt * maxProviderCalls
       };
-    })
-  );
+    });
+  });
   const known = retryCostInputs.every((item) => item.questionCostUpperBoundUsd !== null);
-  const cost = known ? retryCostInputs.reduce((sum, item) => sum + (item.questionCostUpperBoundUsd ?? 0), 0) : null;
+  const phaseCost = (phase: CouncilMvpLanePlanV1["phase"]): number | null => {
+    const inputs = retryCostInputs.filter((item) => item.phase === phase);
+    const scheduled = inputs.filter((item) => item.executionCase !== "fallback");
+    const fallbacks = inputs.filter((item) => item.executionCase === "fallback");
+    if (inputs.some((item) => item.questionCostUpperBoundUsd === null)) return null;
+    const scheduledCost = scheduled.reduce((sum, item) => sum + (item.questionCostUpperBoundUsd ?? 0), 0);
+    const fallbackCost = Math.max(0, ...fallbacks.map((item) => item.questionCostUpperBoundUsd ?? 0));
+    return Math.max(scheduledCost, fallbackCost);
+  };
+  const phaseProviderCalls = (phase: CouncilMvpLanePlanV1["phase"]): number => {
+    const inputs = retryCostInputs.filter((item) => item.phase === phase);
+    const scheduledCalls = inputs
+      .filter((item) => item.executionCase !== "fallback")
+      .reduce((sum, item) => sum + item.worstCaseProviderCalls, 0);
+    const fallbackCalls = Math.max(
+      0,
+      ...inputs.filter((item) => item.executionCase === "fallback").map((item) => item.worstCaseProviderCalls)
+    );
+    return Math.max(scheduledCalls, fallbackCalls);
+  };
+  const phaseCosts = phasePlans.map((phase) => phaseCost(phase.phase));
+  const cost = known && phaseCosts.every((value) => value !== null)
+    ? phaseCosts.reduce<number>((sum, value) => sum + (value ?? 0), 0)
+    : null;
   const expectedRunMs = phasePlans.reduce((sum, phase) => sum + phase.expectedPhaseMs, 0);
   const worstCaseScheduledMs = phasePlans.reduce((sum, phase) => sum + phase.phaseBudgetMs, 0);
   return {
     version: 1,
     phasePlans,
     retryCostInputs,
-    worstCaseProviderCallCount: retryCostInputs.reduce((sum, item) => sum + item.worstCaseProviderCalls, 0),
+    worstCaseProviderCallCount: phasePlans.reduce((sum, phase) => sum + phaseProviderCalls(phase.phase), 0),
     retryAdjustedCostUpperBoundUsd: cost,
     retryAdjustedCostKnown: known,
     expectedRunMs,

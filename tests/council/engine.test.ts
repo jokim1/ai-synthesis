@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runCouncil } from "../../extensions/council/lib/engine.js";
@@ -126,6 +126,66 @@ describe("Phase 5 council engine", () => {
     expect(result.ok).toBe(false);
     expect(result.terminalReport?.status).toBe("canceled");
     expect(result.terminalReport?.implementation_authorized).toBe(false);
+  });
+
+  it("writes a failed terminal report for unexpected post-preflight errors", async () => {
+    const route = providerInvokeRoute("claude", true);
+    Object.defineProperty(route, "expectedLatencyMs", {
+      get() {
+        throw new Error("latency metadata unavailable");
+      }
+    });
+    const root = mkdtempSync(join(tmpdir(), "council-unexpected-failure-"));
+    const result = await runCouncil({
+      cwd: root,
+      packageRoot: process.cwd(),
+      input: issueSnapshot("Choose a safe implementation approach"),
+      roster: {
+        version: 1,
+        updatedAt: new Date().toISOString(),
+        scope: "explicit",
+        entries: [
+          { id: "entry_a", route: route.ref, role: "architect", effort: "medium", enabled: true },
+          { id: "entry_b", route: route.ref, role: "risk-critic", effort: "medium", enabled: true }
+        ],
+        reportStrategy: { kind: "deterministic" }
+      },
+      routes: [route],
+      reportStrategySource: "roster_file",
+      rememberedRosterWritten: true
+    });
+    expect(result.ok).toBe(false);
+    expect(result.terminalReport).toMatchObject({
+      status: "failed",
+      phase: "initial_analysis",
+      reason: "unexpected_failure",
+      implementation_authorized: false
+    });
+    expect(result.diagnostics).toContain("unexpected_failure: latency metadata unavailable");
+    expect(readFileSync(result.reportPath as string, "utf8")).toContain("# Council Terminal Report");
+  });
+
+  it("preserves preflight failures as report-free exits", async () => {
+    const route = providerInvokeRoute("claude", true);
+    const root = mkdtempSync(join(tmpdir(), "council-preflight-failure-"));
+    await expect(runCouncil({
+      cwd: root,
+      packageRoot: process.cwd(),
+      input: issueSnapshot("Choose a safe implementation approach"),
+      roster: {
+        version: 1,
+        updatedAt: new Date().toISOString(),
+        scope: "explicit",
+        entries: [
+          { id: "entry_a", route: route.ref, role: "architect", effort: "medium", enabled: true }
+        ],
+        reportStrategy: { kind: "deterministic" }
+      },
+      routes: [route],
+      reportStrategySource: "roster_file",
+      rememberedRosterWritten: false
+    })).rejects.toThrow("roster validation failed");
+    expect(existsSync(join(root, ".ai-synthesis", "council-sessions"))).toBe(false);
   });
 
   it("degrades readiness when one selected later-phase member fails", async () => {

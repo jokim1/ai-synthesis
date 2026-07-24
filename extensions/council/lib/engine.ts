@@ -552,18 +552,13 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
   const roster = validation.reconciledConfig;
   const strategy = validation.reportStrategy.effective;
   const diagnostics = [...validation.reconciliationDiagnostics, ...validation.compositionFeedback.map((item) => item.message)];
-  const positionCatalog = derivePositionCatalog(opts.input);
-  const positionCatalogBytes = stableJson(positionCatalog);
-  const positionCatalogSha256 = sha256(positionCatalogBytes);
-  const roleTemplates = loadRoleTemplates(opts.packageRoot);
-  const plan = buildRunPlan(opts.input, roster, opts.routes, strategy);
   const runId = `council_${new Date().toISOString().replace(/[-:.]/g, "").slice(0, 15)}_${sha256(opts.input.sha256).slice(0, 8)}_${randomBytes(5).toString("hex")}`;
   const controller = new AbortController();
   let phase = "initial_analysis";
   const externalAbort = () => controller.abort(opts.signal?.reason ?? "canceled");
   if (opts.signal?.aborted) externalAbort();
   else opts.signal?.addEventListener("abort", externalAbort, { once: true });
-  const deadlineTimer = setTimeout(() => controller.abort("deadline_exceeded"), plan.worstCaseDeadlineMs);
+  let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
   const runOpts = { ...opts, signal: controller.signal };
   const routeMap = new Map(opts.routes.map((route) => [route.ref.routeId, route]));
   const voiceSchemaPath = join(opts.packageRoot, "schemas/council-voice.json");
@@ -575,12 +570,19 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
   const recordExecutionIdentity = (identity: CouncilExecutionIdentityV1) => {
     executionIdentities.set(identity.routeId, identity);
   };
-  const plannedPhase = (name: CouncilMvpLanePlanV1["phase"]): CouncilMvpLanePlanV1 => {
-    const phasePlan = plan.phasePlans.find((candidate) => candidate.phase === name);
-    if (!phasePlan) throw new Error(`run plan missing phase: ${name}`);
-    return phasePlan;
-  };
   try {
+    if (controller.signal.aborted) throw new RunAbortedError(String(controller.signal.reason ?? "canceled"));
+    const positionCatalog = derivePositionCatalog(opts.input);
+    const positionCatalogBytes = stableJson(positionCatalog);
+    const positionCatalogSha256 = sha256(positionCatalogBytes);
+    const roleTemplates = loadRoleTemplates(opts.packageRoot);
+    const plan = buildRunPlan(opts.input, roster, opts.routes, strategy);
+    deadlineTimer = setTimeout(() => controller.abort("deadline_exceeded"), plan.worstCaseDeadlineMs);
+    const plannedPhase = (name: CouncilMvpLanePlanV1["phase"]): CouncilMvpLanePlanV1 => {
+      const phasePlan = plan.phasePlans.find((candidate) => candidate.phase === name);
+      if (!phasePlan) throw new Error(`run plan missing phase: ${name}`);
+      return phasePlan;
+    };
     const initialEntries = selectPhaseEntries("initial_analysis", roster, strategy)
       .filter((item) => validation.executableEntryIds.includes(item.id));
     const initialPrompts = new Map(initialEntries.map((entry) => {
@@ -789,8 +791,16 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
     const reportPath = writeReport(opts.cwd, runId, markdown);
     return { ok: true, reportPath, report, diagnostics };
   } catch (error) {
-    if (!(error instanceof RunAbortedError)) throw error;
-    const reason = controller.signal.aborted ? String(controller.signal.reason) : error.reason;
+    const unexpected = !(error instanceof RunAbortedError);
+    if (unexpected) {
+      const message = error instanceof Error ? error.message : String(error);
+      diagnostics.push(`unexpected_failure: ${message}`);
+    }
+    const reason = controller.signal.aborted
+      ? String(controller.signal.reason)
+      : error instanceof RunAbortedError
+        ? error.reason
+        : "unexpected_failure";
     const terminalReport: CouncilTerminalReportV1 = {
       version: 1,
       status: reason === "canceled" ? "canceled" : "failed",
@@ -807,7 +817,7 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
     const reportPath = writeReport(opts.cwd, runId, renderTerminalMarkdown(terminalReport));
     return { ok: false, reportPath, terminalReport, diagnostics };
   } finally {
-    clearTimeout(deadlineTimer);
+    if (deadlineTimer) clearTimeout(deadlineTimer);
     opts.signal?.removeEventListener("abort", externalAbort);
   }
 }

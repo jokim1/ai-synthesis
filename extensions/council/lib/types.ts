@@ -261,6 +261,7 @@ export interface CouncilMvpRunPlanV1 {
     routeId: string;
     candidateRouteIds: string[];
     phase: CouncilMvpLanePlanV1["phase"];
+    executionCase: "scheduled" | "selected" | "fallback";
     structuredQuestionCount: number;
     inputTokenCeiling: number;
     retryInstructionTokenOverhead: number;

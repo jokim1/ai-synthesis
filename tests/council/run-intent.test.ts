@@ -95,4 +95,49 @@ describe("run intent cost contract", () => {
       questionCostUpperBoundUsd: 2
     });
   });
+
+  it("prices worst authorized critique and adversary fallback envelopes", () => {
+    const base = providerInvokeRoute("claude", true);
+    const cheap = {
+      ...base,
+      ref: { ...base.ref, routeId: `${base.ref.routeId}:cheap`, model: "cheap" },
+      structuredOutput: { ...base.structuredOutput, retryOwner: "adapter" as const, maxProviderCalls: 1 as const },
+      cost: { known: true, inputPerMTok: 0, outputPerMTok: 1 },
+      limits: { maxTokens: 100_000 }
+    };
+    const expensiveFallback = {
+      ...base,
+      ref: { ...base.ref, routeId: `${base.ref.routeId}:fallback`, model: "fallback" },
+      structuredOutput: { ...base.structuredOutput, retryOwner: "engine" as const, maxProviderCalls: 2 as const },
+      cost: { known: true, inputPerMTok: 0, outputPerMTok: 2 },
+      limits: { maxTokens: 1_000_000 }
+    };
+    const roster: CouncilRosterConfigV1 = {
+      version: 1,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      scope: "explicit",
+      entries: [
+        { id: "entry_cheap", route: cheap.ref, role: "risk-critic", effort: "medium", enabled: true },
+        { id: "entry_fallback", route: expensiveFallback.ref, role: "architect", effort: "medium", enabled: true }
+      ],
+      reportStrategy: { kind: "deterministic" }
+    };
+    const plan = buildRunPlan(input, roster, [cheap, expensiveFallback]);
+    for (const phase of ["critique", "adversary"] as const) {
+      expect(plan.retryCostInputs.find((item) =>
+        item.phase === phase
+        && item.executionCase === "fallback"
+        && item.routeId === expensiveFallback.ref.routeId
+      )).toMatchObject({
+        retryOwner: "engine",
+        maxProviderCalls: 2,
+        questionCostUpperBoundUsd: 4
+      });
+    }
+    expect(plan.worstCaseProviderCallCount).toBeGreaterThan(
+      plan.retryCostInputs
+        .filter((item) => item.executionCase === "selected")
+        .reduce((sum, item) => sum + item.worstCaseProviderCalls, 0)
+    );
+  });
 });
