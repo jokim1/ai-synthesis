@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { evaluateRuns, materialDeltas } from "./council-usefulness-derivation.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const readJson = (path) => JSON.parse(readFileSync(join(root, path), "utf8"));
@@ -156,8 +157,6 @@ function loadCapture(record, sample) {
   const soloEnvelope = validateRawCall(soloCalls?.[0], capture?.routeId, sample, `${sample.id}:solo`);
   if (stableJson(soloEnvelope?.structured) !== stableJson(rawSolo)) failures.push(`${sample.id}: raw solo output mismatch`);
   if (capture?.solo?.structuredOutputSha256 !== sha256(stableJson(rawSolo))) failures.push(`${sample.id}: solo structured hash mismatch`);
-  const { verifiedCitationLocators: ignoredLocators, assumptionsOrRisksCount: ignoredCount, ...rawCouncilResult } = record.councilResult;
-  if (stableJson(primary.result?.report) !== stableJson(rawCouncilResult)) failures.push(`${sample.id}: raw council result mismatch`);
   const revisions = (capture?.revisions ?? []).map((run, index) =>
     validateRun(run, capture?.routeId, sample, `${sample.id}:revision-${index + 1}`)
   );
@@ -172,13 +171,31 @@ function loadCapture(record, sample) {
       || !revision.reportBytes?.includes(`report_strategy: "${expectedRevisionStrategies[index]}"`)
     )
   ) failures.push(`${sample.id}: raw revision strategy mismatch`);
+  const evaluation = evaluateRuns(
+    primary.result?.report,
+    revisions.map((revision) => revision.result?.report),
+    rawSolo
+  );
+  const revisionDeltas = evaluation.revisions.map((revision) => revision.deltas);
+  for (let index = 0; index < revisions.length; index += 1) {
+    if (
+      capture.revisions[index]?.outcome !== evaluation.revisions[index].outcome
+      || stableJson(capture.revisions[index]?.materialDeltas) !== stableJson(revisionDeltas[index])
+    ) failures.push(`${sample.id}: revision-${index + 1} outcome is not derived from its raw report`);
+  }
+  if (capture?.selectedRun !== evaluation.selectedRun) failures.push(`${sample.id}: selected run does not match derived material deltas`);
+  const selectedResult = evaluation.selectedRevisionIndex >= 0
+    ? revisions[evaluation.selectedRevisionIndex].result
+    : primary.result;
+  const { verifiedCitationLocators: ignoredLocators, assumptionsOrRisksCount: ignoredCount, ...rawCouncilResult } = record.councilResult;
+  if (stableJson(selectedResult?.report) !== stableJson(rawCouncilResult)) failures.push(`${sample.id}: selected raw council result mismatch`);
+  const expectedAttempts = evaluation.primaryDeltas.length === 0 ? revisions.length : 0;
   if (
-    record.revisionAttempts.length > 0
-    && (
-      revisions.length !== record.revisionAttempts.length
-      || record.revisionAttempts.some((attempt, index) =>
-        stableJson(attempt.rawRunArtifact) !== stableJson(capture.revisions[index].result)
-      )
+    record.revisionAttempts.length !== expectedAttempts
+    || record.revisionAttempts.some((attempt, index) =>
+      stableJson(attempt.rawRunArtifact) !== stableJson(capture.revisions[index].result)
+      || stableJson(attempt.materialDeltas) !== stableJson(revisionDeltas[index])
+      || attempt.outcome !== evaluation.revisions[index].outcome
     )
   ) failures.push(`${sample.id}: revision attempts are not bound to raw runs`);
   return { capture, routeProbe, route, roster };
@@ -192,39 +209,6 @@ function locatorIsValid(locator, sample, lineCount) {
   const expected = sample.kind === "plan" ? "plan.md" : "issue";
   const match = locator?.match(/^(plan\.md|issue):L(\d+)(?:-L(\d+))?$/);
   return Boolean(match && match[1] === expected && Number(match[2]) >= 1 && Number(match[3] ?? match[2]) <= lineCount);
-}
-
-function normalizeClaim(value) {
-  return String(value ?? "")
-    .toLowerCase()
-    .replace(/\b(?:ev_[a-z0-9_:-]+|entry_[a-z0-9_:-]+|plan\.md:l\d+(?:-l\d+)?|issue:l\d+(?:-l\d+)?)\b/g, " ")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .replace(/\s+/g, " ");
-}
-
-function substantiveClaim(value) {
-  const normalized = normalizeClaim(value);
-  if (normalized.split(" ").length < 4) return false;
-  return ![
-    "gather more grounded evidence before implementation",
-    "proceed with the reviewed approach",
-    "start the smallest reversible rollout step",
-    "confirm inputs"
-  ].includes(normalized);
-}
-
-function absentFromBaseline(value, baseline) {
-  const candidate = normalizeClaim(value);
-  const baselineClaims = [
-    baseline.recommendation,
-    baseline.next_action,
-    ...baseline.evidence.map((item) => item.claim),
-    ...baseline.assumptions.flatMap((item) => [item.statement, item.how_to_verify]),
-    ...baseline.risks,
-    ...baseline.what_would_change_my_view
-  ].map(normalizeClaim);
-  return candidate.length > 0 && baselineClaims.every((claim) => !claim.includes(candidate) && !candidate.includes(claim));
 }
 
 for (const sample of set.samples) {
@@ -264,29 +248,7 @@ for (const sample of set.samples) {
     const lineCount = sample.input.split("\n").length;
     const locators = report.evidence_summary.map(locatorFromEvidence).filter(Boolean).sort();
     const verifiedLocators = locators.filter((locator) => locatorIsValid(locator, sample, lineCount));
-    const deltas = [];
-    const outcome = normalizeClaim(`${report.recommendation} ${report.next_action}`);
-    let dissent;
-    try {
-      dissent = JSON.parse(report.strongest_dissent);
-    } catch {
-      dissent = { objection: report.strongest_dissent };
-    }
-    const dissentClaim = dissent?.objection;
-    if (
-      substantiveClaim(dissentClaim)
-      && absentFromBaseline(dissentClaim, baseline)
-      && outcome.includes(normalizeClaim(dissentClaim))
-    ) deltas.push("dissent");
-    if (report.evidence_summary.some((item) => {
-      const claim = item.replace(/\s+\([^)]+\)$/, "");
-      return substantiveClaim(claim) && absentFromBaseline(claim, baseline) && outcome.includes(normalizeClaim(claim));
-    })) deltas.push("evidence");
-    if (report.assumptions.some((item) => {
-      const claim = item.replace(/^[^:]+:\s*/, "");
-      return substantiveClaim(claim) && absentFromBaseline(claim, baseline) && outcome.includes(normalizeClaim(claim));
-    })) deltas.push("assumption");
-    if (substantiveClaim(report.next_action) && absentFromBaseline(report.next_action, baseline)) deltas.push("next_action");
+    const deltas = materialDeltas(report, baseline);
     const correlatedExit = deltas.length === 0
       && independentRouteAvailable === false
       && record.sameRouteExit?.result === "same_route_added_value:not_demonstrated"

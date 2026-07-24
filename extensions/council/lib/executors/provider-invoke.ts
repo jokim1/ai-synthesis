@@ -102,17 +102,28 @@ export function invokeProvider(
       finish({ ok: false, status: "invocation_failed", text: stdout, error: error.message });
     });
     child.on("close", () => {
-      onCapture?.({
-        bin,
-        args,
-        prompt,
-        schemaPath,
-        routeId: route.ref.routeId,
-        entryId: entry.id,
-        effort: entry.effort,
-        stdout,
-        stderr
-      });
+      if (settled) return;
+      try {
+        onCapture?.({
+          bin,
+          args,
+          prompt,
+          schemaPath,
+          routeId: route.ref.routeId,
+          entryId: entry.id,
+          effort: entry.effort,
+          stdout,
+          stderr
+        });
+      } catch (error) {
+        finish({
+          ok: false,
+          status: "capture_failed",
+          text: stdout,
+          error: error instanceof Error ? error.message : String(error)
+        });
+        return;
+      }
       if (aborted) {
         finish({ ok: false, status: "canceled", text: stdout, error: String(signal?.reason ?? "canceled") });
         return;

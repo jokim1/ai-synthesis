@@ -55,4 +55,22 @@ describe("provider-invoke executor", () => {
     expect(captures[0].args).toContain("--auth");
     expect(JSON.parse(captures[0].stdout)).toMatchObject({ ok: true, status: "ok" });
   });
+
+  it("returns a controlled failure when capture processing throws", async () => {
+    const route = providerInvokeRoute("claude", true);
+    const result = await invokeProvider(
+      process.cwd(),
+      route,
+      { id: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", route: route.ref, role: "architect", effort: "medium", enabled: true },
+      "fixed prompt",
+      join(process.cwd(), "schemas/council-voice.json"),
+      1000,
+      { ...process.env, AISYNTH_COUNCIL_PROVIDER_INVOKE: join(process.cwd(), "tests/council/fakes/provider-invoke") },
+      undefined,
+      () => {
+        throw new Error("capture write failed");
+      }
+    );
+    expect(result).toMatchObject({ ok: false, status: "capture_failed", error: "capture write failed" });
+  });
 });

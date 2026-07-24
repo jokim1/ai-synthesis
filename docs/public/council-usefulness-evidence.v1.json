@@ -34,7 +34,7 @@
       },
       "captureArtifact": {
         "path": "docs/public/council-usefulness-captures/plan-review.v2.json",
-        "sha256": "a7f163af4d3410828081897454b39763db50aed2a6e816e5a06ed93df35c3874"
+        "sha256": "7a580e882d7ad9427490549f3c5b25d9d73a383a47f1b2f7f647b1b7e8cb8296"
       },
       "councilResult": {
         "recommendation": "revise_plan: Revise the plan before acceptance. The three steps name a sound high-level shape (validate, gate behind a flag, roll back on regression), but every step is underspecified in ways that block safe implementation. Step 1 (plan.md:L1) does not state what \"request validation\" covers — which fields, schema vs. semantic checks, reject vs. sanitize, or how failures are surfaced to callers. Step 2 (plan.md:L2) names a feature flag but not its default state, rollout scope/percentage, or the kill-switch owner. Step 3 (plan.md:L3) triggers rollback on \"error-rate regression\" without a baseline, a numeric threshold, an observation window, or an alerting/automation mechanism, so the trigger is not actionable. The plan should add: concrete validation scope and error contract; flag name, default-off state, and staged rollout percentages; and a quantified rollback SLO (baseline, threshold, window, owner).",
@@ -264,7 +264,7 @@
       },
       "captureArtifact": {
         "path": "docs/public/council-usefulness-captures/issue-explicit-alternatives.v2.json",
-        "sha256": "2a4457464f721841fa54ffc681982da7108147ff125c715b8c9b0bc35e99beb3"
+        "sha256": "b8b62fae8b8db414846ba9fbaa39821c143a55bbdf063011d154521e14dd0fa5"
       },
       "councilResult": {
         "recommendation": "issue_option_2: Run a staged rollout (Option B). The issue asks for a choice among three options but supplies no context on blast radius, load profile, or rollback path. A staged rollout is the architecturally safest of the offered options: it lets change reach production while bounding exposure, and it can absorb the load-test concern raised by Option C incrementally rather than blocking entirely. \"Ship immediately\" carries unbounded risk given the absent evidence, and full deferral forgoes progress when a gated rollout can gather the same signal. This choice is provisional pending the missing operational context.",
@@ -495,7 +495,7 @@
       },
       "captureArtifact": {
         "path": "docs/public/council-usefulness-captures/issue-freeform.v2.json",
-        "sha256": "7dfd21ac3732007ca0cdd190c9f76ea69d0d588bfc0bc23d17b77e820b9431f8"
+        "sha256": "96b0d20cb6d415bb523abe4e8219b5464cecf70bc55d7d520ff4adc9ccedd53b"
       },
       "councilResult": {
         "recommendation": "No deterministic recommendation; see structured disagreement",

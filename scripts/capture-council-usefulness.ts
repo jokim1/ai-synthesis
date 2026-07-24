@@ -10,6 +10,7 @@ import { lineMapFor } from "../extensions/council/lib/input.js";
 import { derivePositionCatalog } from "../extensions/council/lib/position-catalog.js";
 import { validateModelJsonValue } from "../extensions/council/lib/validate-json.js";
 import { stableJson } from "../extensions/council/lib/util.js";
+import { evaluateRuns } from "./council-usefulness-derivation.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const outputRoot = join(root, "docs/public/council-usefulness-captures");
@@ -47,64 +48,6 @@ function snapshot(sample) {
     lineMap: lineMapFor(sample.input),
     sha256: sample.inputSha256
   };
-}
-
-function normalizeClaim(value) {
-  return String(value ?? "")
-    .toLowerCase()
-    .replace(/\b(?:ev_[a-z0-9_:-]+|entry_[a-z0-9_:-]+|plan\.md:l\d+(?:-l\d+)?|issue:l\d+(?:-l\d+)?)\b/g, " ")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .replace(/\s+/g, " ");
-}
-
-function substantiveClaim(value) {
-  const normalized = normalizeClaim(value);
-  return normalized.split(" ").length >= 4 && ![
-    "gather more grounded evidence before implementation",
-    "proceed with the reviewed approach",
-    "start the smallest reversible rollout step",
-    "confirm inputs"
-  ].includes(normalized);
-}
-
-function absentFromBaseline(value, baseline) {
-  const candidate = normalizeClaim(value);
-  const baselineClaims = [
-    baseline.recommendation,
-    baseline.next_action,
-    ...baseline.evidence.map((item) => item.claim),
-    ...baseline.assumptions.flatMap((item) => [item.statement, item.how_to_verify]),
-    ...baseline.risks,
-    ...baseline.what_would_change_my_view
-  ].map(normalizeClaim);
-  return candidate.length > 0 && baselineClaims.every((claim) => !claim.includes(candidate) && !candidate.includes(claim));
-}
-
-function materialDeltas(report, baseline) {
-  const deltas = [];
-  const outcome = normalizeClaim(`${report.recommendation} ${report.next_action}`);
-  let dissent;
-  try {
-    dissent = JSON.parse(report.strongest_dissent);
-  } catch {
-    dissent = { objection: report.strongest_dissent };
-  }
-  if (
-    substantiveClaim(dissent?.objection)
-    && absentFromBaseline(dissent.objection, baseline)
-    && outcome.includes(normalizeClaim(dissent.objection))
-  ) deltas.push("dissent");
-  if (report.evidence_summary.some((item) => {
-    const claim = item.replace(/\s+\([^)]+\)$/, "");
-    return substantiveClaim(claim) && absentFromBaseline(claim, baseline) && outcome.includes(normalizeClaim(claim));
-  })) deltas.push("evidence");
-  if (report.assumptions.some((item) => {
-    const claim = item.replace(/^[^:]+:\s*/, "");
-    return substantiveClaim(claim) && absentFromBaseline(claim, baseline) && outcome.includes(normalizeClaim(claim));
-  })) deltas.push("assumption");
-  if (substantiveClaim(report.next_action) && absentFromBaseline(report.next_action, baseline)) deltas.push("next_action");
-  return deltas;
 }
 
 function verifiedLocators(report, sample) {
@@ -262,10 +205,18 @@ for (const sample of set.samples.filter((candidate) => !sampleFilter || candidat
         await captureRun(sample, "revision-2", { kind: "deterministic" })
       ]
     : [];
-  const report = primary.result.report;
+  const evaluation = evaluateRuns(primary.result.report, revisions.map((revision) => revision.result.report), solo.value);
+  const revisionEvaluations = revisions.map((revision, index) => ({
+    revision,
+    ...evaluation.revisions[index]
+  }));
+  const report = evaluation.selectedReport;
   const locators = verifiedLocators(report, sample);
-  const deltas = materialDeltas(report, solo.value);
-  const correlatedExit = sample.id === "issue-freeform" && deltas.length === 0 && revisions.length === 2;
+  const deltas = evaluation.selectedDeltas;
+  const correlatedExit = sample.id === "issue-freeform"
+    && evaluation.primaryDeltas.length === 0
+    && revisionEvaluations.length === scorecard.sameRouteExit.maxRevisionAttempts
+    && revisionEvaluations.every((evaluation) => evaluation.deltas.length === 0);
   const councilResult = {
     ...report,
     verifiedCitationLocators: locators,
@@ -277,12 +228,13 @@ for (const sample of set.samples.filter((candidate) => !sampleFilter || candidat
     materialDeltas: deltas,
     usedByFinalReport: deltas.length > 0
   };
-  const revisionAttempts = correlatedExit
-    ? revisions.map((revision, index) => ({
+  const revisionAttempts = evaluation.primaryDeltas.length === 0
+    ? revisionEvaluations.map((evaluation, index) => ({
         attempt: index + 1,
         strategy: index === 0 ? "structured_disagreement" : "deterministic",
-        outcome: "correlated_no_added_value",
-        rawRunArtifact: revision.artifact
+        outcome: evaluation.outcome,
+        materialDeltas: evaluation.deltas,
+        rawRunArtifact: evaluation.revision.artifact
       }))
     : [];
   const capture = {
@@ -302,6 +254,7 @@ for (const sample of set.samples.filter((candidate) => !sampleFilter || candidat
     routeProbe: routeProbeArtifact,
     roster: rosterArtifact,
     routeId: route.ref.routeId,
+    selectedRun: evaluation.selectedRun,
     primary: {
       result: primary.artifact,
       report: primary.reportArtifact,
@@ -311,11 +264,13 @@ for (const sample of set.samples.filter((candidate) => !sampleFilter || candidat
       structuredOutputSha256: sha256(stableJson(solo.value)),
       providerCalls: solo.providerCalls
     },
-    revisions: revisions.map((revision, index) => ({
+    revisions: revisionEvaluations.map((evaluation, index) => ({
       strategy: index === 0 ? "structured_disagreement" : "deterministic",
-      result: revision.artifact,
-      report: revision.reportArtifact,
-      providerCalls: revision.providerCalls
+      outcome: evaluation.outcome,
+      materialDeltas: evaluation.deltas,
+      result: evaluation.revision.artifact,
+      report: evaluation.revision.reportArtifact,
+      providerCalls: evaluation.revision.providerCalls
     }))
   };
   const capturePath = join(outputRoot, `${sample.id}.v2.json`);

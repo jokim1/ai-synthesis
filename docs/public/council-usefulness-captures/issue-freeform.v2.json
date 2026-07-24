@@ -413,7 +413,9 @@
           "resolvedModel": ""
         }
       ],
-      "strategy": "structured_disagreement"
+      "strategy": "structured_disagreement",
+      "materialDeltas": [],
+      "outcome": "correlated_no_added_value"
     },
     {
       "result": {
@@ -591,7 +593,10 @@
           "resolvedModel": ""
         }
       ],
-      "strategy": "deterministic"
+      "strategy": "deterministic",
+      "materialDeltas": [],
+      "outcome": "correlated_no_added_value"
     }
-  ]
+  ],
+  "selectedRun": "primary"
 }
