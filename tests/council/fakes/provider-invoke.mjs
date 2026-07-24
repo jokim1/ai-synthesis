@@ -100,7 +100,7 @@ if (schema === "council-voice.json") {
   structured = {
     recommendation: "Proceed with safeguards",
     decision_readiness: process.env.AISYNTH_FAKE_CHAIR_READINESS ?? "conditional",
-    evidence_summary: ["The input identifies the decision (issue:L1)"],
+    evidence_summary: ["The input line 1 informs the decision (issue:L1)"],
     strongest_dissent: "Residual risk remains",
     assumptions: ["Inputs remain accurate"],
     risks: ["Execution risk remains"],
@@ -108,5 +108,8 @@ if (schema === "council-voice.json") {
     phase_findings: {},
     next_action: "Confirm inputs"
   };
+  if (process.env.AISYNTH_FAKE_CHAIR_UNGROUNDED === "1") {
+    structured.evidence_summary = ["An invented production incident proves the decision (issue:L1)"];
+  }
 }
 console.log(JSON.stringify({ ok: true, status: "ok", structured, text: "", model: process.env.AISYNTH_FAKE_RESOLVED_MODEL ?? "claude-fixture-resolved", meta: { attempts: 1 } }));

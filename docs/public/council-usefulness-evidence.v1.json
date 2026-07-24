@@ -257,7 +257,11 @@
         "usedByFinalReport": true
       },
       "revisionAttempts": [],
-      "pass": true
+      "pass": true,
+      "captureArtifact": {
+        "path": "docs/public/council-usefulness-captures/plan-review.v1.json",
+        "sha256": "7211fd347cf8e9b4833ec16eea8f45803a10a9b8de01e8add9d56f34248aec9c"
+      }
     },
     {
       "sampleId": "issue-explicit-alternatives",
@@ -470,7 +474,11 @@
         "usedByFinalReport": true
       },
       "revisionAttempts": [],
-      "pass": true
+      "pass": true,
+      "captureArtifact": {
+        "path": "docs/public/council-usefulness-captures/issue-explicit-alternatives.v1.json",
+        "sha256": "1f6b1be5192b3f05c9c44c75bb4b57f82357f2169784561fa509092382fcaf7f"
+      }
     },
     {
       "sampleId": "issue-freeform",
@@ -756,6 +764,10 @@
         "result": "same_route_added_value:not_demonstrated",
         "disclosure": "same_route_added_value: not_demonstrated",
         "reason": "Two real same-route Claude subscription attempts produced no material delta absent from the solo baseline; Codex remained unavailable with tool_policy_unproven, so no authorized independent route was available."
+      },
+      "captureArtifact": {
+        "path": "docs/public/council-usefulness-captures/issue-freeform.v1.json",
+        "sha256": "b9f4d5135624e80cc60a9be6ac871496d9a3c62e3a364af8cfb6f99b3f30e4e5"
       }
     }
   ]

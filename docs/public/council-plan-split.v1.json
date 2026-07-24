@@ -7,17 +7,17 @@
       "path": "docs/council/track-a-toolchain.md",
       "track": "A",
       "sectionIds": ["Implementation Phases", "Exact File-Level Changes"],
-      "sourceLines": "1229-1273,1309-1353",
+      "sourceLineRanges": "165-165,214-214,1229-1273,1309-1353",
       "snippets": [
         {
           "id": "package-gate-default",
-          "sourceLines": "159-159",
+          "sourceLines": "165-165",
           "sha256": "2111a14f63e55a5a3e484968dc392a458c2f0c6cb0567fbd3c6b8b909166efe1",
           "text": "Phase 1 `package.json` is a portable toolchain baseline for the `ai-synthesis` repository's own implementation and review workflow, not an installation requirement for user repositories."
         },
         {
           "id": "track-a-product-fallback",
-          "sourceLines": "233-233",
+          "sourceLines": "214-214",
           "sha256": "6ca5df98ff8b7b52369f0cf9ad334c476b8e78f87065c14bbef77f1efbd1be11",
           "text": "Owner decision: a failed Track A package/toolchain baseline does not block the TypeScript product."
         },
@@ -33,7 +33,7 @@
       "path": "docs/council/track-b-provider-hardening.md",
       "track": "B",
       "sectionIds": ["Availability And Routing", "Implementation Phases"],
-      "sourceLines": "856-891,1274-1275",
+      "sourceLineRanges": "856-891,1274-1275,1635-1635",
       "snippets": [
         {
           "id": "claude-525ce69-followups",
@@ -43,7 +43,7 @@
         },
         {
           "id": "pi-registry-mvp-users",
-          "sourceLines": "861-861",
+          "sourceLines": "1635-1635",
           "sha256": "e87ac67b2b2722e815aab9ae153f868752d60ab3160979aa72f6abed817c82da",
           "text": "MVP cannot run with Pi-registry-only auth; it shows `no_executable_provider_cli_routes` and docs explain that authorized portable routes are required."
         }
@@ -53,17 +53,17 @@
       "path": "docs/council/track-c-portable-mvp.md",
       "track": "C",
       "sectionIds": ["Implementation Phases", "Exact File-Level Changes"],
-      "sourceLines": "1276-1298,1354-1438",
+      "sourceLineRanges": "209-210,1276-1298,1354-1438",
       "snippets": [
         {
           "id": "first-ship-order",
-          "sourceLines": "204-204",
+          "sourceLines": "209-209",
           "sha256": "b1d4960bde4a92c953134219f695fbf2d95f8280200e45a80f421d0a1056c9a1",
           "text": "The first shippable MVP is Track A plus Phase 2B, Phase 2C, Phase 5, and minimum Phase 6 docs, with authorized portable routes."
         },
         {
           "id": "mvp-plan-scope-split",
-          "sourceLines": "236-236",
+          "sourceLines": "210-210",
           "sha256": "40dd427471947ac21646cccc48d6c785f925cbf93bc674c74f6fe2f7f682359c",
           "text": "Post-MVP Pi UI starts only after the portable council ships, and Pi-registry-only execution remains outside MVP."
         },
@@ -90,7 +90,7 @@
   "decisionKeys": [
     {
       "key": "first-ship-order",
-      "anchor": "Implementation Phases",
+      "anchor": "Architecture",
       "target": "docs/council/track-c-portable-mvp.md",
       "snippetSha256": "b1d4960bde4a92c953134219f695fbf2d95f8280200e45a80f421d0a1056c9a1",
       "requiredText": "The first shippable MVP is Track A plus Phase 2B, Phase 2C, Phase 5, and minimum Phase 6 docs, with authorized portable routes.",
@@ -98,7 +98,7 @@
     },
     {
       "key": "pi-registry-mvp-users",
-      "anchor": "Availability And Routing",
+      "anchor": "Acceptance Criteria",
       "target": "docs/council/track-b-provider-hardening.md",
       "snippetSha256": "e87ac67b2b2722e815aab9ae153f868752d60ab3160979aa72f6abed817c82da",
       "requiredText": "MVP cannot run with Pi-registry-only auth; it shows `no_executable_provider_cli_routes` and docs explain that authorized portable routes are required.",

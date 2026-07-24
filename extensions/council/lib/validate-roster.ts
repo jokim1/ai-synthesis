@@ -9,11 +9,44 @@ function validateStrategy(strategy: CouncilReportStrategy | undefined): strategy
   return strategy?.kind === "deterministic" || strategy?.kind === "structured_disagreement" || (strategy?.kind === "chair" && typeof strategy.chairEntryId === "string");
 }
 
+function entryShapeError(entry: unknown): string | undefined {
+  if (!entry || typeof entry !== "object" || Array.isArray(entry)) return "entry must be an object";
+  const value = entry as Record<string, unknown>;
+  if (typeof value.id !== "string" || !COUNCIL_ROSTER_ENTRY_ID_PATTERN.test(value.id)) return "entry id must match entry_<26 lowercase base32 chars>";
+  if (!roles.has(value.role as CouncilRole)) return "entry role is invalid";
+  if (!isCouncilEffort(value.effort)) return "entry effort is invalid";
+  if (typeof value.enabled !== "boolean") return "entry enabled must be boolean";
+  if (!value.route || typeof value.route !== "object" || Array.isArray(value.route)) return "entry route is required";
+  const route = value.route as Record<string, unknown>;
+  if (
+    route.executor !== "provider-invoke"
+    || typeof route.provider !== "string"
+    || route.provider.length === 0
+    || typeof route.model !== "string"
+    || route.model.length === 0
+    || typeof route.routeId !== "string"
+    || route.routeId.length === 0
+  ) return "entry route must contain a complete provider-invoke tuple";
+  return undefined;
+}
+
 export function validateRoster(input: CouncilValidateRosterInputV1): CouncilRosterValidationResultV1 {
   const routes = new Map(input.routes.map((route) => [route.ref.routeId, route]));
   const reconciliationDiagnostics: string[] = [];
   const reconciledEntries = input.config.entries.map((entry) => {
-    if (routes.has(entry.route.routeId)) return entry;
+    if (entryShapeError(entry)) return entry;
+    const routeById = routes.get(entry.route.routeId);
+    if (routeById) {
+      if (
+        routeById.ref.executor !== entry.route.executor
+        || routeById.ref.provider !== entry.route.provider
+        || routeById.ref.model !== entry.route.model
+      ) {
+        reconciliationDiagnostics.push(`route_tuple_mismatch: ${entry.id} ${entry.route.routeId}`);
+        return { ...entry, route: routeById.ref };
+      }
+      return entry;
+    }
     const tupleMatch = input.routes.find((route) =>
       route.ref.executor === entry.route.executor
       && route.ref.provider === entry.route.provider
@@ -42,6 +75,11 @@ export function validateRoster(input: CouncilValidateRosterInputV1): CouncilRost
   }
 
   for (const entry of reconciledConfig.entries) {
+    const shapeError = entryShapeError(entry);
+    if (shapeError) {
+      blockingProblems.push({ kind: "stale_dogfood_roster_shape", entryId: typeof entry?.id === "string" ? entry.id : undefined, message: shapeError });
+      continue;
+    }
     if (seen.has(entry.id)) {
       blockingProblems.push({ kind: "duplicate_entry_id", entryId: entry.id, message: `duplicate roster entry id: ${entry.id}` });
       continue;
@@ -137,12 +175,10 @@ export function assertRosterShape(value: unknown): asserts value is CouncilRoste
     throw new Error("maxEnabledMembers must be an integer from 2 through 8");
   }
   if (!roster.reportStrategy || typeof roster.reportStrategy !== "object") throw new Error("reportStrategy is required");
-  for (const rawEntry of roster.entries as Array<Record<string, unknown>>) {
-    if ("chair" in rawEntry) throw new Error("entry-level chair is stale dogfood; use reportStrategy.kind=chair");
-    if (!rawEntry.id || typeof rawEntry.id !== "string") throw new Error("entry id is required");
-    if (!COUNCIL_ROSTER_ENTRY_ID_PATTERN.test(rawEntry.id)) throw new Error("entry id must match entry_<26 lowercase base32 chars>");
-    if (!rawEntry.route || typeof rawEntry.route !== "object" || typeof (rawEntry.route as Record<string, unknown>).routeId !== "string") {
-      throw new Error("entry route.routeId is required");
-    }
+  for (const rawEntry of roster.entries as unknown[]) {
+    const shapeError = entryShapeError(rawEntry);
+    if (shapeError) throw new Error(shapeError);
+    const entry = rawEntry as Record<string, unknown>;
+    if ("chair" in entry) throw new Error("entry-level chair is stale dogfood; use reportStrategy.kind=chair");
   }
 }

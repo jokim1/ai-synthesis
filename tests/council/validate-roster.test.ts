@@ -55,6 +55,26 @@ describe("validateRoster", () => {
     expect(config.entries[0].route.routeId).toBe(staleRef.routeId);
   });
 
+  it("rejects non-boolean enabled values and canonicalizes spoofed route tuples", () => {
+    const malformed = roster([
+      { id: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", route: route.ref, role: "architect", effort: "medium", enabled: "false" as unknown as boolean },
+      { id: "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb", route: route.ref, role: "risk-critic", effort: "medium", enabled: true }
+    ]);
+    const malformedResult = validateRoster({ config: malformed, routes: [route], mode: "portable_cli" });
+    expect(malformedResult.ok).toBe(false);
+    expect(malformedResult.blockingProblems.map((item) => item.kind)).toContain("stale_dogfood_roster_shape");
+
+    const spoofedRef = { ...route.ref, provider: "spoofed", model: "spoofed" };
+    const spoofed = roster([
+      { id: "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa", route: spoofedRef, role: "architect", effort: "medium", enabled: true },
+      { id: "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb", route: route.ref, role: "risk-critic", effort: "medium", enabled: true }
+    ]);
+    const spoofedResult = validateRoster({ config: spoofed, routes: [route], mode: "portable_cli" });
+    expect(spoofedResult.ok).toBe(true);
+    expect(spoofedResult.reconciledConfig.entries[0].route).toEqual(route.ref);
+    expect(spoofedResult.reconciliationDiagnostics).toContain(`route_tuple_mismatch: entry_aaaaaaaaaaaaaaaaaaaaaaaaaa ${route.ref.routeId}`);
+  });
+
   it("enforces the default six-member cap and bounds overrides at eight", () => {
     const ids = [
       "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa",

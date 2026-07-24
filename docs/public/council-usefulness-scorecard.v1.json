@@ -12,5 +12,5 @@
     "maxRevisionAttempts": 2,
     "disclosure": "same_route_added_value: not_demonstrated"
   },
-  "requiredEvidenceFields": ["sampleId", "inputSha256", "routes", "councilResult", "soloComparison", "revisionAttempts", "pass"]
+  "requiredEvidenceFields": ["sampleId", "inputSha256", "routes", "captureArtifact", "councilResult", "soloComparison", "revisionAttempts", "pass"]
 }

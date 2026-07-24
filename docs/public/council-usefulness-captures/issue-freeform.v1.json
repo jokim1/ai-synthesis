@@ -1,0 +1,355 @@
+{
+  "version": 1,
+  "kind": "authorized_portable_provider_invoke_replay_capture",
+  "sampleId": "issue-freeform",
+  "capturedAt": "2026-07-24T04:12:16.748Z",
+  "input": {
+    "kind": "issue",
+    "sha256": "84cd5ab1dcf87ef33352a9f7307d358b40c125b2642beb0624767d3792dec5a4",
+    "text": "Goal: reduce deployment risk.\nConstraint: preserve delivery speed.\nQuestion: Which rollout policy balances both?"
+  },
+  "routeProbe": {
+    "command": [
+      "bin/council-route-probe",
+      "--json"
+    ],
+    "diagnostics": [
+      {
+        "executor": "provider-invoke",
+        "provider": "claude",
+        "status": "ok",
+        "message": "claude subscription route ready"
+      },
+      {
+        "executor": "provider-invoke",
+        "provider": "codex",
+        "status": "unavailable",
+        "message": "tool_policy_unproven"
+      }
+    ]
+  },
+  "commands": {
+    "council": [
+      "bin/council",
+      "--issue",
+      "Goal: reduce deployment risk.\nConstraint: preserve delivery speed.\nQuestion: Which rollout policy balances both?",
+      "--roster-file",
+      "<authorized-live-roster>",
+      "--auth-policy",
+      "subscription-only",
+      "--json"
+    ],
+    "solo": [
+      "bin/provider-invoke",
+      "claude",
+      "--auth",
+      "subscription",
+      "--prompt",
+      "<fixed-sample-solo-prompt>",
+      "--schema-file",
+      "schemas/council-voice.json"
+    ],
+    "revisions": [
+      [
+        "bin/council",
+        "--issue",
+        "Goal: reduce deployment risk.\nConstraint: preserve delivery speed.\nQuestion: Which rollout policy balances both?",
+        "--roster-file",
+        "<authorized-live-roster>",
+        "--auth-policy",
+        "subscription-only",
+        "--report-strategy",
+        "structured_disagreement",
+        "--json"
+      ],
+      [
+        "bin/council",
+        "--issue",
+        "Goal: reduce deployment risk.\nConstraint: preserve delivery speed.\nQuestion: Which rollout policy balances both?",
+        "--roster-file",
+        "<authorized-live-roster>",
+        "--auth-policy",
+        "subscription-only",
+        "--report-strategy",
+        "deterministic",
+        "--json"
+      ]
+    ]
+  },
+  "routeContract": {
+    "routeId": "v1:provider-invoke:claude:adapter-default",
+    "provider": "claude",
+    "authPolicy": "subscription_only",
+    "billing": "subscription",
+    "routes": [
+      "v1:provider-invoke:claude:adapter-default",
+      "v1:provider-invoke:claude:adapter-default"
+    ]
+  },
+  "capturedOutputs": {
+    "councilResult": {
+      "recommendation": "No deterministic recommendation; see structured disagreement",
+      "decision_readiness": "not_ready",
+      "evidence_summary": [
+        "The stated goal is reducing deployment risk, which frames what the policy must improve. (issue:L1)",
+        "A hard constraint requires preserving delivery speed, so any risk control that adds latency is bounded. (issue:L2)",
+        "The question asks which policy balances both objectives, implying a tradeoff that requires measurement to resolve. (issue:L3)"
+      ],
+      "strongest_dissent": "entry_vrejv6bmz27trrkxjtke75ya3a: Adopt a progressive-delivery rollout: ship behind feature flags and release via automated canary stages (e.g., 1% → 10% → 50% → 100%) gated on health metrics with automatic rollback. This directly reduces deployment risk (issue:1) by limiting blast radius and enabling fast reversion, while preserving delivery speed (issue:2) because code merges and deploys continuously — exposure is decoupled from deploy, so teams keep shipping without a slow manual gate. This answers the balance question (issue:3) better than a binary blue/green or a slow staged manual sign-off, because the risk control is automated rather than trading speed for review overhead. Concretely: define the health SLOs (error rate, latency, saturation) that gate promotion, and a rollback threshold, before choosing stage percentages.",
+      "assumptions": [
+        "entry_vrejv6bmz27trrkxjtke75ya3a: The delivery pipeline can route a percentage of traffic and support feature flags.",
+        "entry_vrejv6bmz27trrkxjtke75ya3a: There are health metrics/SLOs available to gate promotion and trigger rollback.",
+        "entry_yuw3h6djelufwlnepps2bqjs5u: No current deployment failure rate, rollback time, or release-cadence data accompanies the issue.",
+        "entry_yuw3h6djelufwlnepps2bqjs5u: The delivery-speed constraint is a real limit, not aspirational, so policy overhead can disqualify options."
+      ],
+      "risks": [
+        "entry_vrejv6bmz27trrkxjtke75ya3a: Issue is underspecified (3 lines) — no data on service type, traffic, team maturity, or existing tooling, so the recommended policy may not fit.",
+        "entry_vrejv6bmz27trrkxjtke75ya3a: Canary requires observability and traffic-splitting; without them the risk control is illusory.",
+        "entry_vrejv6bmz27trrkxjtke75ya3a: Feature-flag sprawl adds its own maintenance and cleanup cost that can erode delivery speed if ungoverned.",
+        "entry_yuw3h6djelufwlnepps2bqjs5u: Choosing a policy now (e.g. canary) could add gating overhead that violates the speed constraint (issue:L2) undetected.",
+        "entry_yuw3h6djelufwlnepps2bqjs5u: Absent a defined risk metric, 'reduced deployment risk' (issue:L1) cannot be verified, making the policy unfalsifiable.",
+        "entry_yuw3h6djelufwlnepps2bqjs5u: Deferral itself has cost: prolonged status quo may keep an existing risky rollout in place.",
+        "{\"canonicalPositionId\":\"propose_alternative\",\"axis\":\"evidence\",\"objection\":\"The progressive-delivery recommendation is grounded on only three issue-text lines (goal/constraint/question) and a single prior-knowledge claim about canary practice, all of which are engine_unverified. None of the cited evidence speaks to the actual deploy stack, so the load-bearing assumptions that the pipeline can split traffic and gate on flags, and that per-release health SLOs exist, are asserted rather than shown.\",\"wouldChangeRecommendation\":\"Confirm via the issuer that the pipeline supports traffic-splitting/flags and that per-release error-rate/latency/saturation signals are measured. If both are confirmed, the evidence objection is resolved; if either is absent, the automated control collapses to a manual staged rollout and the position should not stand.\",\"evidenceIds\":[\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_1\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_3\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4\"]}",
+        "{\"canonicalPositionId\":\"propose_alternative\",\"axis\":\"recommendation_logic\",\"objection\":\"The claim that progressive delivery 'preserves delivery speed because exposure is decoupled from deploy' is derived from general canary practice, not from any measured change-failure rate or lead-time budget for this system. If the baseline failure rate is already low, the added flag/canary machinery is net-negative on speed, violating the binding constraint the recommendation claims to satisfy.\",\"wouldChangeRecommendation\":\"Obtain the current change-failure rate and an acceptable added lead-time budget. If baseline risk is materially high and the overhead fits the budget, the speed tradeoff holds; if baseline risk is low or no budget is defined, the recommendation logic fails and defer is preferable.\",\"evidenceIds\":[\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2\",\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_2\"]}"
+      ],
+      "what_would_change_recommendation": [
+        "Evidence that the deploy target cannot split traffic or support flags (would push me to blue/green + fast rollback).",
+        "Evidence of low change failure rate today, making the added canary machinery net-negative on speed.",
+        "A defined risk appetite or SLO that a simpler manual gate already satisfies.",
+        "Baseline change-failure rate, MTTR, and deploy-frequency numbers to ground the tradeoff.",
+        "A stated numeric speed budget (max added lead time per release) that bounds acceptable policy overhead.",
+        "Blast-radius / rollback-cost data indicating whether incremental exposure (canary/ring) is even necessary.",
+        "{\"canonicalPositionId\":\"propose_alternative\",\"challenge\":\"The progressive-delivery recommendation rests on the pipeline being able to split traffic and gate on flags, but the only cited support is three issue-text lines stating the goal/constraint/question plus one prior-knowledge claim about canary practice — none of which speak to the actual deploy stack. If traffic-splitting is unavailable, the automated canary control is illusory and collapses to a manual staged rollout that spends the delivery-speed budget the constraint forbids.\",\"evidenceIds\":[\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_1\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_3\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4\"]}",
+        "{\"canonicalPositionId\":\"propose_alternative\",\"challenge\":\"Automated promotion and rollback presuppose per-release health SLOs (error rate, latency, saturation), yet no cited evidence establishes that such signals are measured. Without them the promised 'reduced deployment risk' is unfalsifiable and the automatic-rollback safety story is unsupported by anything in the frozen context.\",\"evidenceIds\":[\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4\"]}"
+      ],
+      "phase_findings": {
+        "critique": [
+          "{\"canonicalPositionId\":\"propose_alternative\",\"challenge\":\"The progressive-delivery recommendation rests on the pipeline being able to split traffic and gate on flags, but the only cited support is three issue-text lines stating the goal/constraint/question plus one prior-knowledge claim about canary practice — none of which speak to the actual deploy stack. If traffic-splitting is unavailable, the automated canary control is illusory and collapses to a manual staged rollout that spends the delivery-speed budget the constraint forbids.\",\"evidenceIds\":[\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_1\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_3\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4\"]}",
+          "{\"canonicalPositionId\":\"propose_alternative\",\"challenge\":\"Automated promotion and rollback presuppose per-release health SLOs (error rate, latency, saturation), yet no cited evidence establishes that such signals are measured. Without them the promised 'reduced deployment risk' is unfalsifiable and the automatic-rollback safety story is unsupported by anything in the frozen context.\",\"evidenceIds\":[\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4\"]}",
+          "{\"canonicalPositionId\":\"propose_alternative\",\"challenge\":\"The claim that progressive delivery 'preserves delivery speed because exposure is decoupled from deploy' is grounded only in general canary practice (prior knowledge), not in any measured change-failure rate or lead-time budget for this system. If baseline failure rate is already low, the added flag/canary machinery is net-negative on speed — a tradeoff the recommendation asserts rather than measures.\",\"evidenceIds\":[\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2\"]}",
+          "{\"assumptionId\":\"entry_vrejv6bmz27trrkxjtke75ya3a:deploy-infra-supports-canary\",\"status\":\"unverified\",\"rationale\":\"Load-bearing, but the cited evidence is only issue-text lines (goal/constraint/question) and a prior-knowledge canary claim. The issue supplies no infrastructure detail, so traffic-splitting and flag support are assumed, not shown.\",\"evidenceIds\":[\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_1\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_3\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4\"]}",
+          "{\"assumptionId\":\"entry_vrejv6bmz27trrkxjtke75ya3a:observability-exists\",\"status\":\"unverified\",\"rationale\":\"Load-bearing for automated gating and rollback, yet no cited evidence confirms per-release health metrics/SLOs are measured. The issue text does not mention observability, so the assumption is unsupported either way.\",\"evidenceIds\":[\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_1\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_3\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4\"]}",
+          "{\"assumptionId\":\"entry_yuw3h6djelufwlnepps2bqjs5u:no-baseline-metrics\",\"status\":\"verified_by_cited_evidence\",\"rationale\":\"The cited issue-text evidence is engine-verified and resolves in the frozen input; the issue contains only goal, constraint, and question with no failure-rate, rollback-time, or cadence data. The absence claim is directly confirmed by what the issue does and does not state.\",\"evidenceIds\":[\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_1\",\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_2\",\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_3\"]}",
+          "{\"assumptionId\":\"entry_yuw3h6djelufwlnepps2bqjs5u:speed-is-binding\",\"status\":\"unverified\",\"rationale\":\"The cited evidence confirms delivery speed is stated as a constraint (issue:L2) but does not establish that it is a hard, non-aspirational limit with a defined budget. Whether policy overhead can disqualify options depends on an acceptable added lead-time figure that the frozen context does not supply.\",\"evidenceIds\":[\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_2\"]}"
+        ],
+        "steelman": [
+          "{\"canonicalPositionId\":\"propose_alternative\",\"improvedCase\":\"Progressive delivery is the policy that most directly answers the balance question (issue:3), because it attacks the two objectives on different axes rather than trading one for the other. Deployment risk (issue:1) is reduced by bounding blast radius: a fault reaches 1% before it reaches 100%, and automated rollback reverts exposure without a human in the loop. Delivery speed (issue:2) is preserved because exposure is decoupled from merge/deploy — code ships continuously behind flags, so the risk control adds no manual sign-off gate to the release path. This is a structurally stronger answer than binary blue/green or a manual staged sign-off, both of which buy safety with speed. The recommendation is deliberately conditional and self-limiting: it names the exact next step — define the gating health SLOs (error rate, latency, saturation) and a rollback threshold, then confirm the pipeline supports traffic-splitting and flags — before committing stage percentages, so adoption is staged behind its own verification rather than asserted.\",\"evidenceIds\":[\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_1\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_3\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4\"],\"concededRisks\":[\"The traffic-splitting/flag capability and per-release observability are load-bearing but unverified — the issue supplies no infra detail, and the only cited support is issue-text lines plus a prior-knowledge canary claim; if either is absent the automated control collapses to a manual staged rollout that spends the speed budget.\",\"The speed-preservation benefit is asserted from general canary practice, not measured against this system's change-failure rate; if baseline failure rate is already low, the added flag/canary machinery is net-negative on speed.\",\"Feature-flag sprawl carries its own maintenance and cleanup cost that can erode delivery speed if ungoverned.\",\"The issue is underspecified (3 lines) with no data on service type, traffic, team maturity, or tooling, so the recommended policy may not fit.\"]}",
+          "{\"canonicalPositionId\":\"defer_for_evidence\",\"improvedCase\":\"Deferral is the disciplined move precisely because the issue frames a tradeoff (issue:L3) between reducing deployment risk (issue:L1) and preserving delivery speed (issue:L2) yet supplies no change-failure rate, rollback cost, or release-cadence data to locate where the balance actually lies. Every named policy — canary, blue/green, progressive/ring, flag gating — is an unfalsifiable guess until those baselines exist: 'reduced risk' cannot be verified without a risk metric, and 'preserved speed' cannot be checked without a lead-time budget. The load-bearing danger is committing to a policy whose gating overhead silently violates the speed constraint, or whose safety benefit is unmeasurable. This position is not passive: it specifies the minimal, cheap baseline to gather (change-failure rate, MTTR, deploy frequency) that converts issue:L3 from an assertion into a measured decision, after which a specific policy can be chosen against real numbers.\",\"evidenceIds\":[\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_1\",\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_2\",\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_3\"],\"concededRisks\":[\"Deferral itself has cost: prolonging the status quo may keep an existing risky rollout in place while data is collected.\",\"If baseline metrics already exist, the defer collapses and a specific policy could have been recommended directly, making the delay pure overhead.\",\"Whether speed is a hard, budget-bounded limit rather than aspirational is unverified; if speed is soft, heavier safety policies are acceptable now and the case for waiting weakens.\"]}"
+        ],
+        "adversary": [
+          "{\"canonicalPositionId\":\"propose_alternative\",\"axis\":\"evidence\",\"objection\":\"The progressive-delivery recommendation is grounded on only three issue-text lines (goal/constraint/question) and a single prior-knowledge claim about canary practice, all of which are engine_unverified. None of the cited evidence speaks to the actual deploy stack, so the load-bearing assumptions that the pipeline can split traffic and gate on flags, and that per-release health SLOs exist, are asserted rather than shown.\",\"wouldChangeRecommendation\":\"Confirm via the issuer that the pipeline supports traffic-splitting/flags and that per-release error-rate/latency/saturation signals are measured. If both are confirmed, the evidence objection is resolved; if either is absent, the automated control collapses to a manual staged rollout and the position should not stand.\",\"evidenceIds\":[\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_1\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_3\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4\"]}",
+          "{\"canonicalPositionId\":\"propose_alternative\",\"axis\":\"recommendation_logic\",\"objection\":\"The claim that progressive delivery 'preserves delivery speed because exposure is decoupled from deploy' is derived from general canary practice, not from any measured change-failure rate or lead-time budget for this system. If the baseline failure rate is already low, the added flag/canary machinery is net-negative on speed, violating the binding constraint the recommendation claims to satisfy.\",\"wouldChangeRecommendation\":\"Obtain the current change-failure rate and an acceptable added lead-time budget. If baseline risk is materially high and the overhead fits the budget, the speed tradeoff holds; if baseline risk is low or no budget is defined, the recommendation logic fails and defer is preferable.\",\"evidenceIds\":[\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4\",\"ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2\",\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_2\"]}",
+          "{\"canonicalPositionId\":\"propose_alternative\",\"axis\":\"framing\",\"objection\":\"Framing progressive delivery as the answer that 'reduces deployment risk' presupposes a risk metric to reduce, but no baseline change-failure rate, MTTR, or rollback cost accompanies the issue. Without a measured baseline the promised risk reduction is unfalsifiable, and the position frames a measurement problem as a policy-selection problem.\",\"wouldChangeRecommendation\":\"If the issuer supplies change-failure rate, MTTR, and deploy frequency, the risk claim becomes falsifiable and the framing is legitimate. Absent those numbers the question is premature and defer_for_evidence is the sound framing.\",\"evidenceIds\":[\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_1\",\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_3\"]}",
+          "{\"canonicalPositionId\":\"defer_for_evidence\",\"axis\":\"recommendation_logic\",\"objection\":\"Deferral treats the speed constraint as a hard, budget-bounded limit that could disqualify options, but the cited evidence only shows speed is stated as a constraint (issue:L2); it does not establish an acceptable added lead-time figure. If speed is aspirational rather than binding, waiting to gather baselines is pure overhead that prolongs the status-quo rollout risk.\",\"wouldChangeRecommendation\":\"Verify whether the speed constraint carries a defined lead-time budget and whether baseline metrics already exist. If baselines already exist or speed is soft, the case for deferral collapses and a specific policy can be chosen now.\",\"evidenceIds\":[\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_2\",\"ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_1\"]}"
+        ]
+      },
+      "position_groups": [
+        {
+          "canonicalPositionId": "propose_alternative",
+          "supporterMemberIds": [
+            "entry_vrejv6bmz27trrkxjtke75ya3a"
+          ],
+          "evidenceIds": [],
+          "assumptionIds": [
+            "entry_vrejv6bmz27trrkxjtke75ya3a:deploy-infra-supports-canary",
+            "entry_vrejv6bmz27trrkxjtke75ya3a:observability-exists"
+          ],
+          "steelmans": [
+            {
+              "canonicalPositionId": "propose_alternative",
+              "improvedCase": "Progressive delivery is the policy that most directly answers the balance question (issue:3), because it attacks the two objectives on different axes rather than trading one for the other. Deployment risk (issue:1) is reduced by bounding blast radius: a fault reaches 1% before it reaches 100%, and automated rollback reverts exposure without a human in the loop. Delivery speed (issue:2) is preserved because exposure is decoupled from merge/deploy — code ships continuously behind flags, so the risk control adds no manual sign-off gate to the release path. This is a structurally stronger answer than binary blue/green or a manual staged sign-off, both of which buy safety with speed. The recommendation is deliberately conditional and self-limiting: it names the exact next step — define the gating health SLOs (error rate, latency, saturation) and a rollback threshold, then confirm the pipeline supports traffic-splitting and flags — before committing stage percentages, so adoption is staged behind its own verification rather than asserted.",
+              "evidenceIds": [
+                "ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_1",
+                "ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2",
+                "ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_3",
+                "ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4"
+              ],
+              "concededRisks": [
+                "The traffic-splitting/flag capability and per-release observability are load-bearing but unverified — the issue supplies no infra detail, and the only cited support is issue-text lines plus a prior-knowledge canary claim; if either is absent the automated control collapses to a manual staged rollout that spends the speed budget.",
+                "The speed-preservation benefit is asserted from general canary practice, not measured against this system's change-failure rate; if baseline failure rate is already low, the added flag/canary machinery is net-negative on speed.",
+                "Feature-flag sprawl carries its own maintenance and cleanup cost that can erode delivery speed if ungoverned.",
+                "The issue is underspecified (3 lines) with no data on service type, traffic, team maturity, or tooling, so the recommended policy may not fit."
+              ]
+            }
+          ],
+          "objections": [
+            {
+              "canonicalPositionId": "propose_alternative",
+              "axis": "evidence",
+              "objection": "The progressive-delivery recommendation is grounded on only three issue-text lines (goal/constraint/question) and a single prior-knowledge claim about canary practice, all of which are engine_unverified. None of the cited evidence speaks to the actual deploy stack, so the load-bearing assumptions that the pipeline can split traffic and gate on flags, and that per-release health SLOs exist, are asserted rather than shown.",
+              "wouldChangeRecommendation": "Confirm via the issuer that the pipeline supports traffic-splitting/flags and that per-release error-rate/latency/saturation signals are measured. If both are confirmed, the evidence objection is resolved; if either is absent, the automated control collapses to a manual staged rollout and the position should not stand.",
+              "evidenceIds": [
+                "ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_1",
+                "ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2",
+                "ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_3",
+                "ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4"
+              ]
+            },
+            {
+              "canonicalPositionId": "propose_alternative",
+              "axis": "recommendation_logic",
+              "objection": "The claim that progressive delivery 'preserves delivery speed because exposure is decoupled from deploy' is derived from general canary practice, not from any measured change-failure rate or lead-time budget for this system. If the baseline failure rate is already low, the added flag/canary machinery is net-negative on speed, violating the binding constraint the recommendation claims to satisfy.",
+              "wouldChangeRecommendation": "Obtain the current change-failure rate and an acceptable added lead-time budget. If baseline risk is materially high and the overhead fits the budget, the speed tradeoff holds; if baseline risk is low or no budget is defined, the recommendation logic fails and defer is preferable.",
+              "evidenceIds": [
+                "ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_4",
+                "ev_initial_entry_vrejv6bmz27trrkxjtke75ya3a_2",
+                "ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_2"
+              ]
+            },
+            {
+              "canonicalPositionId": "propose_alternative",
+              "axis": "framing",
+              "objection": "Framing progressive delivery as the answer that 'reduces deployment risk' presupposes a risk metric to reduce, but no baseline change-failure rate, MTTR, or rollback cost accompanies the issue. Without a measured baseline the promised risk reduction is unfalsifiable, and the position frames a measurement problem as a policy-selection problem.",
+              "wouldChangeRecommendation": "If the issuer supplies change-failure rate, MTTR, and deploy frequency, the risk claim becomes falsifiable and the framing is legitimate. Absent those numbers the question is premature and defer_for_evidence is the sound framing.",
+              "evidenceIds": [
+                "ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_1",
+                "ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_3"
+              ]
+            }
+          ],
+          "oppositionMemberIds": [
+            "entry_yuw3h6djelufwlnepps2bqjs5u"
+          ]
+        },
+        {
+          "canonicalPositionId": "defer_for_evidence",
+          "supporterMemberIds": [
+            "entry_yuw3h6djelufwlnepps2bqjs5u"
+          ],
+          "evidenceIds": [
+            "ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_1",
+            "ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_2",
+            "ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_3"
+          ],
+          "assumptionIds": [
+            "entry_yuw3h6djelufwlnepps2bqjs5u:no-baseline-metrics",
+            "entry_yuw3h6djelufwlnepps2bqjs5u:speed-is-binding"
+          ],
+          "steelmans": [
+            {
+              "canonicalPositionId": "defer_for_evidence",
+              "improvedCase": "Deferral is the disciplined move precisely because the issue frames a tradeoff (issue:L3) between reducing deployment risk (issue:L1) and preserving delivery speed (issue:L2) yet supplies no change-failure rate, rollback cost, or release-cadence data to locate where the balance actually lies. Every named policy — canary, blue/green, progressive/ring, flag gating — is an unfalsifiable guess until those baselines exist: 'reduced risk' cannot be verified without a risk metric, and 'preserved speed' cannot be checked without a lead-time budget. The load-bearing danger is committing to a policy whose gating overhead silently violates the speed constraint, or whose safety benefit is unmeasurable. This position is not passive: it specifies the minimal, cheap baseline to gather (change-failure rate, MTTR, deploy frequency) that converts issue:L3 from an assertion into a measured decision, after which a specific policy can be chosen against real numbers.",
+              "evidenceIds": [
+                "ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_1",
+                "ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_2",
+                "ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_3"
+              ],
+              "concededRisks": [
+                "Deferral itself has cost: prolonging the status quo may keep an existing risky rollout in place while data is collected.",
+                "If baseline metrics already exist, the defer collapses and a specific policy could have been recommended directly, making the delay pure overhead.",
+                "Whether speed is a hard, budget-bounded limit rather than aspirational is unverified; if speed is soft, heavier safety policies are acceptable now and the case for waiting weakens."
+              ]
+            }
+          ],
+          "objections": [
+            {
+              "canonicalPositionId": "defer_for_evidence",
+              "axis": "recommendation_logic",
+              "objection": "Deferral treats the speed constraint as a hard, budget-bounded limit that could disqualify options, but the cited evidence only shows speed is stated as a constraint (issue:L2); it does not establish an acceptable added lead-time figure. If speed is aspirational rather than binding, waiting to gather baselines is pure overhead that prolongs the status-quo rollout risk.",
+              "wouldChangeRecommendation": "Verify whether the speed constraint carries a defined lead-time budget and whether baseline metrics already exist. If baselines already exist or speed is soft, the case for deferral collapses and a specific policy can be chosen now.",
+              "evidenceIds": [
+                "ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_2",
+                "ev_initial_entry_yuw3h6djelufwlnepps2bqjs5u_1"
+              ]
+            }
+          ],
+          "oppositionMemberIds": [
+            "entry_vrejv6bmz27trrkxjtke75ya3a"
+          ]
+        }
+      ],
+      "next_action": "Gather more grounded evidence before implementation.",
+      "implementation_authorized": false,
+      "verifiedCitationLocators": [
+        "issue:L1",
+        "issue:L2",
+        "issue:L3"
+      ],
+      "strongestDissent": "entry_vrejv6bmz27trrkxjtke75ya3a: Adopt a progressive-delivery rollout: ship behind feature flags and release via automated canary stages (e.g., 1% → 10% → 50% → 100%) gated on health metrics with automatic rollback. This directly reduces deployment risk (issue:1) by limiting blast radius and enabling fast reversion, while preserving delivery speed (issue:2) because code merges and deploys continuously — exposure is decoupled from deploy, so teams keep shipping without a slow manual gate. This answers the balance question (issue:3) better than a binary blue/green or a slow staged manual sign-off, because the risk control is automated rather than trading speed for review overhead. Concretely: define the health SLOs (error rate, latency, saturation) that gate promotion, and a rollback threshold, before choosing stage percentages.",
+      "assumptionsOrRisksCount": 12,
+      "nextAction": "Gather more grounded evidence before implementation."
+    },
+    "soloResult": {
+      "ok": true,
+      "member_id": "entry_ffffffffffffffffffffffffff",
+      "role": "architect",
+      "position_key": "progressive-delivery-canary",
+      "recommendation": "Adopt a progressive-delivery (canary) rollout gated by automated health metrics, with automatic rollback. Ship to a small traffic slice (e.g., 1% → 5% → 25% → 100%), promote automatically when SLO/error-budget metrics stay green for a short bake window, and auto-roll-back on regression. This reduces deployment risk by limiting blast radius and catching failures before full exposure, while preserving delivery speed because promotion is automated (no manual gate) and healthy releases reach 100% quickly. Pair with feature flags to decouple deploy from release, so risky changes can be dark-launched and enabled independently. Avoid blue/green-only or manual staged approvals, which trade more speed for safety than needed.",
+      "evidence": [
+        {
+          "claim": "Canary releases limit blast radius by exposing changes to a small population first, reducing incident impact.",
+          "source_type": "prior_knowledge",
+          "locator": "progressive delivery / SRE canary analysis practice"
+        },
+        {
+          "claim": "Automated metric-gated promotion keeps throughput high because healthy builds advance without human approval delays.",
+          "source_type": "theory",
+          "locator": "error-budget-driven promotion"
+        },
+        {
+          "claim": "Feature flags decouple deploy from release, allowing fast deploys with independent, reversible enablement.",
+          "source_type": "prior_knowledge",
+          "locator": "trunk-based / flag-driven release"
+        }
+      ],
+      "assumptions": [
+        {
+          "assumption_key": "observability",
+          "statement": "The system emits reliable per-slice health/SLO metrics (error rate, latency) usable as promotion gates.",
+          "load_bearing": true,
+          "if_false_then": "Canary gating cannot be automated; fall back to timed bake windows plus manual smoke checks, which slows delivery.",
+          "how_to_verify": "Confirm existence of per-deployment metric dashboards and alert thresholds."
+        },
+        {
+          "assumption_key": "traffic-splitting",
+          "statement": "The delivery platform can route a fractional traffic slice to a new version.",
+          "load_bearing": true,
+          "if_false_then": "Use blue/green with quick cutover plus flag-based percentage rollout at app layer instead.",
+          "how_to_verify": "Check load balancer / service mesh / deploy tooling for weighted routing support."
+        },
+        {
+          "assumption_key": "rollback",
+          "statement": "Rollback (or flag disable) is fast and low-risk.",
+          "load_bearing": true,
+          "if_false_then": "Auto-rollback safety net weakens; require stronger pre-prod gates, reducing speed.",
+          "how_to_verify": "Measure MTTR for a rehearsed rollback."
+        }
+      ],
+      "risks": [
+        "Insufficient traffic on low-volume services makes canary metrics statistically noisy, delaying or misjudging promotion.",
+        "Stateful or schema-changing deploys need expand/contract migrations; naive canary can break on shared DB state.",
+        "Poorly chosen SLO thresholds cause flapping between promote/rollback, hurting both safety and speed."
+      ],
+      "what_would_change_my_view": [
+        "Evidence the platform lacks traffic-splitting or reliable metrics, favoring blue/green + flags instead.",
+        "Deployments are dominated by irreversible data migrations, favoring expand/contract with manual gates.",
+        "Extremely low request volume, favoring time-based staged rollout over metric-based canary."
+      ],
+      "next_action": "Confirm the three load-bearing assumptions (traffic-splitting, per-slice metrics, fast rollback) against the actual deploy platform, then pilot a metric-gated canary on one representative service before rolling the policy out fleet-wide."
+    },
+    "revisionResults": [
+      {
+        "attempt": 1,
+        "strategy": "structured_disagreement",
+        "outcome": "correlated_no_added_value",
+        "realModelCalls": true,
+        "reportPath": "live-gate:issue-freeform:attempt-1"
+      },
+      {
+        "attempt": 2,
+        "strategy": "deterministic",
+        "outcome": "correlated_no_added_value",
+        "realModelCalls": true,
+        "reportPath": "live-gate:issue-freeform:attempt-2"
+      }
+    ]
+  },
+  "outputHashes": {
+    "councilResultSha256": "733fe9242869bf88d759140dea8cc4570eb88805ba8046e3cff0c4a05ae65d06",
+    "soloResultSha256": "ba99423d0ca4f241b81b1efb39dc87e4b94ef253896caf1a2213bbc1a176a76f",
+    "revisionResultSha256": [
+      "9fc550e6e491ffbf70bae7025154df542f776391d46f5c619e28b12897d5c4bf",
+      "9fbd28fbabf6ef1a716beda630395e9831068b9fa2bcd5522324d3ca79103033"
+    ]
+  }
+}

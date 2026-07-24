@@ -16,6 +16,12 @@ afterEach(() => {
 });
 
 describe("portable intent lifecycle", () => {
+  it("rejects missing and option-looking option values", async () => {
+    await expect(main(["--issue"], originalCwd)).rejects.toMatchObject({ message: "--issue requires a value", exitCode: 2 });
+    await expect(main(["--issue", "--json"], originalCwd)).rejects.toMatchObject({ message: "--issue requires a value", exitCode: 2 });
+    await expect(main(["--plan-file", "-invalid"], originalCwd)).rejects.toMatchObject({ message: "--plan-file requires a value", exitCode: 2 });
+  });
+
   it("quotes generated shell arguments without expansion", () => {
     const value = "a'$(printf injected)`id`$HOME";
     const result = spawnSync("/bin/sh", ["-c", `printf '%s' ${shellQuote(value)}`], { encoding: "utf8" });

@@ -1,0 +1,285 @@
+{
+  "version": 1,
+  "kind": "authorized_portable_provider_invoke_replay_capture",
+  "sampleId": "plan-review",
+  "capturedAt": "2026-07-24T04:07:20.528Z",
+  "input": {
+    "kind": "plan",
+    "sha256": "1edcbaa0ab13d48a8b66834440aa988f9b8b21cf858a3ce5bd17fe805e2ad01f",
+    "text": "1. Add request validation.\n2. Deploy behind a feature flag.\n3. Roll back on error-rate regression."
+  },
+  "routeProbe": {
+    "command": [
+      "bin/council-route-probe",
+      "--json"
+    ],
+    "diagnostics": [
+      {
+        "executor": "provider-invoke",
+        "provider": "claude",
+        "status": "ok",
+        "message": "claude subscription route ready"
+      },
+      {
+        "executor": "provider-invoke",
+        "provider": "codex",
+        "status": "unavailable",
+        "message": "tool_policy_unproven"
+      }
+    ]
+  },
+  "commands": {
+    "council": [
+      "bin/council",
+      "--plan-file",
+      "<fixed-sample-input>",
+      "--roster-file",
+      "<authorized-live-roster>",
+      "--auth-policy",
+      "subscription-only",
+      "--json"
+    ],
+    "solo": [
+      "bin/provider-invoke",
+      "claude",
+      "--auth",
+      "subscription",
+      "--prompt",
+      "<fixed-sample-solo-prompt>",
+      "--schema-file",
+      "schemas/council-voice.json"
+    ],
+    "revisions": []
+  },
+  "routeContract": {
+    "routeId": "v1:provider-invoke:claude:adapter-default",
+    "provider": "claude",
+    "authPolicy": "subscription_only",
+    "billing": "subscription",
+    "routes": [
+      "v1:provider-invoke:claude:adapter-default",
+      "v1:provider-invoke:claude:adapter-default"
+    ]
+  },
+  "capturedOutputs": {
+    "councilResult": {
+      "recommendation": "revise_plan: Revise before accepting. The plan names three sound operational steps — validation, flagged rollout, rollback — but omits the architectural substance needed to review it. There is no statement of what system/change is being deployed (plan.md:L1-L3), no schema or scope for \"request validation\" (plan.md:L1), no rollout stages or flag scoping for the deploy (plan.md:L2), and no defined baseline, threshold, or observation window for the \"error-rate regression\" rollback trigger (plan.md:L3). Add: (a) the change under deployment and its blast radius, (b) concrete validation rules/interface, (c) staged rollout percentages with the flag's default state, and (d) a quantified rollback SLO (metric, threshold, window, owner). These are cheap to specify and are the load-bearing details for an architecture sign-off.",
+      "decision_readiness": "conditional",
+      "evidence_summary": [
+        "Plan calls for request validation but gives no schema, scope, or interface (plan.md:L1-L1)",
+        "Deploy is behind a feature flag but flag default state and rollout staging are unspecified (plan.md:L2-L2)",
+        "Rollback triggers on error-rate regression with no baseline, threshold, or window defined (plan.md:L3-L3)",
+        "Plan never states what change/system is being deployed (plan.md:L1-L3)",
+        "Step 1 mandates request validation but gives no schema, endpoint scope, or failure behavior (reject vs. sanitize). (plan.md:L1)",
+        "Step 2 requires a feature flag but names no flag mechanism, default state, or rollout percentage/cohort. (plan.md:L2)",
+        "Step 3 triggers rollback on 'error-rate regression' with no baseline, threshold, window, or manual-vs-automatic decision. (plan.md:L3)"
+      ],
+      "strongest_dissent": "{\"canonicalPositionId\":\"revise_plan\",\"axis\":\"evidence\",\"objection\":\"The revise verdict treats plan.md's three lines as a self-contained spec, but the grounded evidence proves only that L1-L3 omit schema, flag defaults, and rollback thresholds — not that those details are absent from the artifact or an external runbook. Absence of detail in the reviewed lines is not evidence of absence in the underlying plan; the load-bearing completeness assumption remains unverified.\",\"wouldChangeRecommendation\":\"If evidence confirmed plan.md is a summary backed by a runbook, revise would collapse to a cross-reference request; if it confirmed no external source exists, revise stands.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3\"]}",
+      "assumptions": [
+        "entry_gzrwutuzgbovp2kmjf75riembi: The three lines are the entire plan and not an excerpt of a larger document",
+        "entry_gzrwutuzgbovp2kmjf75riembi: Error-rate is the intended primary rollback signal rather than latency or saturation",
+        "entry_3d7rrxij2ngadquhxyxqlkrita: Detecting an error-rate regression requires a defined pre-deploy baseline and comparison window.",
+        "entry_3d7rrxij2ngadquhxyxqlkrita: plan.md is the complete specification and not backed by an external runbook."
+      ],
+      "risks": [
+        "entry_gzrwutuzgbovp2kmjf75riembi: \"Error-rate regression\" without a numeric threshold and window makes rollback undecidable and unautomatable",
+        "entry_gzrwutuzgbovp2kmjf75riembi: Unspecified validation scope can pass review yet ship an incomplete or bypassable check",
+        "entry_gzrwutuzgbovp2kmjf75riembi: No stated flag default or rollout staging risks an all-at-once exposure despite the flag",
+        "entry_3d7rrxij2ngadquhxyxqlkrita: Ambiguous validation could reject legitimate traffic or, if sanitizing silently, mask malformed requests.",
+        "entry_3d7rrxij2ngadquhxyxqlkrita: Undefined rollback threshold risks either thrashing on noise or failing to roll back during a real regression.",
+        "entry_3d7rrxij2ngadquhxyxqlkrita: No stated flag default could ship the feature to 100% of traffic on first deploy, defeating the flag's purpose.",
+        "{\"canonicalPositionId\":\"revise_plan\",\"axis\":\"evidence\",\"objection\":\"The revise verdict treats plan.md's three lines as a self-contained spec, but the grounded evidence proves only that L1-L3 omit schema, flag defaults, and rollback thresholds — not that those details are absent from the artifact or an external runbook. Absence of detail in the reviewed lines is not evidence of absence in the underlying plan; the load-bearing completeness assumption remains unverified.\",\"wouldChangeRecommendation\":\"If evidence confirmed plan.md is a summary backed by a runbook, revise would collapse to a cross-reference request; if it confirmed no external source exists, revise stands.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3\"]}",
+        "{\"canonicalPositionId\":\"revise_plan\",\"axis\":\"framing\",\"objection\":\"Framing the undefined rollback trigger and unspecified flag default as worst-case failures ('undecidable/unautomatable', 'ships to 100%') over-reads the evidence. plan.md:L2-L3 are silent on org-standard SLO/error-budget and flag-default conventions rather than contradicting them, so the catastrophic reading is asserted beyond what is grounded.\",\"wouldChangeRecommendation\":\"None on the verdict — the bounded 'name the values or their source' revise survives without the worst-case framing; dropping the overreach only narrows the objection, it does not move off revise_plan.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3\"]}"
+      ],
+      "what_would_change_recommendation": [
+        "A quantified rollback SLO (metric, threshold, observation window, owner) added to plan.md:L3",
+        "An explicit statement of the change under deployment and its blast radius",
+        "Concrete validation rules/interface specified for plan.md:L1",
+        "An accompanying spec/runbook that defines the validation schema, flag system + default state, and a numeric rollback threshold with measurement window.",
+        "Evidence that these parameters are standardized org-wide so the plan can safely reference them by default.",
+        "{\"canonicalPositionId\":\"revise_plan\",\"challenge\":\"Both revise verdicts rest on treating plan.md's three lines as the entire, self-contained spec, but the cited evidence only proves the three lines exist and say nothing about schema/threshold/window (plan.md:L1-L3). Absence of detail in an excerpt is not evidence that the detail is absent from the artifact. If plan.md is a summary backed by a runbook, every 'not implementable as written' claim collapses to a missing cross-reference, weakening revise to a minor edit.\",\"evidenceIds\":[\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_1\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_2\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3\"]}",
+        "{\"canonicalPositionId\":\"revise_plan\",\"challenge\":\"The strongest implementation claim — that an undefined error-rate trigger makes rollback 'undecidable/unautomatable' — over-reads plan-line evidence. plan.md:L3 not stating a threshold does not establish that no org-standard SLO/error-budget default applies; the evidence is silent on org conventions, not contradicting them. The same over-read applies to the flag default (plan.md:L2): 'no stated default' is not 'ships to 100%'. These worst-case failure modes are asserted beyond what the frozen evidence grounds.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3\"]}",
+        "{\"canonicalPositionId\":\"revise_plan\",\"challenge\":\"Neither voice grounds what change/system is under deployment, yet both proceed to a substantive revise verdict on validation scope and blast radius. The only evidence on this point (plan.md:L1-L3) affirmatively confirms the change is unnamed. Reviewing the adequacy of 'request validation' or rollout staging without knowing the system is itself unsupported; the honest reading of this evidence points toward needs_more_evidence rather than a confident revise.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1\"]}"
+      ],
+      "phase_findings": {
+        "critique": [
+          "{\"canonicalPositionId\":\"revise_plan\",\"challenge\":\"Both revise verdicts rest on treating plan.md's three lines as the entire, self-contained spec, but the cited evidence only proves the three lines exist and say nothing about schema/threshold/window (plan.md:L1-L3). Absence of detail in an excerpt is not evidence that the detail is absent from the artifact. If plan.md is a summary backed by a runbook, every 'not implementable as written' claim collapses to a missing cross-reference, weakening revise to a minor edit.\",\"evidenceIds\":[\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_1\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_2\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3\"]}",
+          "{\"canonicalPositionId\":\"revise_plan\",\"challenge\":\"The strongest implementation claim — that an undefined error-rate trigger makes rollback 'undecidable/unautomatable' — over-reads plan-line evidence. plan.md:L3 not stating a threshold does not establish that no org-standard SLO/error-budget default applies; the evidence is silent on org conventions, not contradicting them. The same over-read applies to the flag default (plan.md:L2): 'no stated default' is not 'ships to 100%'. These worst-case failure modes are asserted beyond what the frozen evidence grounds.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3\"]}",
+          "{\"canonicalPositionId\":\"revise_plan\",\"challenge\":\"Neither voice grounds what change/system is under deployment, yet both proceed to a substantive revise verdict on validation scope and blast radius. The only evidence on this point (plan.md:L1-L3) affirmatively confirms the change is unnamed. Reviewing the adequacy of 'request validation' or rollout staging without knowing the system is itself unsupported; the honest reading of this evidence points toward needs_more_evidence rather than a confident revise.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1\"]}",
+          "{\"assumptionId\":\"entry_gzrwutuzgbovp2kmjf75riembi:plan-is-complete-text\",\"status\":\"unverified\",\"rationale\":\"The cited plan-line evidence confirms only that L1-L3 contain no further detail; it cannot demonstrate the absence of additional sections or an external document. Verifying completeness (howToVerify: no sections beyond L3) requires inspecting the artifact's boundaries, which the frozen evidence does not establish.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4\"]}",
+          "{\"assumptionId\":\"entry_gzrwutuzgbovp2kmjf75riembi:error-rate-is-primary-slo\",\"status\":\"unverified\",\"rationale\":\"Confirming error-rate is the intended primary rollback signal requires the affected system's SLO definitions, which are not in the frozen context. The cited plan lines show only that L3 names error-rate, not that it is the correct or primary SLO over latency/saturation.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4\"]}",
+          "{\"assumptionId\":\"entry_3d7rrxij2ngadquhxyxqlkrita:regression-needs-baseline\",\"status\":\"unverified\",\"rationale\":\"This is a domain claim about what regression detection requires; the cited evidence only shows plan.md:L3 omits a baseline/window. Whether a baseline is strictly necessary (vs. an existing SLO/error-budget baseline defined elsewhere) is exactly what howToVerify defers to surrounding system docs not present in the frozen context.\",\"evidenceIds\":[\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_1\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_2\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3\"]}",
+          "{\"assumptionId\":\"entry_3d7rrxij2ngadquhxyxqlkrita:single-plan-source\",\"status\":\"unverified\",\"rationale\":\"The cited plan lines contain no reference to an external runbook, but the absence of a citation within L1-L3 does not prove no runbook backs the plan. Confirming no external procedure exists requires evidence about the input's linkage that the frozen context does not supply.\",\"evidenceIds\":[\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_1\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_2\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3\"]}"
+        ],
+        "steelman": [
+          "{\"canonicalPositionId\":\"revise_plan\",\"improvedCase\":\"The plan should be revised before sign-off, and the strongest form of this case does not depend on assuming worst-case failures. All four rollout-defining parameters that an architect needs to review are absent from the artifact under review: the change/system and its blast radius are unnamed (ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4), request validation has no schema, scope, or reject-vs-sanitize behavior (ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1, ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_1), the feature flag has no named mechanism, default state, or rollout cohort (ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2, ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_2), and the rollback trigger names no baseline, threshold, or observation window (ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3, ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3). The revise verdict survives even if org-standard defaults or a backing runbook exist: in that case the correct fix is to make the missing values explicit or cite the runbook by reference at plan.md:L1-L3. Because the plan is the frozen review surface, review must be conducted on what it states; each parameter is cheap to specify or cross-reference, and adding them is a strictly bounded edit rather than a rejection. This reframes revise as 'name the load-bearing values (or their source)' — a claim that holds whether the values are undefined or merely uncited.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_1\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_2\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3\"],\"concededRisks\":[\"The evidence proves only that L1-L3 omit these details, not that the details are absent from the artifact or an external runbook; if plan.md is a summary, revise collapses to a cross-reference request rather than substantive revision.\",\"Worst-case failure modes (rollback 'undecidable/unautomatable', flag 'ships to 100%') are asserted beyond what the plan-line evidence grounds, since the frozen context is silent on org-wide SLO/flag defaults rather than contradicting them.\",\"The completeness assumption (three lines are the entire plan) is load-bearing and unverified in the frozen context; if false, the honest verdict may be needs_more_evidence rather than revise.\",\"That error-rate is the correct primary rollback signal (vs. latency/saturation) is unverified without the affected system's SLO definitions.\"]}"
+        ],
+        "adversary": [
+          "{\"canonicalPositionId\":\"revise_plan\",\"axis\":\"evidence\",\"objection\":\"The revise verdict treats plan.md's three lines as a self-contained spec, but the grounded evidence proves only that L1-L3 omit schema, flag defaults, and rollback thresholds — not that those details are absent from the artifact or an external runbook. Absence of detail in the reviewed lines is not evidence of absence in the underlying plan; the load-bearing completeness assumption remains unverified.\",\"wouldChangeRecommendation\":\"If evidence confirmed plan.md is a summary backed by a runbook, revise would collapse to a cross-reference request; if it confirmed no external source exists, revise stands.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3\"]}",
+          "{\"canonicalPositionId\":\"revise_plan\",\"axis\":\"framing\",\"objection\":\"Framing the undefined rollback trigger and unspecified flag default as worst-case failures ('undecidable/unautomatable', 'ships to 100%') over-reads the evidence. plan.md:L2-L3 are silent on org-standard SLO/error-budget and flag-default conventions rather than contradicting them, so the catastrophic reading is asserted beyond what is grounded.\",\"wouldChangeRecommendation\":\"None on the verdict — the bounded 'name the values or their source' revise survives without the worst-case framing; dropping the overreach only narrows the objection, it does not move off revise_plan.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3\",\"ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3\"]}",
+          "{\"canonicalPositionId\":\"revise_plan\",\"axis\":\"recommendation_logic\",\"objection\":\"The plan never names the change/system under deployment (ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4), yet the verdict reviews validation scope and blast radius adequacy. Judging whether 'request validation' or rollout staging is sufficient without knowing the system is unsupported; the honest reading points toward needs_more_evidence rather than a confident revise on scope.\",\"wouldChangeRecommendation\":\"If the objective is judging scope adequacy, the verdict should be needs_more_evidence; if the objective is bounded to 'the artifact omits load-bearing values that must be named or cited', revise_plan holds.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1\"]}"
+        ]
+      },
+      "position_groups": [
+        {
+          "canonicalPositionId": "revise_plan",
+          "supporterMemberIds": [
+            "entry_gzrwutuzgbovp2kmjf75riembi",
+            "entry_3d7rrxij2ngadquhxyxqlkrita"
+          ],
+          "evidenceIds": [
+            "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1",
+            "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2",
+            "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3",
+            "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4",
+            "ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_1",
+            "ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_2",
+            "ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3"
+          ],
+          "assumptionIds": [
+            "entry_gzrwutuzgbovp2kmjf75riembi:plan-is-complete-text",
+            "entry_gzrwutuzgbovp2kmjf75riembi:error-rate-is-primary-slo",
+            "entry_3d7rrxij2ngadquhxyxqlkrita:regression-needs-baseline",
+            "entry_3d7rrxij2ngadquhxyxqlkrita:single-plan-source"
+          ],
+          "steelmans": [
+            {
+              "canonicalPositionId": "revise_plan",
+              "improvedCase": "The plan should be revised before sign-off, and the strongest form of this case does not depend on assuming worst-case failures. All four rollout-defining parameters that an architect needs to review are absent from the artifact under review: the change/system and its blast radius are unnamed (ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4), request validation has no schema, scope, or reject-vs-sanitize behavior (ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1, ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_1), the feature flag has no named mechanism, default state, or rollout cohort (ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2, ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_2), and the rollback trigger names no baseline, threshold, or observation window (ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3, ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3). The revise verdict survives even if org-standard defaults or a backing runbook exist: in that case the correct fix is to make the missing values explicit or cite the runbook by reference at plan.md:L1-L3. Because the plan is the frozen review surface, review must be conducted on what it states; each parameter is cheap to specify or cross-reference, and adding them is a strictly bounded edit rather than a rejection. This reframes revise as 'name the load-bearing values (or their source)' — a claim that holds whether the values are undefined or merely uncited.",
+              "evidenceIds": [
+                "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1",
+                "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2",
+                "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3",
+                "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4",
+                "ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_1",
+                "ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_2",
+                "ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3"
+              ],
+              "concededRisks": [
+                "The evidence proves only that L1-L3 omit these details, not that the details are absent from the artifact or an external runbook; if plan.md is a summary, revise collapses to a cross-reference request rather than substantive revision.",
+                "Worst-case failure modes (rollback 'undecidable/unautomatable', flag 'ships to 100%') are asserted beyond what the plan-line evidence grounds, since the frozen context is silent on org-wide SLO/flag defaults rather than contradicting them.",
+                "The completeness assumption (three lines are the entire plan) is load-bearing and unverified in the frozen context; if false, the honest verdict may be needs_more_evidence rather than revise.",
+                "That error-rate is the correct primary rollback signal (vs. latency/saturation) is unverified without the affected system's SLO definitions."
+              ]
+            }
+          ],
+          "objections": [
+            {
+              "canonicalPositionId": "revise_plan",
+              "axis": "evidence",
+              "objection": "The revise verdict treats plan.md's three lines as a self-contained spec, but the grounded evidence proves only that L1-L3 omit schema, flag defaults, and rollback thresholds — not that those details are absent from the artifact or an external runbook. Absence of detail in the reviewed lines is not evidence of absence in the underlying plan; the load-bearing completeness assumption remains unverified.",
+              "wouldChangeRecommendation": "If evidence confirmed plan.md is a summary backed by a runbook, revise would collapse to a cross-reference request; if it confirmed no external source exists, revise stands.",
+              "evidenceIds": [
+                "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1",
+                "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2",
+                "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3"
+              ]
+            },
+            {
+              "canonicalPositionId": "revise_plan",
+              "axis": "framing",
+              "objection": "Framing the undefined rollback trigger and unspecified flag default as worst-case failures ('undecidable/unautomatable', 'ships to 100%') over-reads the evidence. plan.md:L2-L3 are silent on org-standard SLO/error-budget and flag-default conventions rather than contradicting them, so the catastrophic reading is asserted beyond what is grounded.",
+              "wouldChangeRecommendation": "None on the verdict — the bounded 'name the values or their source' revise survives without the worst-case framing; dropping the overreach only narrows the objection, it does not move off revise_plan.",
+              "evidenceIds": [
+                "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2",
+                "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3",
+                "ev_initial_entry_3d7rrxij2ngadquhxyxqlkrita_3"
+              ]
+            },
+            {
+              "canonicalPositionId": "revise_plan",
+              "axis": "recommendation_logic",
+              "objection": "The plan never names the change/system under deployment (ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4), yet the verdict reviews validation scope and blast radius adequacy. Judging whether 'request validation' or rollout staging is sufficient without knowing the system is unsupported; the honest reading points toward needs_more_evidence rather than a confident revise on scope.",
+              "wouldChangeRecommendation": "If the objective is judging scope adequacy, the verdict should be needs_more_evidence; if the objective is bounded to 'the artifact omits load-bearing values that must be named or cited', revise_plan holds.",
+              "evidenceIds": [
+                "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_4",
+                "ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1"
+              ]
+            }
+          ],
+          "oppositionMemberIds": []
+        }
+      ],
+      "next_action": "Verify: Confirm plan.md has no further sections beyond L3",
+      "implementation_authorized": false,
+      "verifiedCitationLocators": [
+        "plan.md:L1",
+        "plan.md:L1-L1",
+        "plan.md:L1-L3",
+        "plan.md:L2",
+        "plan.md:L2-L2",
+        "plan.md:L3",
+        "plan.md:L3-L3"
+      ],
+      "strongestDissent": "{\"canonicalPositionId\":\"revise_plan\",\"axis\":\"evidence\",\"objection\":\"The revise verdict treats plan.md's three lines as a self-contained spec, but the grounded evidence proves only that L1-L3 omit schema, flag defaults, and rollback thresholds — not that those details are absent from the artifact or an external runbook. Absence of detail in the reviewed lines is not evidence of absence in the underlying plan; the load-bearing completeness assumption remains unverified.\",\"wouldChangeRecommendation\":\"If evidence confirmed plan.md is a summary backed by a runbook, revise would collapse to a cross-reference request; if it confirmed no external source exists, revise stands.\",\"evidenceIds\":[\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_1\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_2\",\"ev_initial_entry_gzrwutuzgbovp2kmjf75riembi_3\"]}",
+      "assumptionsOrRisksCount": 12,
+      "nextAction": "Verify: Confirm plan.md has no further sections beyond L3"
+    },
+    "soloResult": {
+      "ok": true,
+      "member_id": "entry_ffffffffffffffffffffffffff",
+      "role": "architect",
+      "position_key": "endorse-with-observability-preconditions",
+      "recommendation": "Endorse the three-step plan as ordered — request validation first, feature-flag-gated deploy second, rollback-on-regression third is a correct risk-descending sequence. Before execution, pin the two implicit contracts that make step 3 real: (a) a concrete error-rate baseline + regression threshold with a measurement window, and (b) an emission/observability path so the flag controller can actually see that error rate. Also scope step 1's validation (reject-invalid vs. coerce) since it changes the error surface step 3 measures.",
+      "evidence": [
+        {
+          "claim": "Plan orders controls by descending blast radius: validation gates bad input before it reaches the deploy, the flag limits exposure of the deploy, and rollback bounds the failure duration.",
+          "source_type": "plan_line",
+          "locator": "plan.md:1-3"
+        },
+        {
+          "claim": "Step 3 'Roll back on error-rate regression' presupposes a defined baseline error rate and threshold, neither of which the plan states.",
+          "source_type": "plan_line",
+          "locator": "plan.md:3"
+        },
+        {
+          "claim": "A feature-flag deploy (step 2) is what makes an automated rollback (step 3) cheap and fast, so the two steps are coupled and correctly adjacent.",
+          "source_type": "theory",
+          "locator": "progressive-delivery / canary rollback pattern"
+        }
+      ],
+      "assumptions": [
+        {
+          "assumption_key": "error-rate-is-observed",
+          "statement": "An existing metrics/observability pipeline can report the deploy's error rate at a granularity fine enough to trigger rollback within the exposure window.",
+          "load_bearing": true,
+          "if_false_then": "Step 3 cannot fire automatically; rollback degrades to manual/reactive and the flag gating loses most of its value.",
+          "how_to_verify": "Confirm the service emits per-flag or per-cohort error metrics and that an alert/controller can read them."
+        },
+        {
+          "assumption_key": "flag-is-runtime-toggle",
+          "statement": "The feature flag can be flipped off at runtime without a redeploy.",
+          "load_bearing": true,
+          "if_false_then": "Rollback requires a full redeploy, defeating the fast-rollback intent of the sequence.",
+          "how_to_verify": "Check that the flag system supports live evaluation/kill-switch, not just build-time config."
+        },
+        {
+          "assumption_key": "validation-semantics",
+          "statement": "Step 1 rejects invalid requests (4xx) rather than silently coercing them.",
+          "load_bearing": false,
+          "if_false_then": "Coercion masks bad input as success, so the error rate in step 3 under-reports real failures.",
+          "how_to_verify": "Review the validation spec for reject-vs-coerce behavior."
+        }
+      ],
+      "risks": [
+        "'error-rate regression' undefined: no baseline, threshold, or window means step 3 is untriggerable or arbitrary.",
+        "Rollback flips the flag but does not undo any non-flagged side effects (schema/data writes) the deploy performed.",
+        "Validation errors (step 1) may themselves inflate the 4xx error rate and falsely trip the step-3 rollback if the metric doesn't separate client from server errors.",
+        "Flag-off leaves the deployed code in place; a latent bug behind other code paths remains resident."
+      ],
+      "what_would_change_my_view": [
+        "A stated numeric baseline + regression threshold + measurement window for step 3.",
+        "Confirmation the flag is a live runtime kill-switch vs. build-time config.",
+        "Evidence the error-rate metric distinguishes validation-driven 4xx from genuine 5xx regressions.",
+        "Confirmation the deploy has no irreversible side effects that survive a flag flip."
+      ],
+      "next_action": "Ask the plan owner to attach a rollback trigger spec (baseline error rate, regression threshold %, evaluation window, and metric source) and confirm the flag is a runtime kill-switch; treat those as preconditions before step 2 executes."
+    },
+    "revisionResults": []
+  },
+  "outputHashes": {
+    "councilResultSha256": "9c0b13647f869d994d869007148a67e1a4b99c273124a3cb4e64a1be05296c53",
+    "soloResultSha256": "ff0b2fcbbe14649a0f54be2a6a2f3ed47d84a3f3cce0222ef1800ec2d3b5f08b",
+    "revisionResultSha256": []
+  }
+}

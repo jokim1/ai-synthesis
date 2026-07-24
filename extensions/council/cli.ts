@@ -34,23 +34,30 @@ interface Args {
 function parseArgs(argv: string[]): Args {
   const args: Args = { command: argv[0] === "route-probe" ? "route-probe" : "run", authPolicy: "subscription_only", authPolicySpecified: false, overwrite: false, json: false, selfTest: false, positional: [] };
   const rest = args.command === "route-probe" ? argv.slice(1) : argv;
+  const optionValue = (index: number, option: string): string => {
+    const value = rest[index + 1];
+    if (value === undefined || value.startsWith("-")) {
+      throw Object.assign(new Error(`${option} requires a value`), { exitCode: 2 });
+    }
+    return value;
+  };
   for (let i = 0; i < rest.length; i += 1) {
     const arg = rest[i];
-    if (arg === "--issue") args.issue = rest[++i];
-    else if (arg === "--plan-file") args.planFile = rest[++i];
-    else if (arg === "--roster-file") args.rosterFile = rest[++i];
-    else if (arg === "--emit-roster") args.emitRoster = rest[++i];
-    else if (arg === "--report-strategy") args.reportStrategy = rest[++i];
+    if (arg === "--issue") args.issue = optionValue(i++, arg);
+    else if (arg === "--plan-file") args.planFile = optionValue(i++, arg);
+    else if (arg === "--roster-file") args.rosterFile = optionValue(i++, arg);
+    else if (arg === "--emit-roster") args.emitRoster = optionValue(i++, arg);
+    else if (arg === "--report-strategy") args.reportStrategy = optionValue(i++, arg);
     else if (arg === "--auth-policy") {
-      const value = rest[++i];
+      const value = optionValue(i++, arg);
       args.authPolicy = value === "default" ? "default" : "subscription_only";
       args.authPolicySpecified = true;
     } else if (arg === "--overwrite") args.overwrite = true;
     else if (arg === "--json") args.json = true;
     else if (arg === "--self-test") args.selfTest = true;
-    else if (arg === "--ack-long-run") args.ackLongRun = rest[++i];
-    else if (arg === "--intent") args.intent = rest[++i];
-    else if (arg === "--accept-stale-input-sha") args.acceptStaleInputSha = rest[++i];
+    else if (arg === "--ack-long-run") args.ackLongRun = optionValue(i++, arg);
+    else if (arg === "--intent") args.intent = optionValue(i++, arg);
+    else if (arg === "--accept-stale-input-sha") args.acceptStaleInputSha = optionValue(i++, arg);
     else if (arg === "-h" || arg === "--help") throw Object.assign(new Error(usage()), { exitCode: 0 });
     else if (arg.startsWith("--")) throw Object.assign(new Error(`unknown option: ${arg}`), { exitCode: 2 });
     else args.positional.push(arg);

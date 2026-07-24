@@ -348,6 +348,30 @@ function evidenceReferenceError(value: unknown, ledgerIds: Set<string>, assumpti
   return visit(value);
 }
 
+function chairGroundingError(
+  value: unknown,
+  ledger: CouncilEvidenceLedgerV1,
+  positionIds: ReadonlySet<string>
+): string | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "chair output is not an object";
+  const report = value as Partial<CouncilFinalReportV1>;
+  const allowedEvidence = new Set(
+    ledger.items
+      .filter((item) => item.grounded)
+      .map((item) => `${item.claim} (${item.locator})`)
+  );
+  if (!Array.isArray(report.evidence_summary) || report.evidence_summary.some((item) => !allowedEvidence.has(item))) {
+    return "chair evidence_summary contains evidence outside the frozen grounded ledger";
+  }
+  const serialized = stableJson(value);
+  const ledgerIds = new Set(ledger.items.map((item) => item.id));
+  const citedEvidenceIds = serialized.match(/\bev_[a-z0-9_:-]+\b/g) ?? [];
+  if (citedEvidenceIds.some((id) => !ledgerIds.has(id))) return "chair output contains an unknown evidence id";
+  const positionReferences = serialized.match(/\b(?:accept_plan|revise_plan|reject_plan|needs_more_evidence|issue_option_\d+|propose_alternative|defer_for_evidence|other:[a-z0-9-]+)\b/g) ?? [];
+  if (positionReferences.some((id) => !positionIds.has(id))) return "chair output contains an unknown position id";
+  return undefined;
+}
+
 function critiqueCoverageError(value: unknown, assumptionIds: ReadonlySet<string>): string | undefined {
   if (!value || typeof value !== "object" || Array.isArray(value)) return "critique output is not an object";
   const reviews = (value as { assumptionReviews?: unknown }).assumptionReviews;
@@ -725,7 +749,7 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
               join(opts.packageRoot, "schemas/council-chair-report.json"),
               chairLanePlan.memberTimeoutMs,
               memberDiagnostics,
-              undefined,
+              (candidate) => chairGroundingError(candidate, ledger, positionIds),
               (candidate) => {
                 if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return candidate;
                 const { implementation_authorized: ignored, ...rest } = candidate as Record<string, unknown>;

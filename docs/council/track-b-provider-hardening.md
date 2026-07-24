@@ -2,7 +2,7 @@
 source: docs/council-command-implementation-plan.md
 track: B
 governingPlanSha256: 41fa6dc81018a96cdd1a9decd66b8172b6bb0e383befd944f580de6bb13f944f
-sourceLineRanges: 856-891,1274-1275
+sourceLineRanges: 856-891,1274-1275,1635-1635
 companionStatus: deferred
 ---
 
