@@ -17,6 +17,25 @@ let seen = [];
 if (counterPath && existsSync(counterPath)) seen = readFileSync(counterPath, "utf8").trim().split("\n").filter(Boolean);
 if (counterPath) appendFileSync(counterPath, `${key}\n`);
 
+if (process.env.AISYNTH_FAKE_FAIL_KEY === key) {
+  process.stdout.write("not-json");
+  process.exit(0);
+}
+
+if (process.env.AISYNTH_FAKE_REQUIRE_ROLE_TEMPLATE === "1") {
+  const required = {
+    "council-voice.json": "one explicit member of an ai-synthesis council",
+    "council-critique.json": "Challenge the strongest implementation",
+    "council-steelman.json": "Improve the best case",
+    "council-adversary.json": "Find bounded objections",
+    "council-chair-report.json": "Write the final council synthesis"
+  }[schema];
+  if (required && !prompt.includes(required)) {
+    process.stdout.write("not-json");
+    process.exit(0);
+  }
+}
+
 if (process.env.AISYNTH_FAKE_MALFORMED_ONCE === "1" && !seen.includes(key)) {
   process.stdout.write("not-json");
   process.exit(0);
@@ -29,11 +48,12 @@ if (process.env.AISYNTH_FAKE_INVALID_ONCE === "1" && !seen.includes(key)) {
 
 let structured;
 if (schema === "council-voice.json") {
+  const positions = JSON.parse(process.env.AISYNTH_FAKE_POSITION_BY_MEMBER ?? "{}");
   structured = {
     ok: true,
     member_id: member,
     role,
-    position_key: "other:approve",
+    position_key: positions[member] ?? "other:approve",
     recommendation: "Proceed with the reviewed approach",
     evidence: [{ claim: "The input identifies the decision", source_type: "issue_text", locator: "issue:L1" }],
     assumptions: [{ assumption_key: "inputs-hold", statement: "Inputs remain accurate", load_bearing: false, if_false_then: "Reassess", how_to_verify: "Confirm inputs" }],
@@ -43,21 +63,21 @@ if (schema === "council-voice.json") {
 } else if (schema === "council-critique.json") {
   structured = {
     memberId: member,
-    targetedChallenges: [{ targetMemberId: member, summary: "Validate the execution assumption", evidenceIds: [`ev_initial_${member}_1`] }],
+    targetedChallenges: [{ canonicalPositionId: "other:approve", challenge: "Validate the execution assumption", evidenceIds: [`ev_initial_${member}_1`] }],
     assumptionReviews: [{ assumptionId: `${member}:inputs-hold`, status: "verified_by_cited_evidence", rationale: "The cited input supports it", evidenceIds: [`ev_initial_${member}_1`] }]
   };
 } else if (schema === "council-steelman.json") {
-  structured = { memberId: member, steelmans: [{ positionId: "other:approve", summary: "Best case is grounded", evidenceIds: [`ev_initial_${member}_1`], concededRisks: ["Execution risk remains"] }] };
+  structured = { memberId: member, steelmans: [{ canonicalPositionId: "other:approve", improvedCase: "Best case is grounded", evidenceIds: [`ev_initial_${member}_1`], concededRisks: ["Execution risk remains"] }] };
 } else if (schema === "council-adversary.json") {
   if (process.env.AISYNTH_FAKE_REQUIRE_SYNTHESIS_BRIEF === "1" && (!prompt.includes('"critique"') || !prompt.includes('"steelman"') || !prompt.includes('"groupedPositions"'))) {
     console.log(JSON.stringify({ ok: true, status: "ok", structured: { invalid: true }, text: "", meta: { attempts: 1 } }));
     process.exit(0);
   }
-  structured = { memberId: member, objections: [{ positionId: "other:approve", axis: "recommendation_logic", objection: "Residual risk remains", whatWouldChange: "Independent validation", evidenceIds: [`ev_initial_${member}_1`] }] };
+  structured = { memberId: member, objections: [{ canonicalPositionId: "other:approve", axis: "recommendation_logic", objection: "Residual risk remains", wouldChangeRecommendation: "Independent validation", evidenceIds: [`ev_initial_${member}_1`] }] };
 } else {
   structured = {
     recommendation: "Proceed with safeguards",
-    decision_readiness: "conditional",
+    decision_readiness: process.env.AISYNTH_FAKE_CHAIR_READINESS ?? "conditional",
     evidence_summary: ["The input identifies the decision (issue:L1)"],
     strongest_dissent: "Residual risk remains",
     assumptions: ["Inputs remain accurate"],

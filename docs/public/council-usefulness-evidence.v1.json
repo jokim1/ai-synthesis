@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "evaluationMode": "no_cost_fixture",
+  "generatedAt": "2026-07-23T00:00:00.000Z",
+  "records": [
+    {
+      "sampleId": "plan-review",
+      "inputSha256": "1edcbaa0ab13d48a8b66834440aa988f9b8b21cf858a3ce5bd17fe805e2ad01f",
+      "routes": ["fixture:claude-subscription:member-a", "fixture:claude-subscription:member-b"],
+      "councilResult": {
+        "recommendation": "Stage the deployment behind the feature flag.",
+        "verifiedCitations": ["plan.md:L1", "plan.md:L2", "plan.md:L3"],
+        "strongestDissent": "Rollback criteria need an explicit error-rate threshold.",
+        "assumptions": ["The feature flag isolates exposure."],
+        "risks": ["An undefined regression threshold delays rollback."],
+        "nextAction": "Set the rollback error-rate threshold before rollout."
+      },
+      "soloComparison": {
+        "baseline": "Proceed behind the feature flag.",
+        "materialDeltas": ["Added an explicit rollback-threshold requirement."],
+        "usedByFinalReport": true,
+        "outcome": "added_value"
+      },
+      "revisionAttempts": [],
+      "pass": true
+    },
+    {
+      "sampleId": "issue-explicit-alternatives",
+      "inputSha256": "3705836e540a82b41372901bd3eb0c30884d703041edda536a14f43e88428e02",
+      "routes": ["fixture:claude-subscription:member-a", "fixture:claude-subscription:member-b"],
+      "councilResult": {
+        "recommendation": "Choose B, a staged rollout.",
+        "verifiedCitations": ["issue:L1", "issue:L1", "issue:L1"],
+        "strongestDissent": "Load-test evidence could justify deferring.",
+        "assumptions": ["A staged rollout can limit blast radius."],
+        "risks": ["Production traffic may expose untested load behavior."],
+        "nextAction": "Define staged rollout limits and abort criteria."
+      },
+      "soloComparison": {
+        "baseline": "Choose B.",
+        "materialDeltas": ["Added abort criteria and retained the load-test dissent."],
+        "usedByFinalReport": true,
+        "outcome": "added_value"
+      },
+      "revisionAttempts": [],
+      "pass": true
+    },
+    {
+      "sampleId": "issue-freeform",
+      "inputSha256": "a9b5f1e5dfd8d056afff15deb9f87ee5e438a000b67b67b6607a2b0e6dee1453",
+      "routes": ["fixture:claude-subscription:member-a", "fixture:claude-subscription:member-b"],
+      "councilResult": {
+        "recommendation": "No deterministic recommendation; see structured disagreement",
+        "verifiedCitations": ["issue:L1", "issue:L1", "issue:L1"],
+        "strongestDissent": "Delivery speed and deployment risk require different optimization choices.",
+        "assumptions": ["Incremental exposure is available."],
+        "risks": ["A speed-first choice can enlarge blast radius."],
+        "nextAction": "Choose an acceptable blast-radius target before selecting a rollout policy."
+      },
+      "soloComparison": {
+        "baseline": "Use staged deployment.",
+        "materialDeltas": ["Preserved the unresolved speed-versus-risk opposition."],
+        "usedByFinalReport": true,
+        "outcome": "added_value"
+      },
+      "revisionAttempts": [],
+      "pass": true
+    }
+  ]
+}

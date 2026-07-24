@@ -14,6 +14,7 @@
     "test": "node scripts/run-package-check.mjs test",
     "typecheck": "node scripts/run-package-check.mjs typecheck",
     "build": "node scripts/run-package-check.mjs build",
+    "check:council-usefulness": "node scripts/check-council-usefulness.mjs",
     "verify:pipelane-prepr": "node scripts/verify-pipelane-prepr.mjs --assert-shape && npm run test && npm run typecheck && npm run build"
   },
   "dependencies": {

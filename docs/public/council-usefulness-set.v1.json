@@ -1,8 +1,26 @@
 {
   "version": 1,
   "samples": [
-    { "id": "plan-review", "kind": "plan", "description": "Review a concrete implementation plan with line citations." },
-    { "id": "issue-explicit-alternatives", "kind": "issue", "description": "Choose between explicit alternatives." },
-    { "id": "issue-freeform", "kind": "issue", "description": "Analyze a free-form issue and preserve disagreement." }
+    {
+      "id": "plan-review",
+      "kind": "plan",
+      "description": "Review a concrete implementation plan with line citations.",
+      "input": "1. Add request validation.\n2. Deploy behind a feature flag.\n3. Roll back on error-rate regression.",
+      "inputSha256": "1edcbaa0ab13d48a8b66834440aa988f9b8b21cf858a3ce5bd17fe805e2ad01f"
+    },
+    {
+      "id": "issue-explicit-alternatives",
+      "kind": "issue",
+      "description": "Choose between explicit alternatives.",
+      "input": "Choose one: A) ship immediately; B) run a staged rollout; C) defer pending load tests.",
+      "inputSha256": "3705836e540a82b41372901bd3eb0c30884d703041edda536a14f43e88428e02"
+    },
+    {
+      "id": "issue-freeform",
+      "kind": "issue",
+      "description": "Analyze a free-form issue and preserve disagreement.",
+      "input": "How should we reduce deployment risk while preserving delivery speed?",
+      "inputSha256": "a9b5f1e5dfd8d056afff15deb9f87ee5e438a000b67b67b6607a2b0e6dee1453"
+    }
   ]
 }

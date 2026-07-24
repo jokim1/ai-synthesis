@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "evidenceFile": "docs/public/council-usefulness-evidence.v1.json",
   "passThreshold": {
     "requiredReportFields": ["recommendation", "evidence", "strongest_dissent", "assumptions", "risks", "next_action"],
     "verifiedCitations": 3,
@@ -10,5 +11,6 @@
   "sameRouteExit": {
     "maxRevisionAttempts": 2,
     "disclosure": "same_route_added_value: not_demonstrated"
-  }
+  },
+  "requiredEvidenceFields": ["sampleId", "inputSha256", "routes", "councilResult", "soloComparison", "revisionAttempts", "pass"]
 }

@@ -1,13 +1,18 @@
 import { randomBytes } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type {
+  CouncilAdversaryOutputV1,
+  CouncilCritiqueOutputV1,
   CouncilEvidenceLedgerV1,
   CouncilFinalReportV1,
   CouncilInputSnapshotV1,
+  CouncilPositionGroupReportV1,
   CouncilReportStrategy,
   CouncilRosterConfigV1,
   CouncilRosterEntryV1,
   CouncilRoute,
+  CouncilSteelmanOutputV1,
   CouncilTerminalReportV1,
   CouncilPositionCatalogV1
 } from "./types.js";
@@ -42,17 +47,9 @@ interface AssumptionRecord {
   evidenceIds: string[];
 }
 
-interface PhaseOutput {
-  memberId: string;
-  targetedChallenges?: unknown[];
-  assumptionReviews?: unknown[];
-  steelmans?: unknown[];
-  objections?: unknown[];
-}
-
 interface AssumptionReview {
   assumptionId: string;
-  status: "verified_by_cited_evidence" | "contradicted" | "unverified";
+  status: "verified_by_cited_evidence" | "contradicted" | "unverified" | "not_evaluated";
   rationale: string;
   evidenceIds: string[];
 }
@@ -62,8 +59,19 @@ interface SynthesisBrief {
   groupedPositions: Array<{ positionId: string; supporterMemberIds: string[]; groundedEvidenceIds: string[]; assumptionIds: string[] }>;
   evidenceLedger: CouncilEvidenceLedgerV1;
   assumptionCatalog: AssumptionRecord[];
-  critique: PhaseOutput[];
-  steelman: PhaseOutput[];
+  critique: CouncilCritiqueOutputV1[];
+  steelman: CouncilSteelmanOutputV1[];
+}
+
+type LaterPhase = "critique" | "steelman" | "adversary";
+type PhaseOutput = CouncilCritiqueOutputV1 | CouncilSteelmanOutputV1 | CouncilAdversaryOutputV1;
+
+interface RoleTemplates {
+  initial: string;
+  critique: string;
+  steelman: string;
+  adversary: string;
+  chair: string;
 }
 
 class RunAbortedError extends Error {
@@ -89,9 +97,19 @@ function lineNumbered(input: CouncilInputSnapshotV1): string {
   return input.text.split("\n").map((line, index) => `${index + 1}: ${line}`).join("\n");
 }
 
-function voicePrompt(input: CouncilInputSnapshotV1, catalog: CouncilPositionCatalogV1, entryId: string, role: string): string {
+function loadRoleTemplates(packageRoot: string): RoleTemplates {
+  return Object.fromEntries(
+    (["initial", "critique", "steelman", "adversary", "chair"] as const).map((name) => [
+      name,
+      readFileSync(join(packageRoot, "roles/council", `${name}.md`), "utf8").trim()
+    ])
+  ) as unknown as RoleTemplates;
+}
+
+function voicePrompt(input: CouncilInputSnapshotV1, catalog: CouncilPositionCatalogV1, entryId: string, role: string, template: string): string {
   const locator = input.kind === "plan" ? "plan.md:Lx-Ly" : "issue:Lx-Ly";
   return `You are council member ${entryId} with role ${role}.
+Role rubric: ${template}
 Review the immutable ${input.kind} independently. Cite evidence only as ${locator}.
 Choose position_key from ${JSON.stringify(catalog)}, or other:<lowercase-slug>.
 Return only JSON matching the schema. Council completion does not authorize implementation.
@@ -104,9 +122,11 @@ function phasePrompt(
   phase: "critique" | "steelman" | "adversary" | "chair",
   input: CouncilInputSnapshotV1,
   entry: CouncilRosterEntryV1,
-  context: unknown
+  context: unknown,
+  template: string
 ): string {
   return `You are explicit council member ${entry.id} with role ${entry.role}.
+Role rubric: ${template}
 Perform the ${phase} phase without tools or hidden context. Use only ids in the frozen context.
 Return only JSON matching the supplied schema. Council completion does not authorize implementation.
 
@@ -256,9 +276,9 @@ function evidenceReferenceError(value: unknown, ledgerIds: Set<string>, assumpti
     if (!node || typeof node !== "object") return undefined;
     const object = node as Record<string, unknown>;
     if (Array.isArray(object.evidenceIds) && object.evidenceIds.some((id) => typeof id !== "string" || !ledgerIds.has(id))) return "unknown evidenceIds reference";
-    const assumptionId = object.assumptionId ?? object.assumption_id;
+    const assumptionId = object.assumptionId;
     if (assumptionIds && typeof assumptionId === "string" && !assumptionIds.has(assumptionId)) return "unknown assumption id";
-    const positionId = object.canonicalPositionId ?? object.positionId ?? object.position_id;
+    const positionId = object.canonicalPositionId;
     if (positionIds && typeof positionId === "string" && !positionIds.has(positionId)) return "unknown position id";
     for (const child of Object.values(object)) {
       const error = visit(child);
@@ -270,20 +290,25 @@ function evidenceReferenceError(value: unknown, ledgerIds: Set<string>, assumpti
 }
 
 function phaseMembers(
-  phase: "critique" | "steelman" | "adversary",
+  phase: LaterPhase,
   roster: CouncilRosterConfigV1,
   voices: Voice[],
   strategy: CouncilReportStrategy,
   diagnostics: string[]
 ): CouncilRosterEntryV1[] {
   const voiceIds = new Set(voices.map((voice) => voice.member_id));
-  const selected = selectPhaseEntries(phase, roster, strategy, voiceIds);
+  const positionByMember = new Map(voices.map((voice) => [voice.member_id, voice.position_key]));
+  const selected = selectPhaseEntries(phase, roster, strategy, voiceIds, positionByMember);
   if (selected.length === 0) diagnostics.push(`${phase} degraded: no selectable non-chair survivor`);
   else if (phaseSelectionWasFallback(phase, selected)) diagnostics.push(`${phase} fallback: ${selected.map((entry) => entry.id).join(",")}`);
   return selected;
 }
 
-function phaseFindings(critique: PhaseOutput[], steelman: PhaseOutput[], adversary: PhaseOutput[]): CouncilFinalReportV1["phase_findings"] {
+function phaseFindings(
+  critique: CouncilCritiqueOutputV1[],
+  steelman: CouncilSteelmanOutputV1[],
+  adversary: CouncilAdversaryOutputV1[]
+): CouncilFinalReportV1["phase_findings"] {
   const render = (value: unknown): string => typeof value === "string" ? value : JSON.stringify(value);
   return {
     critique: critique.flatMap((output) => [...(output.targetedChallenges ?? []), ...(output.assumptionReviews ?? [])].map(render)),
@@ -298,8 +323,8 @@ function buildSynthesisBrief(
   voices: Voice[],
   ledger: CouncilEvidenceLedgerV1,
   assumptions: AssumptionRecord[],
-  critique: PhaseOutput[],
-  steelman: PhaseOutput[]
+  critique: CouncilCritiqueOutputV1[],
+  steelman: CouncilSteelmanOutputV1[]
 ): SynthesisBrief {
   const grouped = new Map<string, Voice[]>();
   for (const voice of voices) {
@@ -321,7 +346,7 @@ function buildSynthesisBrief(
   });
 }
 
-function assumptionVerified(assumption: AssumptionRecord, critique: PhaseOutput[], groundedIds: Set<string>): boolean {
+function assumptionVerified(assumption: AssumptionRecord, critique: CouncilCritiqueOutputV1[], groundedIds: Set<string>): boolean {
   const reviews = critique.flatMap((output) => (output.assumptionReviews ?? []) as AssumptionReview[]).filter((review) => review.assumptionId === assumption.id);
   return reviews.some((review) =>
     review.status === "verified_by_cited_evidence"
@@ -330,13 +355,30 @@ function assumptionVerified(assumption: AssumptionRecord, critique: PhaseOutput[
   ) && reviews.every((review) => review.status === "verified_by_cited_evidence");
 }
 
+function positionGroups(
+  brief: SynthesisBrief,
+  adversary: CouncilAdversaryOutputV1[],
+  allMemberIds: string[]
+): CouncilPositionGroupReportV1[] {
+  return brief.groupedPositions.map((group) => ({
+    canonicalPositionId: group.positionId,
+    supporterMemberIds: group.supporterMemberIds,
+    evidenceIds: group.groundedEvidenceIds,
+    assumptionIds: group.assumptionIds,
+    steelmans: brief.steelman.flatMap((output) => output.steelmans.filter((item) => item.canonicalPositionId === group.positionId)),
+    objections: adversary.flatMap((output) => output.objections.filter((item) => item.canonicalPositionId === group.positionId)),
+    oppositionMemberIds: allMemberIds.filter((memberId) => !group.supporterMemberIds.includes(memberId))
+  }));
+}
+
 function synthesize(
   input: CouncilInputSnapshotV1,
   roster: CouncilRosterConfigV1,
   voices: Voice[],
   strategy: CouncilReportStrategy,
   brief: SynthesisBrief,
-  adversary: PhaseOutput[],
+  adversary: CouncilAdversaryOutputV1[],
+  degradedPhases: ReadonlySet<LaterPhase>,
   diagnostics: string[]
 ): CouncilFinalReportV1 {
   const positions = new Map(brief.groupedPositions.map((group) => [group.positionId, group.supporterMemberIds.map((id) => voices.find((voice) => voice.member_id === id)).filter(Boolean) as Voice[]]));
@@ -354,7 +396,7 @@ function synthesize(
     : `${winner}: ${supporters[0]?.recommendation ?? "supported by council voices"}`;
   const dissent = sorted.find(([key]) => key !== winner)?.[1]?.[0];
   const findings = phaseFindings(brief.critique, brief.steelman, adversary);
-  const phasesClean = brief.critique.length > 0 && brief.steelman.length > 0 && adversary.length > 0;
+  const phasesClean = degradedPhases.size === 0;
   const groundedIds = new Set(groundedEvidence.map((item) => item.id));
   const winningLoadBearing = brief.assumptionCatalog.filter((assumption) => assumption.positionId === winner && assumption.loadBearing);
   const unresolvedWinningAssumptions = winningLoadBearing.filter((assumption) => !assumptionVerified(assumption, brief.critique, groundedIds));
@@ -379,6 +421,7 @@ function synthesize(
     risks: [...voices.flatMap((voice) => voice.risks.map((risk) => `${voice.member_id}: ${risk}`)), ...findings.adversary].slice(0, 8),
     what_would_change_recommendation: [...voices.flatMap((voice) => voice.what_would_change_my_view), ...findings.critique].slice(0, 8),
     phase_findings: findings,
+    position_groups: positionGroups(brief, adversary, voices.map((voice) => voice.member_id)),
     next_action: unresolvedWinningAssumptions[0]?.howToVerify
       ? `Verify: ${unresolvedWinningAssumptions[0].howToVerify}`
       : "Gather more grounded evidence before implementation.",
@@ -396,6 +439,7 @@ function singleSurvivorReport(voice: Voice, failedMembers: string[]): CouncilFin
     risks: [...voice.risks, `Failed initial members: ${failedMembers.join(", ")}`],
     what_would_change_recommendation: voice.what_would_change_my_view,
     phase_findings: { critique: [], steelman: [], adversary: [] },
+    position_groups: [],
     next_action: "Restore a second executable voice and rerun the council.",
     implementation_authorized: false
   };
@@ -416,6 +460,7 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
   const strategy = validation.reportStrategy.effective;
   const diagnostics = [...validation.reconciliationDiagnostics, ...validation.compositionFeedback.map((item) => item.message)];
   const positionCatalog = derivePositionCatalog(opts.input);
+  const roleTemplates = loadRoleTemplates(opts.packageRoot);
   const plan = buildRunPlan(opts.input, roster, opts.routes, strategy);
   const runId = `council_${new Date().toISOString().replace(/[-:.]/g, "").slice(0, 15)}_${sha256(opts.input.sha256).slice(0, 8)}_${randomBytes(5).toString("hex")}`;
   const controller = new AbortController();
@@ -437,7 +482,7 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
         runOpts,
         route,
         entry,
-        voicePrompt(opts.input, positionCatalog, entry.id, entry.role),
+        voicePrompt(opts.input, positionCatalog, entry.id, entry.role, roleTemplates.initial),
         voiceSchemaPath,
         300000,
         diagnostics,
@@ -467,38 +512,53 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
       const assumptionIds = new Set(assumptions.map((assumption) => assumption.id));
       const positionIds = new Set(voices.map((voice) => canonicalPosition(opts.input, positionCatalog, voice.position_key)));
       const initialContext = { positionCatalog, voices, evidenceLedger: ledger, assumptionCatalog: assumptions, positionIds: [...positionIds] };
-      const runPhase = async (phaseName: "critique" | "steelman" | "adversary", context: unknown): Promise<PhaseOutput[]> => {
+      const degradedPhases = new Set<LaterPhase>();
+      const runPhase = async <T extends PhaseOutput>(phaseName: LaterPhase, context: unknown): Promise<T[]> => {
         phase = phaseName;
         const schemaPath = join(opts.packageRoot, `schemas/council-${phaseName}.json`);
-        const outputs: PhaseOutput[] = [];
-        for (const entry of phaseMembers(phaseName, roster, voices, strategy, diagnostics)) {
+        const outputs: T[] = [];
+        const selected = phaseMembers(phaseName, roster, voices, strategy, diagnostics);
+        if (selected.length === 0) degradedPhases.add(phaseName);
+        for (const entry of selected) {
           const route = routeMap.get(entry.route.routeId);
-          if (!route) continue;
+          if (!route) {
+            degradedPhases.add(phaseName);
+            diagnostics.push(`${phaseName} degraded for ${entry.id}: route unavailable`);
+            continue;
+          }
           const value = await invokeStructured(
             runOpts,
             route,
             entry,
-            phasePrompt(phaseName, opts.input, entry, context),
+            phasePrompt(phaseName, opts.input, entry, context, roleTemplates[phaseName]),
             schemaPath,
             300000,
             diagnostics,
             (candidate) => {
               const output = candidate as PhaseOutput;
               if (output.memberId !== entry.id) return "phase memberId does not match roster entry";
-              return evidenceReferenceError(candidate, ledgerIds, phaseName === "critique" ? assumptionIds : undefined, phaseName === "adversary" || phaseName === "steelman" ? positionIds : undefined);
+              return evidenceReferenceError(
+                candidate,
+                ledgerIds,
+                phaseName === "critique" ? assumptionIds : undefined,
+                positionIds
+              );
             }
           );
-          if (value) outputs.push(value as PhaseOutput);
-          else diagnostics.push(`${phaseName} degraded for ${entry.id}`);
+          if (value) outputs.push(value as T);
+          else {
+            degradedPhases.add(phaseName);
+            diagnostics.push(`${phaseName} degraded for ${entry.id}`);
+          }
         }
         return outputs;
       };
-      const critique = await runPhase("critique", initialContext);
-      const steelman = await runPhase("steelman", { ...initialContext, critique });
+      const critique = await runPhase<CouncilCritiqueOutputV1>("critique", initialContext);
+      const steelman = await runPhase<CouncilSteelmanOutputV1>("steelman", { ...initialContext, critique });
       const brief = buildSynthesisBrief(opts.input, positionCatalog, voices, ledger, assumptions, critique, steelman);
-      const adversary = await runPhase("adversary", brief);
-      if (critique.length === 0 || steelman.length === 0 || adversary.length === 0 || failedMembers.length > 0) status = "degraded";
-      report = synthesize(opts.input, roster, voices, strategy, brief, adversary, diagnostics);
+      const adversary = await runPhase<CouncilAdversaryOutputV1>("adversary", brief);
+      if (degradedPhases.size > 0 || failedMembers.length > 0) status = "degraded";
+      report = synthesize(opts.input, roster, voices, strategy, brief, adversary, degradedPhases, diagnostics);
       if (strategy.kind === "chair") {
         phase = "chair";
         const chair = selectPhaseEntries("chair", roster, strategy, new Set(voices.map((voice) => voice.member_id)))[0];
@@ -508,7 +568,7 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
             runOpts,
             route,
             chair,
-            phasePrompt("chair", opts.input, chair, { synthesisBrief: brief, adversary, deterministicBrief: report }),
+            phasePrompt("chair", opts.input, chair, { synthesisBrief: brief, adversary, deterministicBrief: report }, roleTemplates.chair),
             join(opts.packageRoot, "schemas/council-chair-report.json"),
             420000,
             diagnostics,
@@ -521,10 +581,16 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
             }
           );
           if (draft) {
+            const readinessRank = { not_ready: 0, conditional: 1, ready: 2 } as const;
+            const draftReadiness = (draft as CouncilFinalReportV1).decision_readiness;
+            const cappedReadiness = readinessRank[draftReadiness] < readinessRank[report.decision_readiness]
+              ? draftReadiness
+              : report.decision_readiness;
             report = {
               ...(draft as Omit<CouncilFinalReportV1, "implementation_authorized">),
-              decision_readiness: report.decision_readiness === "conditional" ? "conditional" : (draft as CouncilFinalReportV1).decision_readiness,
+              decision_readiness: cappedReadiness,
               phase_findings: phaseFindings(critique, steelman, adversary),
+              position_groups: positionGroups(brief, adversary, voices.map((voice) => voice.member_id)),
               implementation_authorized: false
             };
           } else {
@@ -536,7 +602,7 @@ export async function runCouncil(opts: RunCouncilOptions): Promise<{
     }
 
     diagnostics.push(`worst_case_provider_calls: ${plan.worstCaseProviderCallCount}`);
-    validateFinalReport(report);
+    validateFinalReport(report, join(opts.packageRoot, "schemas/council-report.json"));
     const effectiveStrategy = voices.length === 1 ? "single_survivor" : strategy.kind;
     const markdown = renderCouncilMarkdown({
       runId,

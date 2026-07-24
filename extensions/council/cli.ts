@@ -173,10 +173,14 @@ export async function main(argv = process.argv.slice(2), packageRoot = packageRo
     const ackArg = acknowledgmentRequired ? ` --ack-long-run ${token}` : "";
     const status = staleInput ? "stale_input_confirmation_required" : "ack_required";
     const rerun = `bin/council --intent ${intent}${rosterArg}${strategyArg}${authArg}${staleArg}${ackArg}`;
+    const inputArg = input.kind === "plan" && input.sourcePath
+      ? ` --plan-file ${JSON.stringify(input.sourcePath)}`
+      : ` --issue ${JSON.stringify(input.text)}`;
+    const resnapshot = `bin/council${inputArg}${rosterArg}${strategyArg}${authArg}`;
     print(
       args.json,
-      { ok: false, status, exitCode: 2, ackLongRun: acknowledgmentRequired ? token : undefined, acceptStaleInputSha: staleInput ? input.sha256 : undefined, intent, rerun, runPlan },
-      `confirmation required. Re-run with ${rerun}, omit --intent to re-snapshot, or cancel.`
+      { ok: false, status, exitCode: 2, ackLongRun: acknowledgmentRequired ? token : undefined, acceptStaleInputSha: staleInput ? input.sha256 : undefined, intent, rerun, resnapshot, runPlan },
+      `confirmation required. Accept frozen with ${rerun}, re-snapshot with ${resnapshot}, or cancel.`
     );
     return 2;
   }

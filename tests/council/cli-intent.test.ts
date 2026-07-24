@@ -78,6 +78,8 @@ describe("portable intent lifecycle", () => {
     expect(output).toContain("stale_input_confirmation_required");
     expect(output).toContain("acceptStaleInputSha");
     expect(output).toContain(rosterPath);
+    expect(output).toContain(planPath);
+    expect(output).toContain("resnapshot");
     expect(existsSync(join(root, "config", "council", "roster.v1.json"))).toBe(false);
   });
 });

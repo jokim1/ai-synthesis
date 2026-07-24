@@ -7,12 +7,12 @@
       "items": {
         "type": "object",
         "properties": {
-          "positionId": { "type": "string" },
-          "summary": { "type": "string" },
+          "canonicalPositionId": { "type": "string" },
+          "improvedCase": { "type": "string" },
           "evidenceIds": { "type": "array", "items": { "type": "string" } },
           "concededRisks": { "type": "array", "items": { "type": "string" } }
         },
-        "required": ["positionId", "summary", "evidenceIds", "concededRisks"],
+        "required": ["canonicalPositionId", "improvedCase", "evidenceIds", "concededRisks"],
         "additionalProperties": false
       }
     }

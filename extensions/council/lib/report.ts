@@ -1,11 +1,17 @@
 import { existsSync, mkdirSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { CouncilFinalReportV1, CouncilInputSnapshotV1, CouncilReportStrategy, CouncilRosterConfigV1, CouncilRoute, CouncilTerminalReportV1 } from "./types.js";
+import { validateModelJsonValue } from "./validate-json.js";
 
-export function validateFinalReport(report: CouncilFinalReportV1): void {
+export function validateFinalReport(report: CouncilFinalReportV1, schemaPath?: string): void {
   if (report.implementation_authorized !== false) throw new Error("implementation_authorized must be false");
+  if (!Array.isArray(report.position_groups)) throw new Error("final report missing position_groups");
   for (const key of ["recommendation", "strongest_dissent", "next_action"] as const) {
     if (!report[key]) throw new Error(`final report missing ${key}`);
+  }
+  if (schemaPath) {
+    const validated = validateModelJsonValue(schemaPath, report);
+    if (!validated.ok) throw new Error(`final report schema validation failed: ${validated.error}`);
   }
 }
 
@@ -73,7 +79,10 @@ export function renderCouncilMarkdown(opts: {
     remembered_roster_written: opts.rememberedRosterWritten
   };
   const yaml = Object.entries(frontmatter).map(([key, value]) => `${key}: ${yamlValue(value)}`).join("\n");
-  return `---\n${yaml}\n---\n\n# Council Report\n\nCouncil completion does not authorize project implementation.\n\n## Recommendation\n\n${opts.report.recommendation}\n\n## Decision Readiness\n\n${opts.report.decision_readiness}\n\nMVP readiness is internal-input grounded. Repo context and web claims were not independently verified.\n\n## Evidence\n\n${opts.report.evidence_summary.map((item) => `- ${item}`).join("\n") || "- No grounded evidence was produced."}\n\n## Strongest Dissent\n\n${opts.report.strongest_dissent}\n\n## Assumptions\n\n${opts.report.assumptions.map((item) => `- ${item}`).join("\n") || "- None recorded."}\n\n## Risks\n\n${opts.report.risks.map((item) => `- ${item}`).join("\n") || "- None recorded."}\n\n## What Would Change The Recommendation\n\n${opts.report.what_would_change_recommendation.map((item) => `- ${item}`).join("\n") || "- More grounded evidence."}\n\n## Phase Findings\n\n### Critique\n${opts.report.phase_findings.critique.map((item) => `- ${item}`).join("\n") || "- No critique output."}\n\n### Steelman\n${opts.report.phase_findings.steelman.map((item) => `- ${item}`).join("\n") || "- No steelman output."}\n\n### Adversary\n${opts.report.phase_findings.adversary.map((item) => `- ${item}`).join("\n") || "- No adversary output."}\n\n## Next Action\n\n${opts.report.next_action}\n\n## Diagnostics\n\n${opts.diagnostics.map((item) => `- ${item}`).join("\n") || "- None."}\n`;
+  const groups = opts.report.position_groups.map((group) =>
+    `### ${group.canonicalPositionId}\n\n- Supporters: ${group.supporterMemberIds.join(", ") || "None"}\n- Evidence: ${group.evidenceIds.join(", ") || "None"}\n- Assumptions: ${group.assumptionIds.join(", ") || "None"}\n- Steelmans: ${group.steelmans.map((item) => item.improvedCase).join("; ") || "None"}\n- Objections: ${group.objections.map((item) => item.objection).join("; ") || "None"}\n- Opposition: ${group.oppositionMemberIds.join(", ") || "None"}`
+  ).join("\n\n");
+  return `---\n${yaml}\n---\n\n# Council Report\n\nCouncil completion does not authorize project implementation.\n\n## Recommendation\n\n${opts.report.recommendation}\n\n## Decision Readiness\n\n${opts.report.decision_readiness}\n\nMVP readiness is internal-input grounded. Repo context and web claims were not independently verified.\n\n## Evidence\n\n${opts.report.evidence_summary.map((item) => `- ${item}`).join("\n") || "- No grounded evidence was produced."}\n\n## Strongest Dissent\n\n${opts.report.strongest_dissent}\n\n## Assumptions\n\n${opts.report.assumptions.map((item) => `- ${item}`).join("\n") || "- None recorded."}\n\n## Risks\n\n${opts.report.risks.map((item) => `- ${item}`).join("\n") || "- None recorded."}\n\n## What Would Change The Recommendation\n\n${opts.report.what_would_change_recommendation.map((item) => `- ${item}`).join("\n") || "- More grounded evidence."}\n\n## Position Groups\n\n${groups || "No grouped positions were produced."}\n\n## Phase Findings\n\n### Critique\n${opts.report.phase_findings.critique.map((item) => `- ${item}`).join("\n") || "- No critique output."}\n\n### Steelman\n${opts.report.phase_findings.steelman.map((item) => `- ${item}`).join("\n") || "- No steelman output."}\n\n### Adversary\n${opts.report.phase_findings.adversary.map((item) => `- ${item}`).join("\n") || "- No adversary output."}\n\n## Next Action\n\n${opts.report.next_action}\n\n## Diagnostics\n\n${opts.diagnostics.map((item) => `- ${item}`).join("\n") || "- None."}\n`;
 }
 
 export function writeReport(cwd: string, runId: string, markdown: string): string {

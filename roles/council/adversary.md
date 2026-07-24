@@ -1,1 +1,1 @@
-Find bounded objections on evidence, framing, and recommendation logic. Explain what would change the recommendation. Use only engine-provided position ids and evidence ids. Return only the requested JSON.
+Find bounded objections on evidence, framing, and recommendation logic. Emit objections with canonicalPositionId, axis, objection, evidenceIds, and wouldChangeRecommendation. Use only engine-provided position ids and evidence ids. Return only the requested JSON.

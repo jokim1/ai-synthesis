@@ -18,9 +18,26 @@
       "required": ["critique", "steelman", "adversary"],
       "additionalProperties": false
     },
+    "position_groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "canonicalPositionId": { "type": "string" },
+          "supporterMemberIds": { "type": "array", "items": { "type": "string" } },
+          "evidenceIds": { "type": "array", "items": { "type": "string" } },
+          "assumptionIds": { "type": "array", "items": { "type": "string" } },
+          "steelmans": { "type": "array", "items": { "type": "object" } },
+          "objections": { "type": "array", "items": { "type": "object" } },
+          "oppositionMemberIds": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["canonicalPositionId", "supporterMemberIds", "evidenceIds", "assumptionIds", "steelmans", "objections", "oppositionMemberIds"],
+        "additionalProperties": false
+      }
+    },
     "next_action": { "type": "string" },
     "implementation_authorized": { "const": false }
   },
-  "required": ["recommendation", "decision_readiness", "evidence_summary", "strongest_dissent", "assumptions", "risks", "what_would_change_recommendation", "phase_findings", "next_action", "implementation_authorized"],
+  "required": ["recommendation", "decision_readiness", "evidence_summary", "strongest_dissent", "assumptions", "risks", "what_would_change_recommendation", "phase_findings", "position_groups", "next_action", "implementation_authorized"],
   "additionalProperties": false
 }

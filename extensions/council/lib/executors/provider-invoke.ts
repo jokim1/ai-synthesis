@@ -56,6 +56,14 @@ export function invokeProvider(
     let stderr = "";
     let timedOut = false;
     let aborted = false;
+    let settled = false;
+    const finish = (result: ProviderInvokeResult) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", abortHandler);
+      resolve(result);
+    };
     const kill = (force: boolean) => {
       try {
         const signalName = force ? "SIGKILL" : "SIGTERM";
@@ -77,20 +85,21 @@ export function invokeProvider(
     signal?.addEventListener("abort", abortHandler, { once: true });
     child.stdout.on("data", (chunk) => { stdout += chunk; });
     child.stderr.on("data", (chunk) => { stderr += chunk; });
+    child.on("error", (error) => {
+      finish({ ok: false, status: "invocation_failed", text: stdout, error: error.message });
+    });
     child.on("close", () => {
-      clearTimeout(timer);
-      signal?.removeEventListener("abort", abortHandler);
       if (aborted) {
-        resolve({ ok: false, status: "canceled", text: stdout, error: String(signal?.reason ?? "canceled") });
+        finish({ ok: false, status: "canceled", text: stdout, error: String(signal?.reason ?? "canceled") });
         return;
       }
       if (timedOut) {
-        resolve({ ok: false, status: "timeout", text: stdout, error: `provider-invoke exceeded ${timeoutMs}ms` });
+        finish({ ok: false, status: "timeout", text: stdout, error: `provider-invoke exceeded ${timeoutMs}ms` });
         return;
       }
       try {
         const parsed = JSON.parse(stdout);
-        resolve({
+        finish({
           ok: parsed.ok === true,
           status: parsed.status ?? "unknown",
           structured: parsed.structured,
@@ -100,7 +109,7 @@ export function invokeProvider(
           attempts: parsed.meta?.attempts
         });
       } catch {
-        resolve({ ok: false, status: "malformed", text: stdout, error: stderr || "provider-invoke returned non-JSON" });
+        finish({ ok: false, status: "malformed", text: stdout, error: stderr || "provider-invoke returned non-JSON" });
       }
     });
   });

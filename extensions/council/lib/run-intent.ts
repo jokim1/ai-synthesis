@@ -12,23 +12,44 @@ export function buildRunPlan(
   strategy: CouncilReportStrategy = roster.reportStrategy
 ): CouncilMvpRunPlanV1 {
   const routeMap = new Map(routes.map((route) => [route.ref.routeId, route]));
-  const phaseMembers = new Map((["initial_analysis", "critique", "steelman", "adversary", "chair"] as const).map((phase) => [
+  const enabled = roster.entries.filter((entry) => entry.enabled);
+  const chairId = strategy.kind === "chair" ? strategy.chairEntryId : undefined;
+  const routeCostRank = (entry: CouncilRosterConfigV1["entries"][number]): number => {
+    const route = routeMap.get(entry.route.routeId);
+    if (!route?.cost.known || route.cost.inputPerMTok === undefined || route.cost.outputPerMTok === undefined || route.limits.maxTokens === undefined) return Number.POSITIVE_INFINITY;
+    const inputTokenCeiling = Math.ceil(((input.text.length + 24000) / 3) * 1.2);
+    return route.cost.inputPerMTok * inputTokenCeiling + route.cost.outputPerMTok * route.limits.maxTokens;
+  };
+  const phaseSelections = new Map((["initial_analysis", "critique", "steelman", "adversary", "chair"] as const).map((phase) => {
+    const selected = selectPhaseEntries(phase, roster, strategy);
+    const dynamicSteelman = phase === "steelman" && !enabled.some((entry) => entry.id !== chairId && entry.role === "steelman");
+    const candidates = dynamicSteelman ? enabled.filter((entry) => entry.id !== chairId) : selected;
+    const billed = dynamicSteelman
+      ? [...candidates].sort((a, b) => routeCostRank(b) - routeCostRank(a) || roster.entries.indexOf(a) - roster.entries.indexOf(b)).slice(0, 1)
+      : selected;
+    return [phase, {
+      selected,
+      candidates,
+      billed,
+      selectionMode: dynamicSteelman ? "least_supported_position_fallback" as const : "fixed" as const
+    }];
+  }));
+  const phasePlans = [...phaseSelections.entries()].filter(([, selection]) => selection.selected.length > 0).map(([phase, selection]) => ({
     phase,
-    selectPhaseEntries(phase, roster, strategy)
-  ]));
-  const phasePlans = [...phaseMembers.entries()].filter(([, members]) => members.length > 0).map(([phase, members]) => ({
-    phase,
+    selectionMode: selection.selectionMode,
+    candidateEntryIds: selection.candidates.map((entry) => entry.id),
     memberTimeoutMs: phase === "chair" ? 420000 : 300000,
     maxConcurrencyGlobalCeiling: 4,
     providerInvokeLanePolicy: "serial_same_account_by_default" as const,
-    providerInvokeLanes: [{ laneKey: "provider-invoke:shared", memberCount: members.length, maxConcurrency: 1, budgetMs: members.length * (phase === "chair" ? 420000 : 300000) }],
-    portableProviderInvokeMemberCount: members.length,
-    phaseBudgetMs: members.length * (phase === "chair" ? 420000 : 300000),
-    effectiveConcurrency: members.length > 0 ? 1 : 0
+    providerInvokeLanes: [{ laneKey: "provider-invoke:shared", memberCount: selection.selected.length, maxConcurrency: 1, budgetMs: selection.selected.length * (phase === "chair" ? 420000 : 300000) }],
+    portableProviderInvokeMemberCount: selection.selected.length,
+    phaseBudgetMs: selection.selected.length * (phase === "chair" ? 420000 : 300000),
+    effectiveConcurrency: selection.selected.length > 0 ? 1 : 0
   }));
   const retryCostInputs = phasePlans.flatMap((phase) =>
-    (phaseMembers.get(phase.phase) ?? []).map((entry) => {
+    (phaseSelections.get(phase.phase)?.billed ?? []).map((entry) => {
       const route = routeMap.get(entry.route.routeId);
+      const candidateRouteIds = [...new Set((phaseSelections.get(phase.phase)?.candidates ?? [entry]).map((candidate) => candidate.route.routeId))].sort();
       const outputTokenCap = route?.limits.maxTokens ?? null;
       const inputPricePerMTok = route?.cost.inputPerMTok ?? null;
       const outputPricePerMTok = route?.cost.outputPerMTok ?? null;
@@ -39,6 +60,7 @@ export function buildRunPlan(
         : ((inputTokenCeiling / 1_000_000) * inputPricePerMTok) + ((outputTokenCap / 1_000_000) * outputPricePerMTok);
       return {
         routeId: entry.route.routeId,
+        candidateRouteIds,
         phase: phase.phase,
         structuredQuestionCount: 1,
         inputTokenCeiling,

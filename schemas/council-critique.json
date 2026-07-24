@@ -7,11 +7,11 @@
       "items": {
         "type": "object",
         "properties": {
-          "targetMemberId": { "type": "string" },
-          "summary": { "type": "string" },
+          "canonicalPositionId": { "type": "string" },
+          "challenge": { "type": "string" },
           "evidenceIds": { "type": "array", "items": { "type": "string" } }
         },
-        "required": ["targetMemberId", "summary", "evidenceIds"],
+        "required": ["canonicalPositionId", "challenge", "evidenceIds"],
         "additionalProperties": false
       }
     },
@@ -21,7 +21,7 @@
         "type": "object",
         "properties": {
           "assumptionId": { "type": "string" },
-          "status": { "enum": ["verified_by_cited_evidence", "contradicted", "unverified"] },
+          "status": { "enum": ["verified_by_cited_evidence", "contradicted", "unverified", "not_evaluated"] },
           "rationale": { "type": "string" },
           "evidenceIds": { "type": "array", "items": { "type": "string" } }
         },

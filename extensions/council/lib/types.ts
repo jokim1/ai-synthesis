@@ -184,12 +184,51 @@ export interface CouncilEvidenceLedgerV1 {
   }>;
 }
 
+export interface CouncilCritiqueOutputV1 {
+  memberId: string;
+  targetedChallenges: Array<{ canonicalPositionId: string; challenge: string; evidenceIds: string[] }>;
+  assumptionReviews: Array<{
+    assumptionId: string;
+    status: "verified_by_cited_evidence" | "unverified" | "contradicted" | "not_evaluated";
+    rationale: string;
+    evidenceIds: string[];
+  }>;
+}
+
+export interface CouncilSteelmanOutputV1 {
+  memberId: string;
+  steelmans: Array<{ canonicalPositionId: string; improvedCase: string; concededRisks: string[]; evidenceIds: string[] }>;
+}
+
+export interface CouncilAdversaryOutputV1 {
+  memberId: string;
+  objections: Array<{
+    canonicalPositionId: string;
+    axis: "evidence" | "framing" | "recommendation_logic";
+    objection: string;
+    evidenceIds: string[];
+    wouldChangeRecommendation: string;
+  }>;
+}
+
+export interface CouncilPositionGroupReportV1 {
+  canonicalPositionId: string;
+  supporterMemberIds: string[];
+  evidenceIds: string[];
+  assumptionIds: string[];
+  steelmans: CouncilSteelmanOutputV1["steelmans"];
+  objections: CouncilAdversaryOutputV1["objections"];
+  oppositionMemberIds: string[];
+}
+
 export type CouncilJsonValidationResult =
   | { ok: true; value: unknown; source: "whole" | "fence" | "scan" }
   | { ok: false; kind: "no_json" | "schema_invalid" | "validator_usage_error"; rawText: string; error: string };
 
 export interface CouncilMvpLanePlanV1 {
   phase: "initial_analysis" | "critique" | "steelman" | "adversary" | "chair";
+  selectionMode: "fixed" | "least_supported_position_fallback";
+  candidateEntryIds: string[];
   memberTimeoutMs: number;
   maxConcurrencyGlobalCeiling: number;
   providerInvokeLanePolicy: "serial_same_account_by_default";
@@ -204,6 +243,7 @@ export interface CouncilMvpRunPlanV1 {
   phasePlans: CouncilMvpLanePlanV1[];
   retryCostInputs: Array<{
     routeId: string;
+    candidateRouteIds: string[];
     phase: CouncilMvpLanePlanV1["phase"];
     structuredQuestionCount: number;
     inputTokenCeiling: number;
@@ -268,6 +308,7 @@ export interface CouncilFinalReportV1 {
     steelman: string[];
     adversary: string[];
   };
+  position_groups: CouncilPositionGroupReportV1[];
   next_action: string;
   implementation_authorized: false;
 }

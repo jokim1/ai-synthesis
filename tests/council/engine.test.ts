@@ -34,6 +34,7 @@ describe("Phase 5 council engine", () => {
         AISYNTH_COUNCIL_PROVIDER_INVOKE: join(process.cwd(), "tests/council/fakes/provider-invoke"),
         AISYNTH_FAKE_MALFORMED_ONCE: "1",
         AISYNTH_FAKE_REQUIRE_SYNTHESIS_BRIEF: "1",
+        AISYNTH_FAKE_REQUIRE_ROLE_TEMPLATE: "1",
         AISYNTH_FAKE_COUNTER: counter
       }
     });
@@ -41,6 +42,12 @@ describe("Phase 5 council engine", () => {
     expect(result.report?.phase_findings.critique.length).toBeGreaterThan(0);
     expect(result.report?.phase_findings.steelman.length).toBeGreaterThan(0);
     expect(result.report?.phase_findings.adversary.length).toBeGreaterThan(0);
+    expect(result.report?.position_groups[0]).toMatchObject({
+      canonicalPositionId: "other:approve",
+      supporterMemberIds: ["entry_architect", "entry_critic"]
+    });
+    expect(result.report?.position_groups[0].steelmans.length).toBeGreaterThan(0);
+    expect(result.report?.position_groups[0].objections.length).toBeGreaterThan(0);
     expect(result.diagnostics.filter((item) => item.startsWith("engine_json_retry:")).length).toBeGreaterThanOrEqual(4);
     expect(result.report?.decision_readiness).toBe("conditional");
   });
@@ -106,5 +113,73 @@ describe("Phase 5 council engine", () => {
     expect(result.ok).toBe(false);
     expect(result.terminalReport?.status).toBe("canceled");
     expect(result.terminalReport?.implementation_authorized).toBe(false);
+  });
+
+  it("degrades readiness when one selected later-phase member fails", async () => {
+    const base = providerInvokeRoute("claude", true);
+    const routes = ["a", "b", "c"].map((suffix) => ({
+      ...base,
+      ref: { ...base.ref, routeId: `${base.ref.routeId}:${suffix}`, model: `${base.ref.model}-${suffix}` }
+    }));
+    const root = mkdtempSync(join(tmpdir(), "council-partial-phase-"));
+    const result = await runCouncil({
+      cwd: root,
+      packageRoot: process.cwd(),
+      input: issueSnapshot("approve or reject"),
+      roster: {
+        version: 1,
+        updatedAt: new Date().toISOString(),
+        scope: "explicit",
+        entries: [
+          { id: "entry_a", route: routes[0].ref, role: "architect", effort: "medium", enabled: true },
+          { id: "entry_b", route: routes[1].ref, role: "steelman", effort: "medium", enabled: true },
+          { id: "entry_c", route: routes[2].ref, role: "steelman", effort: "medium", enabled: true }
+        ],
+        reportStrategy: { kind: "deterministic" }
+      },
+      routes,
+      reportStrategySource: "roster_file",
+      rememberedRosterWritten: false,
+      env: {
+        ...process.env,
+        AISYNTH_COUNCIL_PROVIDER_INVOKE: join(process.cwd(), "tests/council/fakes/provider-invoke"),
+        AISYNTH_FAKE_FAIL_KEY: "council-steelman.json:entry_c"
+      }
+    });
+    expect(result.ok).toBe(true);
+    expect(result.report?.decision_readiness).toBe("conditional");
+    expect(result.diagnostics).toContain("steelman degraded for entry_c");
+  });
+
+  it("does not let chair synthesis upgrade mechanical readiness", async () => {
+    const base = providerInvokeRoute("claude", true);
+    const second = { ...base, ref: { ...base.ref, routeId: `${base.ref.routeId}:second`, model: `${base.ref.model}-second` } };
+    const root = mkdtempSync(join(tmpdir(), "council-chair-cap-"));
+    const result = await runCouncil({
+      cwd: root,
+      packageRoot: process.cwd(),
+      input: issueSnapshot("approve or reject"),
+      roster: {
+        version: 1,
+        updatedAt: new Date().toISOString(),
+        scope: "explicit",
+        entries: [
+          { id: "entry_a", route: base.ref, role: "chair", effort: "medium", enabled: true },
+          { id: "entry_b", route: second.ref, role: "risk-critic", effort: "medium", enabled: true }
+        ],
+        reportStrategy: { kind: "chair", chairEntryId: "entry_a" }
+      },
+      routes: [base, second],
+      reportStrategySource: "roster_file",
+      rememberedRosterWritten: false,
+      env: {
+        ...process.env,
+        AISYNTH_COUNCIL_PROVIDER_INVOKE: join(process.cwd(), "tests/council/fakes/provider-invoke"),
+        AISYNTH_FAKE_POSITION_BY_MEMBER: JSON.stringify({ entry_a: "issue_option_1", entry_b: "issue_option_2" }),
+        AISYNTH_FAKE_CHAIR_READINESS: "ready"
+      }
+    });
+    expect(result.ok).toBe(true);
+    expect(result.report?.decision_readiness).toBe("not_ready");
   });
 });

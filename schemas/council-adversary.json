@@ -7,13 +7,13 @@
       "items": {
         "type": "object",
         "properties": {
-          "positionId": { "type": "string" },
+          "canonicalPositionId": { "type": "string" },
           "axis": { "enum": ["evidence", "framing", "recommendation_logic"] },
           "objection": { "type": "string" },
-          "whatWouldChange": { "type": "string" },
+          "wouldChangeRecommendation": { "type": "string" },
           "evidenceIds": { "type": "array", "items": { "type": "string" } }
         },
-        "required": ["positionId", "axis", "objection", "whatWouldChange", "evidenceIds"],
+        "required": ["canonicalPositionId", "axis", "objection", "wouldChangeRecommendation", "evidenceIds"],
         "additionalProperties": false
       }
     }

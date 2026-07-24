@@ -13,7 +13,8 @@ export function selectPhaseEntries(
   phase: "initial_analysis" | "critique" | "steelman" | "adversary" | "chair",
   roster: CouncilRosterConfigV1,
   strategy: CouncilReportStrategy,
-  successfulEntryIds = new Set(roster.entries.filter((entry) => entry.enabled).map((entry) => entry.id))
+  successfulEntryIds = new Set(roster.entries.filter((entry) => entry.enabled).map((entry) => entry.id)),
+  canonicalPositionByEntryId?: ReadonlyMap<string, string>
 ): CouncilRosterEntryV1[] {
   const successful = roster.entries.filter((entry) => entry.enabled && successfulEntryIds.has(entry.id));
   const chairId = strategy.kind === "chair" ? strategy.chairEntryId : undefined;
@@ -26,7 +27,16 @@ export function selectPhaseEntries(
   }
   if (phase === "steelman") {
     const preferred = nonChair.filter((entry) => entry.role === "steelman");
-    return preferred.length > 0 ? preferred : strongest(nonChair, roster);
+    if (preferred.length > 0) return preferred;
+    if (!canonicalPositionByEntryId) return strongest(nonChair, roster);
+    const support = new Map<string, number>();
+    for (const entry of successful) {
+      const positionId = canonicalPositionByEntryId.get(entry.id);
+      if (positionId) support.set(positionId, (support.get(positionId) ?? 0) + 1);
+    }
+    const eligible = nonChair.filter((entry) => canonicalPositionByEntryId.has(entry.id));
+    const leastSupport = Math.min(...eligible.map((entry) => support.get(canonicalPositionByEntryId.get(entry.id) as string) ?? 0));
+    return strongest(eligible.filter((entry) => support.get(canonicalPositionByEntryId.get(entry.id) as string) === leastSupport), roster);
   }
   const adversaries = successful.filter((entry) => entry.role === "adversary");
   if (adversaries.length > 0) return adversaries;

@@ -42,6 +42,10 @@ describe("run intent cost contract", () => {
     const deterministic = buildRunPlan(input, roster, [route]);
     const chair = buildRunPlan(input, roster, [route], { kind: "chair", chairEntryId: "entry_chair" });
     expect(deterministic.phasePlans.find((phase) => phase.phase === "critique")?.portableProviderInvokeMemberCount).toBe(1);
+    expect(deterministic.phasePlans.find((phase) => phase.phase === "steelman")).toMatchObject({
+      selectionMode: "least_supported_position_fallback",
+      candidateEntryIds: ["entry_chair", "entry_critic"]
+    });
     expect(deterministic.phasePlans.some((phase) => phase.phase === "chair")).toBe(false);
     expect(chair.phasePlans.find((phase) => phase.phase === "chair")?.memberTimeoutMs).toBe(420000);
     expect(chair.worstCaseProviderCallCount).toBe(deterministic.worstCaseProviderCallCount + 2);
