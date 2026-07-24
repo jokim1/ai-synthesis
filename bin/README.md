@@ -109,7 +109,7 @@ before emission, so a backend CLI that echoes a key in an error can't leak it.
 ## Conformance tests (the build-order gate)
 
 ```
-tests/conformance/run.sh [unit|claude|codex|all]   # default all; exits non-zero on any failure
+tests/conformance/run.sh [unit|claude|codex|council|hermetic|all]
 ```
 
 Five categories per adapter — **probe, smoke, structured-output, timeout,
@@ -117,8 +117,9 @@ malformed-output**. probe/smoke/structured run live; timeout + the error/retry
 branches use hermetic fake binaries (deterministic, free) plus offline fixtures
 for the tolerant parser. The `unit` suite pins the substrate regressions surfaced
 by code review (falsy-payload survival, timeout fallback, echoed-schema defense,
-arg-validation, effort mapping). These must stay green before orchestration is
-built on top. Current: **85 tests** (unit + claude + codex), all passing.
+arg-validation, effort mapping). The `council` suite covers the portable command
+with fakes, while `hermetic` combines all no-cost suites. The default `all`
+target also runs the live Claude and Codex sections when available.
 
 ## Layout
 

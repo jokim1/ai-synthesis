@@ -1,10 +1,10 @@
 # Council Command Implementation Plan
 
-This plan covers the optional, user-installed `/council` capability for `ai-synthesis`.
-It is an implementation plan only and does not implement the capability.
+This plan governs the optional council capability for `ai-synthesis`.
+The first portable `bin/council` ship is implemented; native `/council` surfaces remain deferred to the governed companion.
 The design keeps `/council` as personal `ai-synthesis` customization and does not require any Firstmate repository or default behavior change.
 
-## What Already Exists
+## Baseline Before Portable Implementation
 
 `README.md` describes `ai-synthesis` as a Claude Code skill symlinked into `~/.claude/skills/synthesis`.
 `SKILL.md` is the current `/synthesis` orchestrator and keeps orchestration in the skill file.
