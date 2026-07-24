@@ -120,7 +120,9 @@ bin/council --plan-file docs/plan.md --roster-file ./council-roster.json --json
 
 `bin/council` writes reports to `./.ai-synthesis/council-sessions/` and never edits the reviewed plan file. Claude council routes are subscription-only and use `claude auth login`; Anthropic API-key-only routes are refused for council. Codex remains available to `/synthesis`, but council keeps Codex routes unavailable until a no-tools or accepted read-only-shell contract is proven.
 
-Same-model or same-route two-role councils are allowed for MVP, but the report labels them correlated and caps readiness at `conditional`. Council completion explicitly does not authorize implementation.
+The emitted roster is editable, but its opaque entry IDs are part of the validated format. Preserve them while editing or reordering entries; noncanonical or duplicate IDs block execution.
+
+Same-model or same-route two-role councils are allowed for MVP, but the report labels them correlated and caps readiness at `conditional`. If two real prompt or recommendation revision attempts still add no material value over the solo baseline and no independent authorized route is available, the scorecard and reports disclose `correlated_no_added_value` instead of treating route diversity as a launch gate. Council completion explicitly does not authorize implementation.
 
 ## Good to know
 
