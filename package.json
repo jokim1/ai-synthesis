@@ -1,0 +1,28 @@
+{
+  "name": "ai-synthesis",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "bin": {
+    "council": "bin/council",
+    "council-route-probe": "bin/council-route-probe"
+  },
+  "scripts": {
+    "test": "node scripts/run-package-check.mjs test",
+    "typecheck": "node scripts/run-package-check.mjs typecheck",
+    "build": "node scripts/run-package-check.mjs build",
+    "check:council-usefulness": "node scripts/check-council-usefulness.mjs",
+    "verify:pipelane-prepr": "node scripts/verify-pipelane-prepr.mjs --assert-shape && npm run test && npm run typecheck && npm run build"
+  },
+  "dependencies": {
+    "jiti": "^2.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.14",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

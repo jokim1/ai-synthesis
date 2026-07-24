@@ -1,0 +1,50 @@
+{
+  "ok": true,
+  "status": "ok",
+  "provider": "claude",
+  "model": "",
+  "structured": {
+    "memberId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "objections": [
+      {
+        "canonicalPositionId": "issue_option_2",
+        "axis": "evidence",
+        "objection": "The case for Option B rests on load-bearing capability claims (staged-supported, rollback-feasible), but every cited item is issue text that merely lists the option. ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3 and ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2 both resolve to issue:L3 and attest only that a staged rollout is offered as a choice; nothing in the ledger attests to feature flags, canary, percentage-ramp tooling, or a tested rollback path in the target environment. The evidence does not support the mechanism the recommendation depends on.",
+        "wouldChangeRecommendation": "If the ledger contained a source confirming the target system actually has gated-rollout tooling and a reversible/tested rollback mechanism, this objection would be retired; absent that, Option B is not demonstrably executable and Option C (defer) becomes the safer choice.",
+        "evidenceIds": [
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"
+        ]
+      },
+      {
+        "canonicalPositionId": "issue_option_2",
+        "axis": "framing",
+        "objection": "The framing assumes load/capacity is the operative risk that staged exposure can safely retire, but the only support is that Option C mentions load tests (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3, both issue:L4). Nothing rules out correctness or data-integrity as the dominant risk. If it is, incremental exposure still ships defects to real users, so framing staging as 'gather the load signal safely' misdescribes the risk being managed.",
+        "wouldChangeRecommendation": "Evidence identifying the actual dominant risk (e.g., confirming load/capacity is primary rather than correctness/data-integrity) would resolve this; if correctness dominates, the recommendation should shift toward Option C rather than staged exposure.",
+        "evidenceIds": [
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3"
+        ]
+      },
+      {
+        "canonicalPositionId": "issue_option_2",
+        "axis": "recommendation_logic",
+        "objection": "The recommendation claims Option B strictly dominates A on exposure and C on progress, but that dominance holds only if the staged mechanism exists and rollback is clean. Since ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2 (issue:L3) establishes only that staging is offered, not that early stages are reversible, the 'safer than deferring' inference is unfounded: an irreversible early stage can cause the same harm as shipping (ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1, issue:L2). The dominance argument smuggles in unproven premises.",
+        "wouldChangeRecommendation": "Confirming a tested rollback path that lets stages abort without state corruption would restore the dominance logic; without it, Option B carries the same downside as Option A for the exposed cohort and the recommendation is not justified over Option C.",
+        "evidenceIds": [
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"
+        ]
+      }
+    ]
+  },
+  "text": "{\"memberId\":\"entry_bbbbbbbbbbbbbbbbbbbbbbbbbb\",\"objections\":[{\"canonicalPositionId\":\"issue_option_2\",\"axis\":\"evidence\",\"objection\":\"The case for Option B rests on load-bearing capability claims (staged-supported, rollback-feasible), but every cited item is issue text that merely lists the option. ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3 and ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2 both resolve to issue:L3 and attest only that a staged rollout is offered as a choice; nothing in the ledger attests to feature flags, canary, percentage-ramp tooling, or a tested rollback path in the target environment. The evidence does not support the mechanism the recommendation depends on.\",\"wouldChangeRecommendation\":\"If the ledger contained a source confirming the target system actually has gated-rollout tooling and a reversible/tested rollback mechanism, this objection would be retired; absent that, Option B is not demonstrably executable and Option C (defer) becomes the safer choice.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\"]},{\"canonicalPositionId\":\"issue_option_2\",\"axis\":\"framing\",\"objection\":\"The framing assumes load/capacity is the operative risk that staged exposure can safely retire, but the only support is that Option C mentions load tests (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3, both issue:L4). Nothing rules out correctness or data-integrity as the dominant risk. If it is, incremental exposure still ships defects to real users, so framing staging as 'gather the load signal safely' misdescribes the risk being managed.\",\"wouldChangeRecommendation\":\"Evidence identifying the actual dominant risk (e.g., confirming load/capacity is primary rather than correctness/data-integrity) would resolve this; if correctness dominates, the recommendation should shift toward Option C rather than staged exposure.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3\"]},{\"canonicalPositionId\":\"issue_option_2\",\"axis\":\"recommendation_logic\",\"objection\":\"The recommendation claims Option B strictly dominates A on exposure and C on progress, but that dominance holds only if the staged mechanism exists and rollback is clean. Since ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2 (issue:L3) establishes only that staging is offered, not that early stages are reversible, the 'safer than deferring' inference is unfounded: an irreversible early stage can cause the same harm as shipping (ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1, issue:L2). The dominance argument smuggles in unproven premises.\",\"wouldChangeRecommendation\":\"Confirming a tested rollback path that lets stages abort without state corruption would restore the dominance logic; without it, Option B carries the same downside as Option A for the exposed cohort and the recommendation is not justified over Option C.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\"]}]}",
+  "error": null,
+  "meta": {
+    "parsed": "schema",
+    "timed_out": false,
+    "attempts": 1,
+    "tokens": 1502,
+    "cost_usd": 0.14671
+  }
+}

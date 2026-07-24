@@ -1,0 +1,3 @@
+Goal: reduce deployment risk.
+Constraint: preserve delivery speed.
+Question: Which rollout policy balances both?

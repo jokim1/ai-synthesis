@@ -1,0 +1,23 @@
+{
+  "type": "object",
+  "properties": {
+    "memberId": { "type": "string" },
+    "objections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "canonicalPositionId": { "type": "string" },
+          "axis": { "enum": ["evidence", "framing", "recommendation_logic"] },
+          "objection": { "type": "string" },
+          "wouldChangeRecommendation": { "type": "string" },
+          "evidenceIds": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["canonicalPositionId", "axis", "objection", "wouldChangeRecommendation", "evidenceIds"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["memberId", "objections"],
+  "additionalProperties": false
+}

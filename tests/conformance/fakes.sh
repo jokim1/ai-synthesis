@@ -21,11 +21,24 @@ write_fake_claude() {
 # the nonjson scenario which deliberately violates that.
 for a in "$@"; do
   case "$a" in
-    "auth")    echo '{"loggedIn":true,"apiProvider":"firstParty","authMethod":"claude.ai","subscriptionType":"max"}'; exit 0 ;;
+    "auth")
+      if [ "${FAKE_AUTH:-logged_in}" = "logged_out" ]; then
+        echo '{"loggedIn":false,"apiProvider":"","authMethod":"","subscriptionType":""}'
+      else
+        echo '{"loggedIn":true,"apiProvider":"firstParty","authMethod":"claude.ai","subscriptionType":"max"}'
+      fi
+      exit 0 ;;
     "-v"|"--version") echo "fake-claude 0.0.0"; exit 0 ;;
   esac
 done
 case "${FAKE:-ok}" in
+  recordenv)
+    if [ -n "${FAKE_STATE:-}" ]; then
+      printf 'API=%s\nOAUTH=%s\nBASE=%s\n' \
+        "${ANTHROPIC_API_KEY:-}" "${ANTHROPIC_OAUTH_TOKEN:-}" \
+        "${ANTHROPIC_BASE_URL:-}" > "$FAKE_STATE"
+    fi
+    echo '{"is_error":false,"subtype":"success","result":"pong","structured_output":null,"total_cost_usd":0,"usage":{"input_tokens":3,"output_tokens":1}}' ;;
   iserror_budget)
     echo '{"is_error":true,"subtype":"error_max_budget_usd","result":"Reached maximum budget of $0.01","total_cost_usd":0.01}' ;;
   iserror_auth)

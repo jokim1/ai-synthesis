@@ -1,0 +1,43 @@
+{
+  "type": "object",
+  "properties": {
+    "recommendation": { "type": "string" },
+    "decision_readiness": { "enum": ["ready", "conditional", "not_ready"] },
+    "evidence_summary": { "type": "array", "items": { "type": "string" } },
+    "strongest_dissent": { "type": "string" },
+    "assumptions": { "type": "array", "items": { "type": "string" } },
+    "risks": { "type": "array", "items": { "type": "string" } },
+    "what_would_change_recommendation": { "type": "array", "items": { "type": "string" } },
+    "phase_findings": {
+      "type": "object",
+      "properties": {
+        "critique": { "type": "array", "items": { "type": "string" } },
+        "steelman": { "type": "array", "items": { "type": "string" } },
+        "adversary": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["critique", "steelman", "adversary"],
+      "additionalProperties": false
+    },
+    "position_groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "canonicalPositionId": { "type": "string" },
+          "supporterMemberIds": { "type": "array", "items": { "type": "string" } },
+          "evidenceIds": { "type": "array", "items": { "type": "string" } },
+          "assumptionIds": { "type": "array", "items": { "type": "string" } },
+          "steelmans": { "type": "array", "items": { "type": "object" } },
+          "objections": { "type": "array", "items": { "type": "object" } },
+          "oppositionMemberIds": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["canonicalPositionId", "supporterMemberIds", "evidenceIds", "assumptionIds", "steelmans", "objections", "oppositionMemberIds"],
+        "additionalProperties": false
+      }
+    },
+    "next_action": { "type": "string" },
+    "implementation_authorized": { "const": false }
+  },
+  "required": ["recommendation", "decision_readiness", "evidence_summary", "strongest_dissent", "assumptions", "risks", "what_would_change_recommendation", "phase_findings", "position_groups", "next_action", "implementation_authorized"],
+  "additionalProperties": false
+}

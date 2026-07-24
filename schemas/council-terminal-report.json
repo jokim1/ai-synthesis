@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "properties": {
+    "version": { "const": 1 },
+    "status": { "enum": ["canceled", "failed"] },
+    "run_id": { "type": "string" },
+    "input_sha256": { "type": "string" },
+    "roster_sha256": { "type": "string" },
+    "phase": { "type": "string" },
+    "reason": { "type": "string" },
+    "member_diagnostics": { "type": "array", "items": { "type": "string" } },
+    "implementation_authorized": { "const": false }
+  },
+  "required": ["version", "status", "run_id", "input_sha256", "roster_sha256", "phase", "reason", "member_diagnostics", "implementation_authorized"],
+  "additionalProperties": false
+}

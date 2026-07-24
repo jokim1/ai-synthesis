@@ -19,6 +19,7 @@
 - **[Claude Code](https://claude.com/claude-code)** — the skill runs inside it (the "host" model is the Claude you're already talking to).
 - **[OpenAI Codex CLI](https://github.com/openai/codex)**, authenticated (`codex login`) — provides the second, genuinely-different model family. *Optional but recommended:* without it the skill still runs, but on a single model only (and labels its output single-model / exploratory accordingly).
 - **python3** (standard library only — no `pip install` needed) for the small helper scripts.
+- **Node >=22.19.0** and package dependencies only if you run the portable `bin/council` fallback or contribute to the TypeScript council code. Existing `/synthesis` skill usage does not require Node.
 - **git**, to clone the repo.
 
 ## Install
@@ -106,6 +107,22 @@ codex login
 | `/synthesis revisit [id]` | Record how a past decision held up + calibration view |
 | `/synthesis expand [round]` | Show the full debate / evidence / adversarial detail |
 | `/synthesis list` · `resume [id]` | Browse / reload past sessions |
+
+## Portable council MVP
+
+The first council ship is a portable command, not a Pi native `/council` menu:
+
+```bash
+npm install
+bin/council --plan-file docs/plan.md --emit-roster ./council-roster.json --json
+bin/council --plan-file docs/plan.md --roster-file ./council-roster.json --json
+```
+
+`bin/council` writes reports to `./.ai-synthesis/council-sessions/` and never edits the reviewed plan file. Claude council routes are subscription-only and use `claude auth login`; Anthropic API-key-only routes are refused for council. Codex remains available to `/synthesis`, but council keeps Codex routes unavailable until a no-tools or accepted read-only-shell contract is proven.
+
+The emitted roster is editable, but its opaque entry IDs are part of the validated format. Preserve them while editing or reordering entries; noncanonical or duplicate IDs block execution.
+
+Same-model or same-route two-role councils are allowed for MVP, but the report labels them correlated and caps readiness at `conditional`. If two real prompt or recommendation revision attempts still add no material value over the solo baseline and no independent authorized route is available, the scorecard and reports disclose `correlated_no_added_value` instead of treating route diversity as a launch gate. Council completion explicitly does not authorize implementation.
 
 ## Good to know
 

@@ -1,0 +1,161 @@
+{
+  "report": {
+    "recommendation": "revise_plan: Revise the plan before acceptance. The three steps name a sound high-level shape (validate, gate behind a flag, roll back on regression), but every step is underspecified in ways that block safe implementation. Step 1 (plan.md:L1) does not state what \"request validation\" covers — which fields, schema vs. semantic checks, reject vs. sanitize, or how failures are surfaced to callers. Step 2 (plan.md:L2) names a feature flag but not its default state, rollout scope/percentage, or the kill-switch owner. Step 3 (plan.md:L3) triggers rollback on \"error-rate regression\" without a baseline, a numeric threshold, an observation window, or an alerting/automation mechanism, so the trigger is not actionable. The plan should add: concrete validation scope and error contract; flag name, default-off state, and staged rollout percentages; and a quantified rollback SLO (baseline, threshold, window, owner).",
+    "decision_readiness": "conditional",
+    "evidence_summary": [
+      "Step 1 specifies adding request validation but no scope, rules, or failure-handling contract. (plan.md:L1-L1)",
+      "Step 2 mentions a feature flag but omits default state, rollout scope, and ownership. (plan.md:L2-L2)",
+      "Step 3 conditions rollback on error-rate regression with no baseline, threshold, window, or mechanism. (plan.md:L3-L3)",
+      "Validation step is a single sentence with no fields, rules, or rejection behavior specified. (plan.md:L1)",
+      "Feature-flag deploy step names no rollout stages, exposure levels, or kill-switch owner. (plan.md:L2)",
+      "Rollback step references 'error-rate regression' but defines no baseline, threshold, window, or trigger mechanism. (plan.md:L3)",
+      "No monitoring/metrics step exists, yet step 3 depends on measuring error-rate regression. (plan.md:L1-L3)"
+    ],
+    "strongest_dissent": "{\"canonicalPositionId\":\"revise_plan\",\"axis\":\"evidence\",\"objection\":\"The revise_plan case is grounded entirely on plan_line observations of what L1-L3 say (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1..3, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1..3). None of these ids establishes the absence of an external spec, appendix, or runbook, yet the load-bearing completeness assumption (plan-is-complete / no-hidden-detail) is marked unverified in the critique. The underspecification findings therefore rest on an unproven negative.\",\"wouldChangeRecommendation\":\"If a linked spec supplying the validation contract, flag config, and rollback thresholds exists, the underspecification evidence collapses and accept_plan becomes viable; confirming plan.md has no linked appendix (the assumptions' own how_to_verify) would keep revise_plan.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3\"]}",
+    "assumptions": [
+      "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa: The three lines are the complete plan; there is no linked appendix defining validation rules, flag config, or rollback thresholds.",
+      "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb: The three lines are the entire plan with no external appendix defining thresholds or validation rules."
+    ],
+    "risks": [
+      "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa: Undefined validation scope risks either over-rejecting valid requests or leaving injection/malformed-input gaps.",
+      "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa: A rollback trigger without a numeric threshold and window can fire on noise or never fire, defeating the safety mechanism.",
+      "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa: Unspecified flag default could ship the change on by default, negating the staged-rollout intent.",
+      "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb: Rollback gate cannot fire: 'error-rate regression' has no numeric threshold or window, so regressions may go undetected or trigger inconsistently (plan.md:L3).",
+      "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb: Validation gaps: unspecified validation scope may leave some request paths unvalidated, defeating step 1's purpose (plan.md:L1).",
+      "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb: Missing observability: no metrics step means the rollback trigger in step 3 has no data source (plan.md:L1-L3).",
+      "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb: Flag rollout ambiguity: no staged exposure or owner may cause full-blast exposure despite the flag (plan.md:L2).",
+      "{\"canonicalPositionId\":\"revise_plan\",\"axis\":\"evidence\",\"objection\":\"The revise_plan case is grounded entirely on plan_line observations of what L1-L3 say (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1..3, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1..3). None of these ids establishes the absence of an external spec, appendix, or runbook, yet the load-bearing completeness assumption (plan-is-complete / no-hidden-detail) is marked unverified in the critique. The underspecification findings therefore rest on an unproven negative.\",\"wouldChangeRecommendation\":\"If a linked spec supplying the validation contract, flag config, and rollback thresholds exists, the underspecification evidence collapses and accept_plan becomes viable; confirming plan.md has no linked appendix (the assumptions' own how_to_verify) would keep revise_plan.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3\"]}"
+    ],
+    "what_would_change_recommendation": [
+      "A referenced spec or appendix defining validation fields and the error contract.",
+      "A quantified rollback SLO: baseline error rate, regression threshold, observation window, and automated/owned response.",
+      "Explicit flag default (off), rollout percentages, and a named kill-switch owner.",
+      "A quantified rollback trigger (baseline, threshold, measurement window, auto/manual) added to step 3.",
+      "An explicit validation contract for step 1 (target requests, fields, rules, reject behavior).",
+      "An added monitoring/metrics prerequisite feeding the error-rate signal.",
+      "Evidence that an accompanying spec already defines these details.",
+      "{\"canonicalPositionId\":\"revise_plan\",\"challenge\":\"The revise_plan case rests on treating plan.md:L1-L3 as the complete and only artifact, but every cited evidence item is a plan_line observation about what the three lines say — none of them demonstrates that no external spec, appendix, or runbook exists. The 'plan is unexecutable' conclusion is therefore load-bearing on an unproven negative: if a linked spec already fixes the validation contract, flag config, and rollback thresholds, the underspecification findings collapse and accept_plan becomes viable.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3\"]}"
+    ],
+    "phase_findings": {
+      "critique": [
+        "{\"canonicalPositionId\":\"revise_plan\",\"challenge\":\"The revise_plan case rests on treating plan.md:L1-L3 as the complete and only artifact, but every cited evidence item is a plan_line observation about what the three lines say — none of them demonstrates that no external spec, appendix, or runbook exists. The 'plan is unexecutable' conclusion is therefore load-bearing on an unproven negative: if a linked spec already fixes the validation contract, flag config, and rollback thresholds, the underspecification findings collapse and accept_plan becomes viable.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3\"]}",
+        "{\"canonicalPositionId\":\"revise_plan\",\"challenge\":\"The 'missing observability' risk (ev_..._bbbb_4) infers that no metrics/monitoring capability exists from the mere absence of a monitoring step in plan.md. A three-line plan naming only deltas can legitimately assume pre-existing error-rate telemetry; absence in the plan text is not evidence of absence in the system, so this risk is weaker than stated and should not on its own force revision.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_4\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3\"]}",
+        "{\"assumptionId\":\"entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:no-hidden-detail\",\"status\":\"unverified\",\"rationale\":\"The assumption's own how_to_verify requires confirming plan.md has no additional sections or external links. The cited evidence (ev_..._aaaa_1..3) only characterizes the content of L1-L3; nothing in the frozen context establishes the presence or absence of a linked appendix, so the claim of completeness cannot be confirmed from supplied ids.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3\"]}",
+        "{\"assumptionId\":\"entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:plan-is-complete\",\"status\":\"unverified\",\"rationale\":\"Verifying this assumption requires confirming no linked spec/runbook accompanies plan.md. All four cited evidence items are plan_line observations of what L1-L3 omit; none checks for or rules out an external appendix. The absence of detail within the lines does not prove the three lines are the entire plan, so the load-bearing completeness claim remains unverified.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_4\"]}"
+      ],
+      "steelman": [
+        "{\"canonicalPositionId\":\"revise_plan\",\"improvedCase\":\"Even granting that plan.md:L1-L3 may not be the whole story, revise_plan is the strongest position because the burden of an actionable safety plan sits on the artifact under review, and each of its three steps is independently underspecified in the text that is present. Step 1 names 'request validation' with no scope, field set, schema-vs-semantic distinction, or reject/sanitize/log contract (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1), so correctness of the validation cannot be verified against any stated criterion. Step 2 names a feature flag but not its default state, rollout scope/exposure, or kill-switch owner (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2), leaving open the failure mode of shipping on-by-default and negating the staged-rollout intent. Step 3, the load-bearing safety gate, conditions rollback on 'error-rate regression' with no baseline, numeric threshold, observation window, or trigger mechanism (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3), so the gate can fire on noise or never fire. Critically, revise_plan is the position that survives the completeness objection: it does not require proving that no appendix exists. If a linked spec turns out to supply these contracts, revising to reference it is a trivial, non-destructive edit; if no spec exists, revision is mandatory. The single highest-value, smallest revision is to quantify the L3 rollback criterion (baseline, percentage-point threshold, window, owner/mechanism), which converts the safety gate from aspirational to enforceable regardless of what the other steps assume.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3\"],\"concededRisks\":[\"The load-bearing completeness assumption (no_hidden_detail / plan_is_complete) is unverified from the frozen ids: every cited item is a plan_line observation of what L1-L3 say, and none rules out an external spec, appendix, or runbook. If such a spec defines the validation contract, flag config, and rollback thresholds, the underspecification findings weaken and the position shifts toward accept_plan.\",\"The 'missing observability' inference (ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_4) draws absence-of-capability from absence-of-a-step; a delta-only plan can legitimately rely on pre-existing error-rate telemetry, so this particular risk is weaker than stated and should not on its own force revision.\",\"The three named controls (validate, gate, roll back) are the correct high-level shape; the case for revision is about operational underspecification, not a design defect, which is why reject_plan is not warranted.\"]}"
+      ],
+      "adversary": [
+        "{\"canonicalPositionId\":\"revise_plan\",\"axis\":\"evidence\",\"objection\":\"The revise_plan case is grounded entirely on plan_line observations of what L1-L3 say (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1..3, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1..3). None of these ids establishes the absence of an external spec, appendix, or runbook, yet the load-bearing completeness assumption (plan-is-complete / no-hidden-detail) is marked unverified in the critique. The underspecification findings therefore rest on an unproven negative.\",\"wouldChangeRecommendation\":\"If a linked spec supplying the validation contract, flag config, and rollback thresholds exists, the underspecification evidence collapses and accept_plan becomes viable; confirming plan.md has no linked appendix (the assumptions' own how_to_verify) would keep revise_plan.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3\"]}",
+        "{\"canonicalPositionId\":\"revise_plan\",\"axis\":\"evidence\",\"objection\":\"The missing-observability finding infers absence of monitoring capability from mere absence of a monitoring step in the plan text. A delta-only three-line plan can legitimately rely on pre-existing error-rate telemetry, so ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_4 does not ground a real gap and should not on its own force revision.\",\"wouldChangeRecommendation\":\"Verifying that no error-rate telemetry pre-exists in the system would restore this risk's weight; confirming existing telemetry would drop it from the revise_plan rationale without changing the position.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_4\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3\"]}",
+        "{\"canonicalPositionId\":\"revise_plan\",\"axis\":\"framing\",\"objection\":\"Treating plan.md:L1-L3 as the complete and only artifact frames underspecification as a defect of the plan rather than of the review scope. The same evidence is equally consistent with a deliberately terse delta plan that references controls defined elsewhere; the framing pre-selects revise_plan over needs_more_evidence.\",\"wouldChangeRecommendation\":\"If the frozen context cannot resolve whether an external appendix exists, needs_more_evidence is the more defensible position; establishing the artifact boundary would restore revise_plan.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3\"]}",
+        "{\"canonicalPositionId\":\"revise_plan\",\"axis\":\"recommendation_logic\",\"objection\":\"The recommendation leans on the L3 rollback gate being unenforceable (no baseline, threshold, window, mechanism per ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3 / ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3), but this same defect, if the safety gate can never fire, is severe enough to argue reject_plan rather than a light revise. The logic does not justify why revision suffices instead of rejection for a non-functional safety control.\",\"wouldChangeRecommendation\":\"If the rollback criterion cannot be made enforceable by a bounded edit (i.e., no baseline data exists to define a threshold), reject_plan is warranted; if quantifying it is a trivial non-destructive edit, revise_plan holds.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3\"]}"
+      ]
+    },
+    "position_groups": [
+      {
+        "canonicalPositionId": "revise_plan",
+        "supporterMemberIds": [
+          "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb"
+        ],
+        "evidenceIds": [
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_4"
+        ],
+        "assumptionIds": [
+          "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:no-hidden-detail",
+          "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:plan-is-complete"
+        ],
+        "steelmans": [
+          {
+            "canonicalPositionId": "revise_plan",
+            "improvedCase": "Even granting that plan.md:L1-L3 may not be the whole story, revise_plan is the strongest position because the burden of an actionable safety plan sits on the artifact under review, and each of its three steps is independently underspecified in the text that is present. Step 1 names 'request validation' with no scope, field set, schema-vs-semantic distinction, or reject/sanitize/log contract (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1), so correctness of the validation cannot be verified against any stated criterion. Step 2 names a feature flag but not its default state, rollout scope/exposure, or kill-switch owner (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2), leaving open the failure mode of shipping on-by-default and negating the staged-rollout intent. Step 3, the load-bearing safety gate, conditions rollback on 'error-rate regression' with no baseline, numeric threshold, observation window, or trigger mechanism (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3), so the gate can fire on noise or never fire. Critically, revise_plan is the position that survives the completeness objection: it does not require proving that no appendix exists. If a linked spec turns out to supply these contracts, revising to reference it is a trivial, non-destructive edit; if no spec exists, revision is mandatory. The single highest-value, smallest revision is to quantify the L3 rollback criterion (baseline, percentage-point threshold, window, owner/mechanism), which converts the safety gate from aspirational to enforceable regardless of what the other steps assume.",
+            "evidenceIds": [
+              "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1",
+              "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2",
+              "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3",
+              "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1",
+              "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2",
+              "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3"
+            ],
+            "concededRisks": [
+              "The load-bearing completeness assumption (no_hidden_detail / plan_is_complete) is unverified from the frozen ids: every cited item is a plan_line observation of what L1-L3 say, and none rules out an external spec, appendix, or runbook. If such a spec defines the validation contract, flag config, and rollback thresholds, the underspecification findings weaken and the position shifts toward accept_plan.",
+              "The 'missing observability' inference (ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_4) draws absence-of-capability from absence-of-a-step; a delta-only plan can legitimately rely on pre-existing error-rate telemetry, so this particular risk is weaker than stated and should not on its own force revision.",
+              "The three named controls (validate, gate, roll back) are the correct high-level shape; the case for revision is about operational underspecification, not a design defect, which is why reject_plan is not warranted."
+            ]
+          }
+        ],
+        "objections": [
+          {
+            "canonicalPositionId": "revise_plan",
+            "axis": "evidence",
+            "objection": "The revise_plan case is grounded entirely on plan_line observations of what L1-L3 say (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1..3, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1..3). None of these ids establishes the absence of an external spec, appendix, or runbook, yet the load-bearing completeness assumption (plan-is-complete / no-hidden-detail) is marked unverified in the critique. The underspecification findings therefore rest on an unproven negative.",
+            "wouldChangeRecommendation": "If a linked spec supplying the validation contract, flag config, and rollback thresholds exists, the underspecification evidence collapses and accept_plan becomes viable; confirming plan.md has no linked appendix (the assumptions' own how_to_verify) would keep revise_plan.",
+            "evidenceIds": [
+              "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1",
+              "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2",
+              "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3"
+            ]
+          },
+          {
+            "canonicalPositionId": "revise_plan",
+            "axis": "evidence",
+            "objection": "The missing-observability finding infers absence of monitoring capability from mere absence of a monitoring step in the plan text. A delta-only three-line plan can legitimately rely on pre-existing error-rate telemetry, so ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_4 does not ground a real gap and should not on its own force revision.",
+            "wouldChangeRecommendation": "Verifying that no error-rate telemetry pre-exists in the system would restore this risk's weight; confirming existing telemetry would drop it from the revise_plan rationale without changing the position.",
+            "evidenceIds": [
+              "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_4",
+              "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3"
+            ]
+          },
+          {
+            "canonicalPositionId": "revise_plan",
+            "axis": "framing",
+            "objection": "Treating plan.md:L1-L3 as the complete and only artifact frames underspecification as a defect of the plan rather than of the review scope. The same evidence is equally consistent with a deliberately terse delta plan that references controls defined elsewhere; the framing pre-selects revise_plan over needs_more_evidence.",
+            "wouldChangeRecommendation": "If the frozen context cannot resolve whether an external appendix exists, needs_more_evidence is the more defensible position; establishing the artifact boundary would restore revise_plan.",
+            "evidenceIds": [
+              "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1",
+              "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2",
+              "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3"
+            ]
+          },
+          {
+            "canonicalPositionId": "revise_plan",
+            "axis": "recommendation_logic",
+            "objection": "The recommendation leans on the L3 rollback gate being unenforceable (no baseline, threshold, window, mechanism per ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3 / ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3), but this same defect, if the safety gate can never fire, is severe enough to argue reject_plan rather than a light revise. The logic does not justify why revision suffices instead of rejection for a non-functional safety control.",
+            "wouldChangeRecommendation": "If the rollback criterion cannot be made enforceable by a bounded edit (i.e., no baseline data exists to define a threshold), reject_plan is warranted; if quantifying it is a trivial non-destructive edit, revise_plan holds.",
+            "evidenceIds": [
+              "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3",
+              "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3"
+            ]
+          }
+        ],
+        "oppositionMemberIds": []
+      }
+    ],
+    "next_action": "Verify: Confirm plan.md has no additional sections or external links beyond L1-L3.",
+    "implementation_authorized": false
+  },
+  "diagnostics": [
+    "same-route council: outputs are correlated; readiness is capped at conditional",
+    "initial_prompt_hash: entry_aaaaaaaaaaaaaaaaaaaaaaaaaa=7eab1935a4e11d124a4d4024c60b204defd966e97a0df1451eafbe605950c790 position_catalog=cb6d11b36f61cf93131be5b136490c339a04cd91c17964243a17ab6b33eb7cc2",
+    "initial_prompt_hash: entry_bbbbbbbbbbbbbbbbbbbbbbbbbb=490f8a522aa33ed57633f24e9bec25e04a665a069406bacc5e7485bbb231335a position_catalog=cb6d11b36f61cf93131be5b136490c339a04cd91c17964243a17ab6b33eb7cc2",
+    "phase_lane_plan: initial_analysis concurrency=1 batches=2 lanes=[provider-invoke:claude:subscription(width=1,members=2)]",
+    "critique_prompt_hash: entry_bbbbbbbbbbbbbbbbbbbbbbbbbb=aa8f759bb13b277df11fb9fd63b09ff344bae2e45accd8f4d06fe7225c0bfda9 assumption_catalog=73b0c76fec4514240c17243c01af03367438a6b75a0cfea25ac4b412535b16d5",
+    "phase_lane_plan: critique concurrency=1 batches=1 lanes=[provider-invoke:claude:subscription(width=1,members=1)]",
+    "steelman fallback: entry_aaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "phase_lane_plan: steelman concurrency=1 batches=1 lanes=[provider-invoke:claude:subscription(width=1,members=1)]",
+    "adversary fallback: entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "phase_lane_plan: adversary concurrency=1 batches=1 lanes=[provider-invoke:claude:subscription(width=1,members=1)]",
+    "route_correlation: single_route; readiness capped at conditional",
+    "material_dissent: unresolved",
+    "resolved_model: v1:provider-invoke:claude:adapter-default=unknown (adapter_default_unreported)",
+    "worst_case_provider_calls: 10"
+  ]
+}

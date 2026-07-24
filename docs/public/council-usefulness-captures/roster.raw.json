@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "updatedAt": "2026-07-24T04:38:36.992Z",
+  "scope": "explicit",
+  "entries": [
+    {
+      "id": "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "route": {
+        "executor": "provider-invoke",
+        "provider": "claude",
+        "model": "adapter-default",
+        "routeId": "v1:provider-invoke:claude:adapter-default"
+      },
+      "role": "architect",
+      "effort": "medium",
+      "enabled": true
+    },
+    {
+      "id": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "route": {
+        "executor": "provider-invoke",
+        "provider": "claude",
+        "model": "adapter-default",
+        "routeId": "v1:provider-invoke:claude:adapter-default"
+      },
+      "role": "risk-critic",
+      "effort": "medium",
+      "enabled": true
+    }
+  ],
+  "reportStrategy": {
+    "kind": "deterministic"
+  }
+}

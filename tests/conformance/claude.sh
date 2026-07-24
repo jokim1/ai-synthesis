@@ -7,7 +7,7 @@
 # a live call can't reliably trigger (budget cap, auth failure, non-JSON output).
 
 claude_suite() {
-  local p s st schema authed fdir fb fa fn ft
+  local p s st schema authed
 
   section "probe — binary + auth (no model call)"
   p="$("$PROBE" claude)"
@@ -34,8 +34,51 @@ claude_suite() {
     assert_true     "structured .ok==true"     "$(printf '%s' "$st" | jq -r '.structured.ok')"
   fi
 
-  # --- hermetic fakes: deterministic, no spend ---
+  claude_fake_suite
+}
+
+claude_fake_suite() {
+  local fdir fb fa fn ft fc council_env auto_default auto_explicit
+
   fdir="$(fake_dir_new)"; write_fake_claude "$fdir"
+
+  section "council subscription scrubs Anthropic credentials and endpoints"
+  council_env="$fdir/council-env"
+  PATH="$fdir:$PATH" FAKE=recordenv FAKE_STATE="$council_env" \
+    AISYNTH_COUNCIL=1 ANTHROPIC_API_KEY=fake-api \
+    ANTHROPIC_OAUTH_TOKEN=fake-oauth ANTHROPIC_BASE_URL=https://example.invalid \
+    "$INVOKE" claude --prompt x --auth subscription --timeout 10 >/dev/null
+  assert_eq "council subscription child has no ANTHROPIC_* values" \
+    $'API=\nOAUTH=\nBASE=' "$(cat "$council_env")"
+
+  section "legacy auto auth preserves default and explicit behavior"
+  auto_default="$fdir/auto-default"
+  auto_explicit="$fdir/auto-explicit"
+  PATH="$fdir:$PATH" FAKE=recordenv FAKE_STATE="$auto_default" \
+    ANTHROPIC_API_KEY=fake-api ANTHROPIC_OAUTH_TOKEN=fake-oauth \
+    ANTHROPIC_BASE_URL=https://example.invalid \
+    "$INVOKE" claude --prompt x --timeout 10 >/dev/null
+  PATH="$fdir:$PATH" FAKE=recordenv FAKE_STATE="$auto_explicit" \
+    ANTHROPIC_API_KEY=fake-api ANTHROPIC_OAUTH_TOKEN=fake-oauth \
+    ANTHROPIC_BASE_URL=https://example.invalid \
+    "$INVOKE" claude --prompt x --auth auto --timeout 10 >/dev/null
+  assert_eq "logged-in default auto equals explicit auto" \
+    "$(cat "$auto_default")" "$(cat "$auto_explicit")"
+  assert_eq "logged-in auto keeps legacy OAuth and endpoint behavior" \
+    $'API=\nOAUTH=fake-oauth\nBASE=https://example.invalid' "$(cat "$auto_default")"
+
+  PATH="$fdir:$PATH" FAKE=recordenv FAKE_AUTH=logged_out FAKE_STATE="$auto_default" \
+    ANTHROPIC_API_KEY=fake-api ANTHROPIC_OAUTH_TOKEN=fake-oauth \
+    ANTHROPIC_BASE_URL=https://example.invalid \
+    "$INVOKE" claude --prompt x --timeout 10 >/dev/null
+  PATH="$fdir:$PATH" FAKE=recordenv FAKE_AUTH=logged_out FAKE_STATE="$auto_explicit" \
+    ANTHROPIC_API_KEY=fake-api ANTHROPIC_OAUTH_TOKEN=fake-oauth \
+    ANTHROPIC_BASE_URL=https://example.invalid \
+    "$INVOKE" claude --prompt x --auth auto --timeout 10 >/dev/null
+  assert_eq "logged-out default auto equals explicit auto" \
+    "$(cat "$auto_default")" "$(cat "$auto_explicit")"
+  assert_eq "logged-out auto keeps API fallback and legacy environment" \
+    $'API=fake-api\nOAUTH=fake-oauth\nBASE=https://example.invalid' "$(cat "$auto_default")"
 
   section "timeout — wrapper fires, maps to timeout envelope"
   ft="$(PATH="$fdir:$PATH" FAKE=sleep "$INVOKE" claude --prompt x --timeout 1)"
@@ -60,7 +103,7 @@ claude_suite() {
   section "classify off STRUCTURED fields, not the model's free text"
   # is_error whose .result mentions 'maximum budget'/'authentication' but whose
   # subtype/api_error_status are generic must NOT be mislabeled budget/auth.
-  local fc; fc="$(PATH="$fdir:$PATH" FAKE=iserror_topic_budget "$INVOKE" claude --prompt x --timeout 10)"
+  fc="$(PATH="$fdir:$PATH" FAKE=iserror_topic_budget "$INVOKE" claude --prompt x --timeout 10)"
   assert_eq       "topic-text 'budget' not mislabeled" "invocation_failed" "$(printf '%s' "$fc" | jq -r '.status')"
 
   rm -rf "$fdir"

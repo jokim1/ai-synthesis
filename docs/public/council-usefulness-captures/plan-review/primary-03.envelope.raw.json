@@ -1,0 +1,60 @@
+{
+  "ok": true,
+  "status": "ok",
+  "provider": "claude",
+  "model": "",
+  "structured": {
+    "memberId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "targetedChallenges": [
+      {
+        "canonicalPositionId": "revise_plan",
+        "challenge": "The revise_plan case rests on treating plan.md:L1-L3 as the complete and only artifact, but every cited evidence item is a plan_line observation about what the three lines say — none of them demonstrates that no external spec, appendix, or runbook exists. The 'plan is unexecutable' conclusion is therefore load-bearing on an unproven negative: if a linked spec already fixes the validation contract, flag config, and rollback thresholds, the underspecification findings collapse and accept_plan becomes viable.",
+        "evidenceIds": [
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3"
+        ]
+      },
+      {
+        "canonicalPositionId": "revise_plan",
+        "challenge": "The 'missing observability' risk (ev_..._bbbb_4) infers that no metrics/monitoring capability exists from the mere absence of a monitoring step in plan.md. A three-line plan naming only deltas can legitimately assume pre-existing error-rate telemetry; absence in the plan text is not evidence of absence in the system, so this risk is weaker than stated and should not on its own force revision.",
+        "evidenceIds": [
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_4",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3"
+        ]
+      }
+    ],
+    "assumptionReviews": [
+      {
+        "assumptionId": "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:no-hidden-detail",
+        "status": "unverified",
+        "rationale": "The assumption's own how_to_verify requires confirming plan.md has no additional sections or external links. The cited evidence (ev_..._aaaa_1..3) only characterizes the content of L1-L3; nothing in the frozen context establishes the presence or absence of a linked appendix, so the claim of completeness cannot be confirmed from supplied ids.",
+        "evidenceIds": [
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3"
+        ]
+      },
+      {
+        "assumptionId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:plan-is-complete",
+        "status": "unverified",
+        "rationale": "Verifying this assumption requires confirming no linked spec/runbook accompanies plan.md. All four cited evidence items are plan_line observations of what L1-L3 omit; none checks for or rules out an external appendix. The absence of detail within the lines does not prove the three lines are the entire plan, so the load-bearing completeness claim remains unverified.",
+        "evidenceIds": [
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_4"
+        ]
+      }
+    ]
+  },
+  "text": "{\"memberId\":\"entry_bbbbbbbbbbbbbbbbbbbbbbbbbb\",\"targetedChallenges\":[{\"canonicalPositionId\":\"revise_plan\",\"challenge\":\"The revise_plan case rests on treating plan.md:L1-L3 as the complete and only artifact, but every cited evidence item is a plan_line observation about what the three lines say — none of them demonstrates that no external spec, appendix, or runbook exists. The 'plan is unexecutable' conclusion is therefore load-bearing on an unproven negative: if a linked spec already fixes the validation contract, flag config, and rollback thresholds, the underspecification findings collapse and accept_plan becomes viable.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3\"]},{\"canonicalPositionId\":\"revise_plan\",\"challenge\":\"The 'missing observability' risk (ev_..._bbbb_4) infers that no metrics/monitoring capability exists from the mere absence of a monitoring step in plan.md. A three-line plan naming only deltas can legitimately assume pre-existing error-rate telemetry; absence in the plan text is not evidence of absence in the system, so this risk is weaker than stated and should not on its own force revision.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_4\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3\"]}],\"assumptionReviews\":[{\"assumptionId\":\"entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:no-hidden-detail\",\"status\":\"unverified\",\"rationale\":\"The assumption's own how_to_verify requires confirming plan.md has no additional sections or external links. The cited evidence (ev_..._aaaa_1..3) only characterizes the content of L1-L3; nothing in the frozen context establishes the presence or absence of a linked appendix, so the claim of completeness cannot be confirmed from supplied ids.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3\"]},{\"assumptionId\":\"entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:plan-is-complete\",\"status\":\"unverified\",\"rationale\":\"Verifying this assumption requires confirming no linked spec/runbook accompanies plan.md. All four cited evidence items are plan_line observations of what L1-L3 omit; none checks for or rules out an external appendix. The absence of detail within the lines does not prove the three lines are the entire plan, so the load-bearing completeness claim remains unverified.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_4\"]}]}",
+  "error": null,
+  "meta": {
+    "parsed": "schema",
+    "timed_out": false,
+    "attempts": 1,
+    "tokens": 1960,
+    "cost_usd": 0.12643600000000002
+  }
+}

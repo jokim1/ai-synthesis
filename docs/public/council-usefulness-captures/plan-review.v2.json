@@ -1,0 +1,241 @@
+{
+  "version": 2,
+  "kind": "authorized_portable_provider_invoke_raw_capture",
+  "sampleId": "plan-review",
+  "capturedAt": "2026-07-24T04:40:51.011Z",
+  "input": {
+    "kind": "plan",
+    "text": "1. Add request validation.\n2. Deploy behind a feature flag.\n3. Roll back on error-rate regression.",
+    "sha256": "1edcbaa0ab13d48a8b66834440aa988f9b8b21cf858a3ce5bd17fe805e2ad01f",
+    "artifact": {
+      "path": "docs/public/council-usefulness-captures/plan-review/input.plan.md",
+      "sha256": "1edcbaa0ab13d48a8b66834440aa988f9b8b21cf858a3ce5bd17fe805e2ad01f"
+    }
+  },
+  "routeProbe": {
+    "path": "docs/public/council-usefulness-captures/route-probe.raw.json",
+    "sha256": "3d1ef139df4d205b4de58168f1c2e2267d512145978bb38ef60b7ef61b4cc192"
+  },
+  "roster": {
+    "path": "docs/public/council-usefulness-captures/roster.raw.json",
+    "sha256": "2d2ddce135415c1a387edb497bf21428a05de565ad3f919e5dbd938ab9917829"
+  },
+  "routeId": "v1:provider-invoke:claude:adapter-default",
+  "primary": {
+    "result": {
+      "path": "docs/public/council-usefulness-captures/plan-review/primary.result.json",
+      "sha256": "46c6a8392182c1a60fe800b1fe4bd9156114a43eff21591ce04d2361e8aeb21b"
+    },
+    "report": {
+      "path": "docs/public/council-usefulness-captures/plan-review/primary.report.md",
+      "sha256": "bf34d7f6f759af3cb8959756dc6fe56f31929785de7107349f57e9500bab4ac2"
+    },
+    "providerCalls": [
+      {
+        "command": [
+          "bin/provider-invoke",
+          "claude",
+          "--prompt-file",
+          "docs/public/council-usefulness-captures/plan-review/primary-01.prompt.txt",
+          "--schema-file",
+          "schemas/council-voice.json",
+          "--effort",
+          "medium",
+          "--timeout",
+          "300",
+          "--auth",
+          "subscription"
+        ],
+        "routeId": "v1:provider-invoke:claude:adapter-default",
+        "entryId": "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "effort": "medium",
+        "prompt": {
+          "path": "docs/public/council-usefulness-captures/plan-review/primary-01.prompt.txt",
+          "sha256": "7eab1935a4e11d124a4d4024c60b204defd966e97a0df1451eafbe605950c790"
+        },
+        "schema": {
+          "path": "schemas/council-voice.json",
+          "sha256": "5a866f3d8cd1d2658062058b23b78af25898ede106554a88af81d5174e54a7ec"
+        },
+        "rawEnvelope": {
+          "path": "docs/public/council-usefulness-captures/plan-review/primary-01.envelope.raw.json",
+          "sha256": "770054c341393c5d919be86fff3598a45149ddedf0ed08a1333edb604a2a3831"
+        },
+        "envelopeStatus": "ok",
+        "resolvedModel": ""
+      },
+      {
+        "command": [
+          "bin/provider-invoke",
+          "claude",
+          "--prompt-file",
+          "docs/public/council-usefulness-captures/plan-review/primary-02.prompt.txt",
+          "--schema-file",
+          "schemas/council-voice.json",
+          "--effort",
+          "medium",
+          "--timeout",
+          "300",
+          "--auth",
+          "subscription"
+        ],
+        "routeId": "v1:provider-invoke:claude:adapter-default",
+        "entryId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "effort": "medium",
+        "prompt": {
+          "path": "docs/public/council-usefulness-captures/plan-review/primary-02.prompt.txt",
+          "sha256": "490f8a522aa33ed57633f24e9bec25e04a665a069406bacc5e7485bbb231335a"
+        },
+        "schema": {
+          "path": "schemas/council-voice.json",
+          "sha256": "5a866f3d8cd1d2658062058b23b78af25898ede106554a88af81d5174e54a7ec"
+        },
+        "rawEnvelope": {
+          "path": "docs/public/council-usefulness-captures/plan-review/primary-02.envelope.raw.json",
+          "sha256": "b57d831faa1d4c43dce942065a110a2da26a743e43eb53a8d703d9d403ad80ba"
+        },
+        "envelopeStatus": "ok",
+        "resolvedModel": ""
+      },
+      {
+        "command": [
+          "bin/provider-invoke",
+          "claude",
+          "--prompt-file",
+          "docs/public/council-usefulness-captures/plan-review/primary-03.prompt.txt",
+          "--schema-file",
+          "schemas/council-critique.json",
+          "--effort",
+          "medium",
+          "--timeout",
+          "300",
+          "--auth",
+          "subscription"
+        ],
+        "routeId": "v1:provider-invoke:claude:adapter-default",
+        "entryId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "effort": "medium",
+        "prompt": {
+          "path": "docs/public/council-usefulness-captures/plan-review/primary-03.prompt.txt",
+          "sha256": "aa8f759bb13b277df11fb9fd63b09ff344bae2e45accd8f4d06fe7225c0bfda9"
+        },
+        "schema": {
+          "path": "schemas/council-critique.json",
+          "sha256": "c74634134a7036f2855b961614b0573f77167d26416cb888886e11ea5b9f6440"
+        },
+        "rawEnvelope": {
+          "path": "docs/public/council-usefulness-captures/plan-review/primary-03.envelope.raw.json",
+          "sha256": "b2815012068f46555d3099099120a14f67457597f3ea508a36d6bb4dc705dbab"
+        },
+        "envelopeStatus": "ok",
+        "resolvedModel": ""
+      },
+      {
+        "command": [
+          "bin/provider-invoke",
+          "claude",
+          "--prompt-file",
+          "docs/public/council-usefulness-captures/plan-review/primary-04.prompt.txt",
+          "--schema-file",
+          "schemas/council-steelman.json",
+          "--effort",
+          "medium",
+          "--timeout",
+          "300",
+          "--auth",
+          "subscription"
+        ],
+        "routeId": "v1:provider-invoke:claude:adapter-default",
+        "entryId": "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "effort": "medium",
+        "prompt": {
+          "path": "docs/public/council-usefulness-captures/plan-review/primary-04.prompt.txt",
+          "sha256": "bb2613365ab9697ba2a369d13d236f5e465dd7c02a8049f2df1f0996b8f5050d"
+        },
+        "schema": {
+          "path": "schemas/council-steelman.json",
+          "sha256": "15007d4ee1f3fc335eb3324344a21d49e4f0bbf17c37fc6ae51f7b629f5f5efd"
+        },
+        "rawEnvelope": {
+          "path": "docs/public/council-usefulness-captures/plan-review/primary-04.envelope.raw.json",
+          "sha256": "fad199d1d9bb619e48324e83301fcad265757179ba7e3a0b9dbc8b5e30f4b992"
+        },
+        "envelopeStatus": "ok",
+        "resolvedModel": ""
+      },
+      {
+        "command": [
+          "bin/provider-invoke",
+          "claude",
+          "--prompt-file",
+          "docs/public/council-usefulness-captures/plan-review/primary-05.prompt.txt",
+          "--schema-file",
+          "schemas/council-adversary.json",
+          "--effort",
+          "medium",
+          "--timeout",
+          "300",
+          "--auth",
+          "subscription"
+        ],
+        "routeId": "v1:provider-invoke:claude:adapter-default",
+        "entryId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "effort": "medium",
+        "prompt": {
+          "path": "docs/public/council-usefulness-captures/plan-review/primary-05.prompt.txt",
+          "sha256": "150790e2e9e0a93a93ecabba93dfb39d3c0753df6a267f2eefc828e6c02a8851"
+        },
+        "schema": {
+          "path": "schemas/council-adversary.json",
+          "sha256": "c6ab079324076965af4ae5993ed676c5a6d234882b526107e8af2e8172f96f34"
+        },
+        "rawEnvelope": {
+          "path": "docs/public/council-usefulness-captures/plan-review/primary-05.envelope.raw.json",
+          "sha256": "018900b5e73dbf184f699d60ce3e70f344490d176817c7630f6432a3fe509547"
+        },
+        "envelopeStatus": "ok",
+        "resolvedModel": ""
+      }
+    ]
+  },
+  "solo": {
+    "structuredOutputSha256": "bd5c0da93d374da7c08c2e0fa62266917c8de142122a192a98ba345dd0846d5b",
+    "providerCalls": [
+      {
+        "command": [
+          "bin/provider-invoke",
+          "claude",
+          "--prompt-file",
+          "docs/public/council-usefulness-captures/plan-review/solo-01.prompt.txt",
+          "--schema-file",
+          "schemas/council-voice.json",
+          "--effort",
+          "medium",
+          "--timeout",
+          "300",
+          "--auth",
+          "subscription"
+        ],
+        "routeId": "v1:provider-invoke:claude:adapter-default",
+        "entryId": "entry_cccccccccccccccccccccccccc",
+        "effort": "medium",
+        "prompt": {
+          "path": "docs/public/council-usefulness-captures/plan-review/solo-01.prompt.txt",
+          "sha256": "9d09ed40d507beac23078e05a92ff97062d83f179e66982ad54f9438aadabfc2"
+        },
+        "schema": {
+          "path": "schemas/council-voice.json",
+          "sha256": "5a866f3d8cd1d2658062058b23b78af25898ede106554a88af81d5174e54a7ec"
+        },
+        "rawEnvelope": {
+          "path": "docs/public/council-usefulness-captures/plan-review/solo-01.envelope.raw.json",
+          "sha256": "31906d1135f5317db30af2bf6cfdbd5ae7624747d96d66a8bf0aec0adf1f77a7"
+        },
+        "envelopeStatus": "ok",
+        "resolvedModel": ""
+      }
+    ]
+  },
+  "revisions": [],
+  "selectedRun": "primary"
+}

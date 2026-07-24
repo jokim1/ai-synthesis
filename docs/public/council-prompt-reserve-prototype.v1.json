@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "contextReserveVersion": 1,
+  "headroomPercent": 35,
+  "reserves": {
+    "initialBytes": 24000,
+    "critiqueBytes": 28000,
+    "steelmanBytes": 22000,
+    "adversaryBytes": 22000,
+    "chairBytes": 32000,
+    "schemaBytes": 16000
+  }
+}

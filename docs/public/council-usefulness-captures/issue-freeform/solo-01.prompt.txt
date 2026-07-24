@@ -1,0 +1,9 @@
+You are a solo baseline, not a council. Review the immutable issue independently.
+Return only JSON matching the supplied schema.
+Use member_id entry_cccccccccccccccccccccccccc, role product-operator, and choose position_key from {"candidates":[{"id":"propose_alternative","label":"Propose an alternative","source":"issue_default"},{"id":"defer_for_evidence","label":"Defer for evidence","source":"issue_default"}],"inputKind":"issue","otherPrefix":"other:","version":1} or other:<lowercase-slug>.
+Cite only issue:Lx-Ly evidence.
+
+issue:
+1: Goal: reduce deployment risk.
+2: Constraint: preserve delivery speed.
+3: Question: Which rollout policy balances both?

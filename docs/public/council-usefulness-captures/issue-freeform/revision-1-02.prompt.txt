@@ -1,0 +1,10 @@
+You are council member entry_bbbbbbbbbbbbbbbbbbbbbbbbbb with role risk-critic.
+Role rubric: You are one explicit member of an ai-synthesis council. Review the immutable input independently before seeing any other member output. Cite plan evidence as `plan.md:Lx-Ly` and issue evidence as `issue:Lx-Ly`. Name the smallest concrete next step for your position in next_action. Return only the requested JSON. Council completion does not authorize implementation.
+Review the immutable issue independently. Cite evidence only as issue:Lx-Ly.
+Choose position_key from {"candidates":[{"id":"propose_alternative","label":"Propose an alternative","source":"issue_default"},{"id":"defer_for_evidence","label":"Defer for evidence","source":"issue_default"}],"inputKind":"issue","otherPrefix":"other:","version":1}, or other:<lowercase-slug>.
+Return only JSON matching the schema. Council completion does not authorize implementation.
+
+issue:
+1: Goal: reduce deployment risk.
+2: Constraint: preserve delivery speed.
+3: Question: Which rollout policy balances both?

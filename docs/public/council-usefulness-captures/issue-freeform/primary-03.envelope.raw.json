@@ -1,0 +1,101 @@
+{
+  "ok": true,
+  "status": "ok",
+  "provider": "claude",
+  "model": "",
+  "structured": {
+    "memberId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "targetedChallenges": [
+      {
+        "canonicalPositionId": "propose_alternative",
+        "challenge": "The canary recommendation is load-bearing on the platform being able to weighted-route a fractional traffic slice, yet the only cited support is issue-goal text and a prior-knowledge appeal to canary practice — none of which observes the actual runtime/mesh/flag capability. If the target cannot split traffic, the entire proposed mechanism collapses to blue/green or ring rollout, so this capability must be treated as unproven rather than assumed.",
+        "evidenceIds": [
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_4"
+        ]
+      },
+      {
+        "canonicalPositionId": "propose_alternative",
+        "challenge": "Automated metric-gated promotion presumes real-time SLO signals reliable enough to both gate and rollback, but the cited evidence establishes only the issue objective and generic canary practice — there is no evidence of metrics/alerting coverage or historical signal-to-noise. Lagging or noisy signals would auto-promote a faulty release, which is the false-confidence failure the proposer's own risk list flags; this makes the automation assumption the single biggest unverified risk.",
+        "evidenceIds": [
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_4",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4"
+        ]
+      },
+      {
+        "canonicalPositionId": "propose_alternative",
+        "challenge": "Serving old and new versions concurrently during a canary requires backward/forward-compatible releases, but no cited evidence reviews schema/API change discipline. For stateful or migration-heavy deploys this assumption is likely false, and a canary would then introduce version-interaction failures that all-at-once or expand/contract migration would avoid — the mechanism recommendation should be conditioned on this, not assert it.",
+        "evidenceIds": [
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1"
+        ]
+      }
+    ],
+    "assumptionReviews": [
+      {
+        "assumptionId": "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:traffic-splittable",
+        "status": "unverified",
+        "rationale": "The cited evidence is issue-text objectives (ev_1..3) and a prior-knowledge statement of canary practice (ev_4); none observes the delivery platform's actual weighted-routing or flag capability, which is exactly what howToVerify demands. Capability is assumed, not established.",
+        "evidenceIds": [
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4"
+        ]
+      },
+      {
+        "assumptionId": "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:observable-slos",
+        "status": "unverified",
+        "rationale": "No cited evidence confirms metrics/alerting coverage or historical signal-to-noise on regressions; the references are issue text and generic canary knowledge. Reliability of real-time gating signals remains unproven.",
+        "evidenceIds": [
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4"
+        ]
+      },
+      {
+        "assumptionId": "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:backward-compatible-releases",
+        "status": "unverified",
+        "rationale": "Backward/forward compatibility for concurrent-version serving requires a review of DB/schema and API change discipline, which none of the cited issue-text or prior-knowledge evidence provides. Compatibility is asserted without support.",
+        "evidenceIds": [
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4"
+        ]
+      },
+      {
+        "assumptionId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:traffic-splittable",
+        "status": "unverified",
+        "rationale": "Although ev_1..3 are engine-verified issue text, they only establish the goal, constraint, and question; they say nothing about whether the runtime supports weighted routing or concurrent versions, and ev_4 is prior knowledge. The load-bearing capability is not confirmed by the cited evidence.",
+        "evidenceIds": [
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_4"
+        ]
+      },
+      {
+        "assumptionId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:health-signals-exist",
+        "status": "unverified",
+        "rationale": "The existence of health/SLO signals fast enough to gate automated promotion and abort is not evidenced by the issue-text objectives or the prior-knowledge canary claim; howToVerify (confirm low-latency error/latency alerting) is unmet. Remains unverified.",
+        "evidenceIds": [
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_4"
+        ]
+      }
+    ]
+  },
+  "text": "{\"memberId\":\"entry_bbbbbbbbbbbbbbbbbbbbbbbbbb\",\"targetedChallenges\":[{\"canonicalPositionId\":\"propose_alternative\",\"challenge\":\"The canary recommendation is load-bearing on the platform being able to weighted-route a fractional traffic slice, yet the only cited support is issue-goal text and a prior-knowledge appeal to canary practice — none of which observes the actual runtime/mesh/flag capability. If the target cannot split traffic, the entire proposed mechanism collapses to blue/green or ring rollout, so this capability must be treated as unproven rather than assumed.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_4\"]},{\"canonicalPositionId\":\"propose_alternative\",\"challenge\":\"Automated metric-gated promotion presumes real-time SLO signals reliable enough to both gate and rollback, but the cited evidence establishes only the issue objective and generic canary practice — there is no evidence of metrics/alerting coverage or historical signal-to-noise. Lagging or noisy signals would auto-promote a faulty release, which is the false-confidence failure the proposer's own risk list flags; this makes the automation assumption the single biggest unverified risk.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_4\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4\"]},{\"canonicalPositionId\":\"propose_alternative\",\"challenge\":\"Serving old and new versions concurrently during a canary requires backward/forward-compatible releases, but no cited evidence reviews schema/API change discipline. For stateful or migration-heavy deploys this assumption is likely false, and a canary would then introduce version-interaction failures that all-at-once or expand/contract migration would avoid — the mechanism recommendation should be conditioned on this, not assert it.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1\"]}],\"assumptionReviews\":[{\"assumptionId\":\"entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:traffic-splittable\",\"status\":\"unverified\",\"rationale\":\"The cited evidence is issue-text objectives (ev_1..3) and a prior-knowledge statement of canary practice (ev_4); none observes the delivery platform's actual weighted-routing or flag capability, which is exactly what howToVerify demands. Capability is assumed, not established.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4\"]},{\"assumptionId\":\"entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:observable-slos\",\"status\":\"unverified\",\"rationale\":\"No cited evidence confirms metrics/alerting coverage or historical signal-to-noise on regressions; the references are issue text and generic canary knowledge. Reliability of real-time gating signals remains unproven.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4\"]},{\"assumptionId\":\"entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:backward-compatible-releases\",\"status\":\"unverified\",\"rationale\":\"Backward/forward compatibility for concurrent-version serving requires a review of DB/schema and API change discipline, which none of the cited issue-text or prior-knowledge evidence provides. Compatibility is asserted without support.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4\"]},{\"assumptionId\":\"entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:traffic-splittable\",\"status\":\"unverified\",\"rationale\":\"Although ev_1..3 are engine-verified issue text, they only establish the goal, constraint, and question; they say nothing about whether the runtime supports weighted routing or concurrent versions, and ev_4 is prior knowledge. The load-bearing capability is not confirmed by the cited evidence.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_4\"]},{\"assumptionId\":\"entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:health-signals-exist\",\"status\":\"unverified\",\"rationale\":\"The existence of health/SLO signals fast enough to gate automated promotion and abort is not evidenced by the issue-text objectives or the prior-knowledge canary claim; howToVerify (confirm low-latency error/latency alerting) is unmet. Remains unverified.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_4\"]}]}",
+  "error": null,
+  "meta": {
+    "parsed": "schema",
+    "timed_out": false,
+    "attempts": 1,
+    "tokens": 3421,
+    "cost_usd": 0.180012
+  }
+}

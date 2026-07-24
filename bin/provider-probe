@@ -3,7 +3,7 @@
 # resolvable. Does NOT make a model call (no cost). Emits the normalized
 # envelope with structured = {available, authed, ...detail}; ok = available && authed.
 #
-#   provider-probe <provider>
+#   provider-probe <provider> [--auth <auto|subscription|apikey>]
 #
 # Exit 0 always for a probe *result* (the envelope says ok/false); exit 2 on
 # usage error.
@@ -14,9 +14,29 @@ SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SELF_DIR/lib/common.sh"
 AISYNTH_ADAPTER_DIR="$AISYNTH_BIN_DIR/adapters"
 
-A_PROVIDER="${1:-}"
 A_AUTH="${A_AUTH:-auto}"
-[ -n "$A_PROVIDER" ] || aisynth_die_usage "usage: provider-probe <claude|codex>"
+A_PROVIDER=""
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --auth)
+      A_AUTH="${2:-}"; shift; shift ;;
+    -h|--help)
+      sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --*)
+      aisynth_die_usage "unknown option: $1" ;;
+    *)
+      if [ -z "$A_PROVIDER" ]; then A_PROVIDER="$1"; shift
+      else aisynth_die_usage "unexpected argument: $1"; fi ;;
+  esac
+done
+
+case "$A_AUTH" in
+  auto|subscription|apikey) ;;
+  *) aisynth_die_usage "--auth must be one of auto|subscription|apikey" ;;
+esac
+
+[ -n "$A_PROVIDER" ] || aisynth_die_usage "usage: provider-probe <claude|codex> [--auth <auto|subscription|apikey>]"
 export A_PROVIDER A_AUTH
 
 case "$A_PROVIDER" in

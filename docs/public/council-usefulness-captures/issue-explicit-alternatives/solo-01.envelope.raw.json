@@ -1,0 +1,71 @@
+{
+  "ok": true,
+  "status": "ok",
+  "provider": "claude",
+  "model": "",
+  "structured": {
+    "ok": true,
+    "member_id": "entry_cccccccccccccccccccccccccc",
+    "role": "product-operator",
+    "position_key": "issue_option_2",
+    "recommendation": "Run a staged rollout (Option B). The issue offers three choices: ship immediately, staged rollout, or defer pending load tests. A staged rollout is the balanced operational path: it begins delivering value rather than deferring indefinitely, while containing blast radius by exposing the change to a limited cohort first. \"Ship immediately\" forgoes any safety margin, and \"Defer pending load tests\" blocks all delivery on evidence the issue does not show is unavailable through a gradual ramp. A staged rollout lets us observe real load incrementally — effectively gathering the load signal Option C wants — without a full stop. Recommend proceeding with a phased ramp and defined rollback/expansion gates.",
+    "evidence": [
+      {
+        "claim": "The issue frames a decision among three explicit options.",
+        "source_type": "issue_text",
+        "locator": "issue:L1-L1"
+      },
+      {
+        "claim": "Option A is to ship immediately, offering no rollout safety margin.",
+        "source_type": "issue_text",
+        "locator": "issue:L2-L2"
+      },
+      {
+        "claim": "Option B is to run a staged rollout, the selected balanced path.",
+        "source_type": "issue_text",
+        "locator": "issue:L3-L3"
+      },
+      {
+        "claim": "Option C defers pending load tests, blocking delivery on further evidence.",
+        "source_type": "issue_text",
+        "locator": "issue:L4-L4"
+      }
+    ],
+    "assumptions": [
+      {
+        "assumption_key": "staged_rollout_feasible",
+        "statement": "The change can technically be exposed to a subset of traffic or users before full release.",
+        "load_bearing": true,
+        "if_false_then": "If no phased mechanism exists, choice collapses toward ship-immediately or defer.",
+        "how_to_verify": "Confirm feature-flag or cohort-based rollout capability with the delivery team."
+      },
+      {
+        "assumption_key": "ramp_yields_load_signal",
+        "statement": "A gradual ramp surfaces enough real-world load data to substitute for pre-launch load tests.",
+        "load_bearing": false,
+        "if_false_then": "If load risk is nonlinear or catastrophic at scale, Option C's pre-tests become preferable.",
+        "how_to_verify": "Review expected load profile and failure modes with engineering."
+      }
+    ],
+    "risks": [
+      "A staged rollout adds operational overhead (monitoring, gating) versus shipping immediately.",
+      "If the load risk only manifests at full scale, incremental exposure may not catch it, partially validating Option C.",
+      "Extended ramp delays full value realization compared to Option A."
+    ],
+    "what_would_change_my_view": [
+      "Evidence that failure modes are catastrophic or nonlinear at scale would favor deferring for load tests (Option C).",
+      "A hard, time-critical launch deadline with proven low risk would favor shipping immediately (Option A).",
+      "Absence of any phased-rollout mechanism would make Option B infeasible."
+    ],
+    "next_action": "Confirm phased-rollout tooling exists and define the cohort ramp schedule plus rollback and expansion gates before starting Stage 1."
+  },
+  "text": "{\"ok\":true,\"member_id\":\"entry_cccccccccccccccccccccccccc\",\"role\":\"product-operator\",\"position_key\":\"issue_option_2\",\"recommendation\":\"Run a staged rollout (Option B). The issue offers three choices: ship immediately, staged rollout, or defer pending load tests. A staged rollout is the balanced operational path: it begins delivering value rather than deferring indefinitely, while containing blast radius by exposing the change to a limited cohort first. \\\"Ship immediately\\\" forgoes any safety margin, and \\\"Defer pending load tests\\\" blocks all delivery on evidence the issue does not show is unavailable through a gradual ramp. A staged rollout lets us observe real load incrementally — effectively gathering the load signal Option C wants — without a full stop. Recommend proceeding with a phased ramp and defined rollback/expansion gates.\",\"evidence\":[{\"claim\":\"The issue frames a decision among three explicit options.\",\"source_type\":\"issue_text\",\"locator\":\"issue:L1-L1\"},{\"claim\":\"Option A is to ship immediately, offering no rollout safety margin.\",\"source_type\":\"issue_text\",\"locator\":\"issue:L2-L2\"},{\"claim\":\"Option B is to run a staged rollout, the selected balanced path.\",\"source_type\":\"issue_text\",\"locator\":\"issue:L3-L3\"},{\"claim\":\"Option C defers pending load tests, blocking delivery on further evidence.\",\"source_type\":\"issue_text\",\"locator\":\"issue:L4-L4\"}],\"assumptions\":[{\"assumption_key\":\"staged_rollout_feasible\",\"statement\":\"The change can technically be exposed to a subset of traffic or users before full release.\",\"load_bearing\":true,\"if_false_then\":\"If no phased mechanism exists, choice collapses toward ship-immediately or defer.\",\"how_to_verify\":\"Confirm feature-flag or cohort-based rollout capability with the delivery team.\"},{\"assumption_key\":\"ramp_yields_load_signal\",\"statement\":\"A gradual ramp surfaces enough real-world load data to substitute for pre-launch load tests.\",\"load_bearing\":false,\"if_false_then\":\"If load risk is nonlinear or catastrophic at scale, Option C's pre-tests become preferable.\",\"how_to_verify\":\"Review expected load profile and failure modes with engineering.\"}],\"risks\":[\"A staged rollout adds operational overhead (monitoring, gating) versus shipping immediately.\",\"If the load risk only manifests at full scale, incremental exposure may not catch it, partially validating Option C.\",\"Extended ramp delays full value realization compared to Option A.\"],\"what_would_change_my_view\":[\"Evidence that failure modes are catastrophic or nonlinear at scale would favor deferring for load tests (Option C).\",\"A hard, time-critical launch deadline with proven low risk would favor shipping immediately (Option A).\",\"Absence of any phased-rollout mechanism would make Option B infeasible.\"],\"next_action\":\"Confirm phased-rollout tooling exists and define the cohort ramp schedule plus rollback and expansion gates before starting Stage 1.\"}",
+  "error": null,
+  "meta": {
+    "parsed": "schema",
+    "timed_out": false,
+    "attempts": 1,
+    "tokens": 1320,
+    "cost_usd": 0.06645700000000002
+  }
+}

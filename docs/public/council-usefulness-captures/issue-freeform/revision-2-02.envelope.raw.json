@@ -1,0 +1,61 @@
+{
+  "ok": true,
+  "status": "ok",
+  "provider": "claude",
+  "model": "",
+  "structured": {
+    "ok": true,
+    "member_id": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "role": "risk-critic",
+    "position_key": "defer_for_evidence",
+    "recommendation": "Do not commit to a specific rollout policy yet. The issue states a goal (reduce deployment risk, issue:L1) and a constraint (preserve delivery speed, issue:L2) but supplies no operating data to trade them off (issue:L1-L3). Picking a policy now would be guessing. Defer until baseline evidence exists: current deploy frequency, change-failure rate, mean-time-to-recovery, whether automated rollback and health signals exist, and how \"delivery speed\" is measured. With those, a progressive/canary rollout with automated rollback is the likely balanced candidate — but only measurement can confirm it does not violate the speed constraint (issue:L2).",
+    "evidence": [
+      {
+        "claim": "Two competing objectives are stated: reduce deployment risk and preserve delivery speed",
+        "source_type": "issue_text",
+        "locator": "issue:L1-L2"
+      },
+      {
+        "claim": "The question asks which rollout policy balances both, but no system context or metrics are provided to evaluate any policy",
+        "source_type": "issue_text",
+        "locator": "issue:L3"
+      }
+    ],
+    "assumptions": [
+      {
+        "assumption_key": "missing_baseline_metrics",
+        "statement": "No baseline metrics (deploy frequency, change-failure rate, MTTR) are given in the issue",
+        "load_bearing": true,
+        "if_false_then": "If such metrics are actually available, a concrete policy could be recommended now instead of deferring",
+        "how_to_verify": "Re-read issue:L1-L3 for any quantitative data (none present)"
+      },
+      {
+        "assumption_key": "rollback_capability_unknown",
+        "statement": "Whether automated rollback and health-check gating exist is unspecified",
+        "load_bearing": true,
+        "if_false_then": "If automated rollback is absent, canary/progressive options are much weaker and risk reduction is limited",
+        "how_to_verify": "Ask issue owner about current deployment tooling and rollback automation"
+      }
+    ],
+    "risks": [
+      "Choosing a policy without failure-rate and MTTR data may optimize the wrong dimension",
+      "A heavy staged rollout could silently violate the delivery-speed constraint (issue:L2)",
+      "'Balances both' is undefined — no threshold for acceptable risk or acceptable speed loss is given (issue:L3)"
+    ],
+    "what_would_change_my_view": [
+      "Concrete baseline metrics (deploy frequency, change-failure rate, MTTR) being supplied",
+      "Confirmation that automated rollback and health-signal gating already exist",
+      "An explicit, measurable definition of the acceptable risk/speed trade-off threshold"
+    ],
+    "next_action": "Request the four baseline figures — deploy frequency, change-failure rate, MTTR, and current rollback automation — before any rollout policy is selected."
+  },
+  "text": "{\"ok\":true,\"member_id\":\"entry_bbbbbbbbbbbbbbbbbbbbbbbbbb\",\"role\":\"risk-critic\",\"position_key\":\"defer_for_evidence\",\"recommendation\":\"Do not commit to a specific rollout policy yet. The issue states a goal (reduce deployment risk, issue:L1) and a constraint (preserve delivery speed, issue:L2) but supplies no operating data to trade them off (issue:L1-L3). Picking a policy now would be guessing. Defer until baseline evidence exists: current deploy frequency, change-failure rate, mean-time-to-recovery, whether automated rollback and health signals exist, and how \\\"delivery speed\\\" is measured. With those, a progressive/canary rollout with automated rollback is the likely balanced candidate — but only measurement can confirm it does not violate the speed constraint (issue:L2).\",\"evidence\":[{\"claim\":\"Two competing objectives are stated: reduce deployment risk and preserve delivery speed\",\"source_type\":\"issue_text\",\"locator\":\"issue:L1-L2\"},{\"claim\":\"The question asks which rollout policy balances both, but no system context or metrics are provided to evaluate any policy\",\"source_type\":\"issue_text\",\"locator\":\"issue:L3\"}],\"assumptions\":[{\"assumption_key\":\"missing_baseline_metrics\",\"statement\":\"No baseline metrics (deploy frequency, change-failure rate, MTTR) are given in the issue\",\"load_bearing\":true,\"if_false_then\":\"If such metrics are actually available, a concrete policy could be recommended now instead of deferring\",\"how_to_verify\":\"Re-read issue:L1-L3 for any quantitative data (none present)\"},{\"assumption_key\":\"rollback_capability_unknown\",\"statement\":\"Whether automated rollback and health-check gating exist is unspecified\",\"load_bearing\":true,\"if_false_then\":\"If automated rollback is absent, canary/progressive options are much weaker and risk reduction is limited\",\"how_to_verify\":\"Ask issue owner about current deployment tooling and rollback automation\"}],\"risks\":[\"Choosing a policy without failure-rate and MTTR data may optimize the wrong dimension\",\"A heavy staged rollout could silently violate the delivery-speed constraint (issue:L2)\",\"'Balances both' is undefined — no threshold for acceptable risk or acceptable speed loss is given (issue:L3)\"],\"what_would_change_my_view\":[\"Concrete baseline metrics (deploy frequency, change-failure rate, MTTR) being supplied\",\"Confirmation that automated rollback and health-signal gating already exist\",\"An explicit, measurable definition of the acceptable risk/speed trade-off threshold\"],\"next_action\":\"Request the four baseline figures — deploy frequency, change-failure rate, MTTR, and current rollback automation — before any rollout policy is selected.\"}",
+  "error": null,
+  "meta": {
+    "parsed": "schema",
+    "timed_out": false,
+    "attempts": 1,
+    "tokens": 1547,
+    "cost_usd": 0.0416305
+  }
+}

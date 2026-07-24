@@ -1,0 +1,61 @@
+{
+  "ok": true,
+  "status": "ok",
+  "provider": "claude",
+  "model": "",
+  "structured": {
+    "memberId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "objections": [
+      {
+        "canonicalPositionId": "propose_alternative",
+        "axis": "evidence",
+        "objection": "The canary mechanism is load-bearing on the platform supporting fractional/weighted traffic routing, but every cited support for that capability is either issue-objective text (which states only goal, constraint, and question) or a prior-knowledge appeal to canary practice. None observes the actual runtime/mesh/flag system, so the capability is assumed rather than established.",
+        "wouldChangeRecommendation": "If verification of the delivery platform shows no weighted-routing or concurrent-version support, the canary recommendation collapses and blue/green or ring rollout should be recommended instead.",
+        "evidenceIds": [
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_4"
+        ]
+      },
+      {
+        "canonicalPositionId": "propose_alternative",
+        "axis": "evidence",
+        "objection": "Automated SLO-gated promotion and rollback presumes real-time health signals reliable enough to both promote and abort, yet no cited evidence confirms metrics/alerting coverage or historical signal-to-noise. The only references are issue text and generic canary knowledge, leaving the gating-signal reliability unverified.",
+        "wouldChangeRecommendation": "If signals prove lagging or noisy, automated promotion could ship a faulty release; the recommendation should downgrade to manual-approved promotion or defer until signal reliability is confirmed.",
+        "evidenceIds": [
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_4",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4"
+        ]
+      },
+      {
+        "canonicalPositionId": "propose_alternative",
+        "axis": "framing",
+        "objection": "Concurrent old/new version serving during a canary requires backward/forward-compatible releases, but the framing asserts compatibility without any cited review of DB/schema or API change discipline. For stateful or migration-heavy deploys this assumption is likely false and reframes canary as a source of version-interaction risk rather than a mitigation.",
+        "wouldChangeRecommendation": "If releases are not backward/forward compatible, expand/contract migration must precede any canary, changing the recommendation from canary-first to migration-gated rollout.",
+        "evidenceIds": [
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1"
+        ]
+      },
+      {
+        "canonicalPositionId": "propose_alternative",
+        "axis": "recommendation_logic",
+        "objection": "The issue supplies no service type, traffic volume, or baseline change-failure/rollback metrics, yet the recommendation commits to canary as the balancing policy. On a low-traffic service a fractional slice may be statistically meaningless, so concluding that canary balances risk and speed does not follow from the grounded issue text alone.",
+        "wouldChangeRecommendation": "If baseline traffic and failure-rate data show a canary slice cannot yield a meaningful signal, deferring for evidence or choosing blue/green would better satisfy the stated objectives.",
+        "evidenceIds": [
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3"
+        ]
+      }
+    ]
+  },
+  "text": "{\"memberId\":\"entry_bbbbbbbbbbbbbbbbbbbbbbbbbb\",\"objections\":[{\"canonicalPositionId\":\"propose_alternative\",\"axis\":\"evidence\",\"objection\":\"The canary mechanism is load-bearing on the platform supporting fractional/weighted traffic routing, but every cited support for that capability is either issue-objective text (which states only goal, constraint, and question) or a prior-knowledge appeal to canary practice. None observes the actual runtime/mesh/flag system, so the capability is assumed rather than established.\",\"wouldChangeRecommendation\":\"If verification of the delivery platform shows no weighted-routing or concurrent-version support, the canary recommendation collapses and blue/green or ring rollout should be recommended instead.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_4\"]},{\"canonicalPositionId\":\"propose_alternative\",\"axis\":\"evidence\",\"objection\":\"Automated SLO-gated promotion and rollback presumes real-time health signals reliable enough to both promote and abort, yet no cited evidence confirms metrics/alerting coverage or historical signal-to-noise. The only references are issue text and generic canary knowledge, leaving the gating-signal reliability unverified.\",\"wouldChangeRecommendation\":\"If signals prove lagging or noisy, automated promotion could ship a faulty release; the recommendation should downgrade to manual-approved promotion or defer until signal reliability is confirmed.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_4\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4\"]},{\"canonicalPositionId\":\"propose_alternative\",\"axis\":\"framing\",\"objection\":\"Concurrent old/new version serving during a canary requires backward/forward-compatible releases, but the framing asserts compatibility without any cited review of DB/schema or API change discipline. For stateful or migration-heavy deploys this assumption is likely false and reframes canary as a source of version-interaction risk rather than a mitigation.\",\"wouldChangeRecommendation\":\"If releases are not backward/forward compatible, expand/contract migration must precede any canary, changing the recommendation from canary-first to migration-gated rollout.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1\"]},{\"canonicalPositionId\":\"propose_alternative\",\"axis\":\"recommendation_logic\",\"objection\":\"The issue supplies no service type, traffic volume, or baseline change-failure/rollback metrics, yet the recommendation commits to canary as the balancing policy. On a low-traffic service a fractional slice may be statistically meaningless, so concluding that canary balances risk and speed does not follow from the grounded issue text alone.\",\"wouldChangeRecommendation\":\"If baseline traffic and failure-rate data show a canary slice cannot yield a meaningful signal, deferring for evidence or choosing blue/green would better satisfy the stated objectives.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3\"]}]}",
+  "error": null,
+  "meta": {
+    "parsed": "schema",
+    "timed_out": false,
+    "attempts": 1,
+    "tokens": 1537,
+    "cost_usd": 0.154725
+  }
+}

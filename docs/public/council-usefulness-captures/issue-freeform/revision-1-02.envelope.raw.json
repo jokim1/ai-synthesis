@@ -1,0 +1,61 @@
+{
+  "ok": true,
+  "status": "ok",
+  "provider": "claude",
+  "model": "",
+  "structured": {
+    "ok": true,
+    "member_id": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "role": "risk-critic",
+    "position_key": "defer_for_evidence",
+    "recommendation": "Defer selecting a rollout policy until baseline evidence is gathered. The issue names competing goals (issue:L1-L2) but supplies no data to weigh them: no current deployment failure rate, rollback cost, change frequency, or how \"delivery speed\" is measured. A risk-critic cannot responsibly endorse any policy (canary, blue-green, feature-flag, all-at-once) without knowing the current failure/incident baseline and the tolerance for speed regression. Smallest defensible step: instrument the existing pipeline to capture change-failure rate and lead-time-to-deploy, then compare candidate policies against those two numbers. Progressive delivery (canary + automated rollback) is the likely candidate because it reduces blast radius without serializing releases, but that is a hypothesis to validate, not a decision to make now.",
+    "evidence": [
+      {
+        "claim": "Issue states two objectives that can trade off against each other: reduce deployment risk and preserve delivery speed.",
+        "source_type": "issue_text",
+        "locator": "issue:L1-L2"
+      },
+      {
+        "claim": "The issue asks which rollout policy balances both, but provides no metrics, baselines, or constraints to evaluate candidates against.",
+        "source_type": "issue_text",
+        "locator": "issue:L3"
+      }
+    ],
+    "assumptions": [
+      {
+        "assumption_key": "no_hidden_baseline",
+        "statement": "No current deployment failure-rate or lead-time baseline is available beyond the three issue lines.",
+        "load_bearing": true,
+        "if_false_then": "If a baseline exists, the position should shift toward proposing/validating a specific policy rather than deferring.",
+        "how_to_verify": "Check for existing DORA-style metrics dashboards or CI/CD pipeline reports."
+      },
+      {
+        "assumption_key": "speed_measurable",
+        "statement": "\"Delivery speed\" refers to release throughput/lead time and can be quantified.",
+        "load_bearing": false,
+        "if_false_then": "If speed is a subjective/organizational constraint, evidence-gathering must include stakeholder definition first.",
+        "how_to_verify": "Confirm the metric definition with the issue author."
+      }
+    ],
+    "risks": [
+      "Choosing a policy without baseline data risks optimizing the wrong dimension (e.g., adding canary stages that slow delivery with no measurable risk reduction).",
+      "Deferring too long is itself a risk if the current all-at-once process is already causing incidents; deferral must be time-boxed.",
+      "Undefined 'delivery speed' metric could lead to a policy that satisfies risk goals while silently violating the speed constraint."
+    ],
+    "what_would_change_my_view": [
+      "Presence of a concrete change-failure-rate and lead-time baseline for the current process.",
+      "A stated hard constraint (e.g., max acceptable added latency per release) that lets a specific policy be scored.",
+      "Evidence that the current process is actively causing incidents, which would justify adopting progressive delivery immediately rather than deferring."
+    ],
+    "next_action": "Instrument the existing pipeline to capture change-failure rate and lead-time-to-deploy as the two baseline metrics, then score candidate rollout policies against them."
+  },
+  "text": "{\"ok\":true,\"member_id\":\"entry_bbbbbbbbbbbbbbbbbbbbbbbbbb\",\"role\":\"risk-critic\",\"position_key\":\"defer_for_evidence\",\"recommendation\":\"Defer selecting a rollout policy until baseline evidence is gathered. The issue names competing goals (issue:L1-L2) but supplies no data to weigh them: no current deployment failure rate, rollback cost, change frequency, or how \\\"delivery speed\\\" is measured. A risk-critic cannot responsibly endorse any policy (canary, blue-green, feature-flag, all-at-once) without knowing the current failure/incident baseline and the tolerance for speed regression. Smallest defensible step: instrument the existing pipeline to capture change-failure rate and lead-time-to-deploy, then compare candidate policies against those two numbers. Progressive delivery (canary + automated rollback) is the likely candidate because it reduces blast radius without serializing releases, but that is a hypothesis to validate, not a decision to make now.\",\"evidence\":[{\"claim\":\"Issue states two objectives that can trade off against each other: reduce deployment risk and preserve delivery speed.\",\"source_type\":\"issue_text\",\"locator\":\"issue:L1-L2\"},{\"claim\":\"The issue asks which rollout policy balances both, but provides no metrics, baselines, or constraints to evaluate candidates against.\",\"source_type\":\"issue_text\",\"locator\":\"issue:L3\"}],\"assumptions\":[{\"assumption_key\":\"no_hidden_baseline\",\"statement\":\"No current deployment failure-rate or lead-time baseline is available beyond the three issue lines.\",\"load_bearing\":true,\"if_false_then\":\"If a baseline exists, the position should shift toward proposing/validating a specific policy rather than deferring.\",\"how_to_verify\":\"Check for existing DORA-style metrics dashboards or CI/CD pipeline reports.\"},{\"assumption_key\":\"speed_measurable\",\"statement\":\"\\\"Delivery speed\\\" refers to release throughput/lead time and can be quantified.\",\"load_bearing\":false,\"if_false_then\":\"If speed is a subjective/organizational constraint, evidence-gathering must include stakeholder definition first.\",\"how_to_verify\":\"Confirm the metric definition with the issue author.\"}],\"risks\":[\"Choosing a policy without baseline data risks optimizing the wrong dimension (e.g., adding canary stages that slow delivery with no measurable risk reduction).\",\"Deferring too long is itself a risk if the current all-at-once process is already causing incidents; deferral must be time-boxed.\",\"Undefined 'delivery speed' metric could lead to a policy that satisfies risk goals while silently violating the speed constraint.\"],\"what_would_change_my_view\":[\"Presence of a concrete change-failure-rate and lead-time baseline for the current process.\",\"A stated hard constraint (e.g., max acceptable added latency per release) that lets a specific policy be scored.\",\"Evidence that the current process is actively causing incidents, which would justify adopting progressive delivery immediately rather than deferring.\"],\"next_action\":\"Instrument the existing pipeline to capture change-failure rate and lead-time-to-deploy as the two baseline metrics, then score candidate rollout policies against them.\"}",
+  "error": null,
+  "meta": {
+    "parsed": "schema",
+    "timed_out": false,
+    "attempts": 1,
+    "tokens": 1530,
+    "cost_usd": 0.041205500000000006
+  }
+}

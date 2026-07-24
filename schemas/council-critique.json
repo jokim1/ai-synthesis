@@ -1,0 +1,35 @@
+{
+  "type": "object",
+  "properties": {
+    "memberId": { "type": "string" },
+    "targetedChallenges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "canonicalPositionId": { "type": "string" },
+          "challenge": { "type": "string" },
+          "evidenceIds": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["canonicalPositionId", "challenge", "evidenceIds"],
+        "additionalProperties": false
+      }
+    },
+    "assumptionReviews": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "assumptionId": { "type": "string" },
+          "status": { "enum": ["verified_by_cited_evidence", "contradicted", "unverified", "not_evaluated"] },
+          "rationale": { "type": "string" },
+          "evidenceIds": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["assumptionId", "status", "rationale", "evidenceIds"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["memberId", "targetedChallenges", "assumptionReviews"],
+  "additionalProperties": false
+}

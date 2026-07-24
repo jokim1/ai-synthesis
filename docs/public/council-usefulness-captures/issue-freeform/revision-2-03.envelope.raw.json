@@ -1,0 +1,76 @@
+{
+  "ok": true,
+  "status": "ok",
+  "provider": "claude",
+  "model": "",
+  "structured": {
+    "memberId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "targetedChallenges": [
+      {
+        "canonicalPositionId": "propose_alternative",
+        "challenge": "The canary recommendation presupposes the deployment target can split traffic or roll out incrementally, but the sole support for that policy is prior-knowledge and issue-text evidence that the engine could not ground (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1..4 are all engine_unverified). The verified record shows no system context is supplied at all, so the load-bearing traffic-splittable premise is asserted, not established; if false the whole recommendation collapses to blue-green/ring instead.",
+        "evidenceIds": [
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4"
+        ]
+      },
+      {
+        "canonicalPositionId": "propose_alternative",
+        "challenge": "The claim that automated SLO-gated promotion preserves delivery speed depends on health signals existing and settling within cadence, yet no telemetry or SLO evidence is grounded (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2 and _4 are engine_unverified) and the verified evidence confirms no metrics are provided. If signals are noisy or slow, gating either stalls promotion (harming speed, issue:2) or passes bad releases (harming risk, issue:1), so the 'optimizes both' claim is unproven.",
+        "evidenceIds": [
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2"
+        ]
+      }
+    ],
+    "assumptionReviews": [
+      {
+        "assumptionId": "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:traffic-splittable",
+        "status": "unverified",
+        "rationale": "Load-bearing to the canary recommendation but its cited evidence is entirely engine_unverified (issue-text locators and prior knowledge that did not resolve). No frozen evidence confirms the deployment target supports traffic splitting or incremental rollout; the verified record instead shows no system context was supplied.",
+        "evidenceIds": [
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"
+        ]
+      },
+      {
+        "assumptionId": "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:observable-slos",
+        "status": "unverified",
+        "rationale": "The existence and settling speed of SLO signals is load-bearing for automated gating, but the supporting evidence is engine_unverified and no grounded evidence establishes any metrics or alerting. Cannot be confirmed from the frozen context.",
+        "evidenceIds": [
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"
+        ]
+      },
+      {
+        "assumptionId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:missing-baseline-metrics",
+        "status": "verified_by_cited_evidence",
+        "rationale": "The cited evidence is engine_verified and resolves in the frozen issue text: the issue states only goal, constraint, and question with no quantitative baseline (deploy frequency, change-failure rate, MTTR). The absence is directly confirmable.",
+        "evidenceIds": [
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"
+        ]
+      },
+      {
+        "assumptionId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:rollback-capability-unknown",
+        "status": "verified_by_cited_evidence",
+        "rationale": "The frozen issue text (grounded evidence ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1 and _2) contains no mention of automated rollback or health-check gating, so the statement that this capability is unspecified is verified by the cited, engine_verified evidence.",
+        "evidenceIds": [
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"
+        ]
+      }
+    ]
+  },
+  "text": "{\"memberId\":\"entry_bbbbbbbbbbbbbbbbbbbbbbbbbb\",\"targetedChallenges\":[{\"canonicalPositionId\":\"propose_alternative\",\"challenge\":\"The canary recommendation presupposes the deployment target can split traffic or roll out incrementally, but the sole support for that policy is prior-knowledge and issue-text evidence that the engine could not ground (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1..4 are all engine_unverified). The verified record shows no system context is supplied at all, so the load-bearing traffic-splittable premise is asserted, not established; if false the whole recommendation collapses to blue-green/ring instead.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4\"]},{\"canonicalPositionId\":\"propose_alternative\",\"challenge\":\"The claim that automated SLO-gated promotion preserves delivery speed depends on health signals existing and settling within cadence, yet no telemetry or SLO evidence is grounded (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2 and _4 are engine_unverified) and the verified evidence confirms no metrics are provided. If signals are noisy or slow, gating either stalls promotion (harming speed, issue:2) or passes bad releases (harming risk, issue:1), so the 'optimizes both' claim is unproven.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2\"]}],\"assumptionReviews\":[{\"assumptionId\":\"entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:traffic-splittable\",\"status\":\"unverified\",\"rationale\":\"Load-bearing to the canary recommendation but its cited evidence is entirely engine_unverified (issue-text locators and prior knowledge that did not resolve). No frozen evidence confirms the deployment target supports traffic splitting or incremental rollout; the verified record instead shows no system context was supplied.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\"]},{\"assumptionId\":\"entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:observable-slos\",\"status\":\"unverified\",\"rationale\":\"The existence and settling speed of SLO signals is load-bearing for automated gating, but the supporting evidence is engine_unverified and no grounded evidence establishes any metrics or alerting. Cannot be confirmed from the frozen context.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\"]},{\"assumptionId\":\"entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:missing-baseline-metrics\",\"status\":\"verified_by_cited_evidence\",\"rationale\":\"The cited evidence is engine_verified and resolves in the frozen issue text: the issue states only goal, constraint, and question with no quantitative baseline (deploy frequency, change-failure rate, MTTR). The absence is directly confirmable.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\"]},{\"assumptionId\":\"entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:rollback-capability-unknown\",\"status\":\"verified_by_cited_evidence\",\"rationale\":\"The frozen issue text (grounded evidence ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1 and _2) contains no mention of automated rollback or health-check gating, so the statement that this capability is unspecified is verified by the cited, engine_verified evidence.\",\"evidenceIds\":[\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\"]}]}",
+  "error": null,
+  "meta": {
+    "parsed": "schema",
+    "timed_out": false,
+    "attempts": 1,
+    "tokens": 2695,
+    "cost_usd": 0.12592799999999998
+  }
+}

@@ -1,0 +1,241 @@
+{
+  "version": 2,
+  "kind": "authorized_portable_provider_invoke_raw_capture",
+  "sampleId": "issue-explicit-alternatives",
+  "capturedAt": "2026-07-24T04:54:02.843Z",
+  "input": {
+    "kind": "issue",
+    "text": "Choose between these options:\n- Option A: Ship immediately\n- Option B: Run a staged rollout\n- Option C: Defer pending load tests",
+    "sha256": "e2fd9bd52f6b67cfad5993d04e2059461c566c7918aa8b10c2e313bed0512fa0",
+    "artifact": {
+      "path": "docs/public/council-usefulness-captures/issue-explicit-alternatives/input.issue.txt",
+      "sha256": "e2fd9bd52f6b67cfad5993d04e2059461c566c7918aa8b10c2e313bed0512fa0"
+    }
+  },
+  "routeProbe": {
+    "path": "docs/public/council-usefulness-captures/route-probe.raw.json",
+    "sha256": "3d1ef139df4d205b4de58168f1c2e2267d512145978bb38ef60b7ef61b4cc192"
+  },
+  "roster": {
+    "path": "docs/public/council-usefulness-captures/roster.raw.json",
+    "sha256": "2d2ddce135415c1a387edb497bf21428a05de565ad3f919e5dbd938ab9917829"
+  },
+  "routeId": "v1:provider-invoke:claude:adapter-default",
+  "primary": {
+    "result": {
+      "path": "docs/public/council-usefulness-captures/issue-explicit-alternatives/primary.result.json",
+      "sha256": "596405609674ac15add8d1fe4a5590bd0fd905221822902c17bea84f042cbab7"
+    },
+    "report": {
+      "path": "docs/public/council-usefulness-captures/issue-explicit-alternatives/primary.report.md",
+      "sha256": "cab417b8374dd162c33959cf429b4c941fed3768f1e973c5ccb678779f452860"
+    },
+    "providerCalls": [
+      {
+        "command": [
+          "bin/provider-invoke",
+          "claude",
+          "--prompt-file",
+          "docs/public/council-usefulness-captures/issue-explicit-alternatives/primary-01.prompt.txt",
+          "--schema-file",
+          "schemas/council-voice.json",
+          "--effort",
+          "medium",
+          "--timeout",
+          "300",
+          "--auth",
+          "subscription"
+        ],
+        "routeId": "v1:provider-invoke:claude:adapter-default",
+        "entryId": "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "effort": "medium",
+        "prompt": {
+          "path": "docs/public/council-usefulness-captures/issue-explicit-alternatives/primary-01.prompt.txt",
+          "sha256": "ff369e033713402d73071a7310eef711d227878f451be9f3ba6148e994bee8f3"
+        },
+        "schema": {
+          "path": "schemas/council-voice.json",
+          "sha256": "5a866f3d8cd1d2658062058b23b78af25898ede106554a88af81d5174e54a7ec"
+        },
+        "rawEnvelope": {
+          "path": "docs/public/council-usefulness-captures/issue-explicit-alternatives/primary-01.envelope.raw.json",
+          "sha256": "eb44c2edd90f8c113bfa0e45fcf371a090cf5350b2a4ca32ff8ef4c2901117b0"
+        },
+        "envelopeStatus": "ok",
+        "resolvedModel": ""
+      },
+      {
+        "command": [
+          "bin/provider-invoke",
+          "claude",
+          "--prompt-file",
+          "docs/public/council-usefulness-captures/issue-explicit-alternatives/primary-02.prompt.txt",
+          "--schema-file",
+          "schemas/council-voice.json",
+          "--effort",
+          "medium",
+          "--timeout",
+          "300",
+          "--auth",
+          "subscription"
+        ],
+        "routeId": "v1:provider-invoke:claude:adapter-default",
+        "entryId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "effort": "medium",
+        "prompt": {
+          "path": "docs/public/council-usefulness-captures/issue-explicit-alternatives/primary-02.prompt.txt",
+          "sha256": "2d91b61994c2b5d050cc662037ea4e8077b819f0b9e8fe93c1f7b06b76832d4e"
+        },
+        "schema": {
+          "path": "schemas/council-voice.json",
+          "sha256": "5a866f3d8cd1d2658062058b23b78af25898ede106554a88af81d5174e54a7ec"
+        },
+        "rawEnvelope": {
+          "path": "docs/public/council-usefulness-captures/issue-explicit-alternatives/primary-02.envelope.raw.json",
+          "sha256": "bd089de243734f58941e96359694b8bf4563d05c01a0299b9bd5a5d9d12ac8a9"
+        },
+        "envelopeStatus": "ok",
+        "resolvedModel": ""
+      },
+      {
+        "command": [
+          "bin/provider-invoke",
+          "claude",
+          "--prompt-file",
+          "docs/public/council-usefulness-captures/issue-explicit-alternatives/primary-03.prompt.txt",
+          "--schema-file",
+          "schemas/council-critique.json",
+          "--effort",
+          "medium",
+          "--timeout",
+          "300",
+          "--auth",
+          "subscription"
+        ],
+        "routeId": "v1:provider-invoke:claude:adapter-default",
+        "entryId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "effort": "medium",
+        "prompt": {
+          "path": "docs/public/council-usefulness-captures/issue-explicit-alternatives/primary-03.prompt.txt",
+          "sha256": "8f56b80211ed50240305bc50b792795335f4e424567b1d6646ca3764d9b5720a"
+        },
+        "schema": {
+          "path": "schemas/council-critique.json",
+          "sha256": "c74634134a7036f2855b961614b0573f77167d26416cb888886e11ea5b9f6440"
+        },
+        "rawEnvelope": {
+          "path": "docs/public/council-usefulness-captures/issue-explicit-alternatives/primary-03.envelope.raw.json",
+          "sha256": "b45c7eba219e95ad4c8a486d27bf42a528da0596b83d47fd6fb70e15f885ebc7"
+        },
+        "envelopeStatus": "ok",
+        "resolvedModel": ""
+      },
+      {
+        "command": [
+          "bin/provider-invoke",
+          "claude",
+          "--prompt-file",
+          "docs/public/council-usefulness-captures/issue-explicit-alternatives/primary-04.prompt.txt",
+          "--schema-file",
+          "schemas/council-steelman.json",
+          "--effort",
+          "medium",
+          "--timeout",
+          "300",
+          "--auth",
+          "subscription"
+        ],
+        "routeId": "v1:provider-invoke:claude:adapter-default",
+        "entryId": "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "effort": "medium",
+        "prompt": {
+          "path": "docs/public/council-usefulness-captures/issue-explicit-alternatives/primary-04.prompt.txt",
+          "sha256": "b3f52f444c23a8b74b1a82e4da82a05b823528ad7f31c20be2906ecebf25f782"
+        },
+        "schema": {
+          "path": "schemas/council-steelman.json",
+          "sha256": "15007d4ee1f3fc335eb3324344a21d49e4f0bbf17c37fc6ae51f7b629f5f5efd"
+        },
+        "rawEnvelope": {
+          "path": "docs/public/council-usefulness-captures/issue-explicit-alternatives/primary-04.envelope.raw.json",
+          "sha256": "b99d0a3717b65d3a4379308c8df1852a33fb1d999d0970c5ac7d49be7bbfeea8"
+        },
+        "envelopeStatus": "ok",
+        "resolvedModel": ""
+      },
+      {
+        "command": [
+          "bin/provider-invoke",
+          "claude",
+          "--prompt-file",
+          "docs/public/council-usefulness-captures/issue-explicit-alternatives/primary-05.prompt.txt",
+          "--schema-file",
+          "schemas/council-adversary.json",
+          "--effort",
+          "medium",
+          "--timeout",
+          "300",
+          "--auth",
+          "subscription"
+        ],
+        "routeId": "v1:provider-invoke:claude:adapter-default",
+        "entryId": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "effort": "medium",
+        "prompt": {
+          "path": "docs/public/council-usefulness-captures/issue-explicit-alternatives/primary-05.prompt.txt",
+          "sha256": "7ba70ca443bd7e9bcefb9fc62935358dd111dd3622fe2ec00b9de4a961f38e28"
+        },
+        "schema": {
+          "path": "schemas/council-adversary.json",
+          "sha256": "c6ab079324076965af4ae5993ed676c5a6d234882b526107e8af2e8172f96f34"
+        },
+        "rawEnvelope": {
+          "path": "docs/public/council-usefulness-captures/issue-explicit-alternatives/primary-05.envelope.raw.json",
+          "sha256": "9cb9fbb2b58cc257a05fd1b572a9fdeace3d77bbab27fa09065e0a2e5fc85341"
+        },
+        "envelopeStatus": "ok",
+        "resolvedModel": ""
+      }
+    ]
+  },
+  "solo": {
+    "structuredOutputSha256": "b4eb17014d7938fe7e5d47e7fa8af6e8c0edaaae68dde5c673663d079bc6f5c5",
+    "providerCalls": [
+      {
+        "command": [
+          "bin/provider-invoke",
+          "claude",
+          "--prompt-file",
+          "docs/public/council-usefulness-captures/issue-explicit-alternatives/solo-01.prompt.txt",
+          "--schema-file",
+          "schemas/council-voice.json",
+          "--effort",
+          "medium",
+          "--timeout",
+          "300",
+          "--auth",
+          "subscription"
+        ],
+        "routeId": "v1:provider-invoke:claude:adapter-default",
+        "entryId": "entry_cccccccccccccccccccccccccc",
+        "effort": "medium",
+        "prompt": {
+          "path": "docs/public/council-usefulness-captures/issue-explicit-alternatives/solo-01.prompt.txt",
+          "sha256": "b98001ec23053ce5d635f144ba062e70681cd2c582ba4d0c4a87bf72e8455a4b"
+        },
+        "schema": {
+          "path": "schemas/council-voice.json",
+          "sha256": "5a866f3d8cd1d2658062058b23b78af25898ede106554a88af81d5174e54a7ec"
+        },
+        "rawEnvelope": {
+          "path": "docs/public/council-usefulness-captures/issue-explicit-alternatives/solo-01.envelope.raw.json",
+          "sha256": "c4dd1cffcf87a60674efd78e859e66a78955dd6d278ffb89fdbba8bbf38c0e31"
+        },
+        "envelopeStatus": "ok",
+        "resolvedModel": ""
+      }
+    ]
+  },
+  "revisions": [],
+  "selectedRun": "primary"
+}

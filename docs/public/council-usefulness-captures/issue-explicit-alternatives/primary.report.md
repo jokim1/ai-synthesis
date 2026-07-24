@@ -1,0 +1,142 @@
+---
+id: "council_20260724T045146_f320d3a8_ef3e6f4631"
+mode: "council"
+input_kind: "issue"
+input_locator: null
+input_sha256: "e2fd9bd52f6b67cfad5993d04e2059461c566c7918aa8b10c2e313bed0512fa0"
+date: "2026-07-24T04:53:42.405Z"
+status: "complete"
+roster_version: 1
+config_scope: "explicit"
+report_strategy: "deterministic"
+report_strategy_effective: "deterministic"
+configured_report_strategy: "deterministic"
+report_strategy_source: "roster_file"
+chair_entry_id: null
+members_total: 2
+members_executed: 2
+providers: ["claude"]
+configured_models: ["claude/adapter-default"]
+resolved_models: ["v1:provider-invoke:claude:adapter-default:unknown"]
+initial_prompt_hashes: ["entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:ff369e033713402d73071a7310eef711d227878f451be9f3ba6148e994bee8f3", "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:2d91b61994c2b5d050cc662037ea4e8077b819f0b9e8fe93c1f7b06b76832d4e"]
+position_catalog_sha256: "a378957ed0f80e2d99019b86b1773cad5ff695b0beee431af878fa36900e5153"
+critique_prompt_hashes: ["entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:8f56b80211ed50240305bc50b792795335f4e424567b1d6646ca3764d9b5720a"]
+assumption_review_catalog_sha256: "d86e0690a2bbb32de258a80c7152e5887d946df883056553f1d6f1acf27df635"
+families: ["claude"]
+decision_readiness: "conditional"
+readiness_basis: "internal_input_grounded"
+implementation_authorized: false
+remembered_roster_written: false
+---
+
+# Council Report
+
+Council completion does not authorize project implementation.
+
+## Synthesis Provenance
+
+Deterministic synthesis was produced by auditable aggregation code, not another model voice.
+
+## Recommendation
+
+issue_option_2: Run a staged rollout (Option B). The issue asks for a choice among three options but supplies no context on blast radius, load profile, or rollback path. A staged rollout is the architecturally safest of the offered options: it lets change reach production while bounding exposure, and it can absorb the load-test concern raised by Option C incrementally rather than blocking entirely. "Ship immediately" carries unbounded risk given the absent evidence, and full deferral forgoes progress when a gated rollout can gather the same signal. This choice is provisional pending the missing operational context.
+
+## Decision Readiness
+
+conditional
+
+MVP readiness is internal-input grounded. Repo context and web claims were not independently verified.
+
+## Evidence
+
+- The issue is a forced choice among exactly three mutually exclusive options. (issue:L1-L1)
+- Option A proposes shipping immediately, which maximizes exposure with no stated safeguards. (issue:L2-L2)
+- Option B proposes a staged rollout, bounding risk while still delivering. (issue:L3-L3)
+- Option C defers pending load tests, addressing a specific risk but blocking all progress. (issue:L4-L4)
+- Ship immediately exposes the full population with no staged safeguard, the highest-risk option. (issue:L2-L2)
+- A staged rollout is offered as an option and limits blast radius while surfacing incremental signal. (issue:L3-L3)
+- Defer pending load tests treats load as the gating risk but blocks delivery entirely. (issue:L4-L4)
+
+## Strongest Dissent
+
+{"canonicalPositionId":"issue_option_2","axis":"evidence","objection":"The case for Option B rests on load-bearing capability claims (staged-supported, rollback-feasible), but every cited item is issue text that merely lists the option. ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3 and ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2 both resolve to issue:L3 and attest only that a staged rollout is offered as a choice; nothing in the ledger attests to feature flags, canary, percentage-ramp tooling, or a tested rollback path in the target environment. The evidence does not support the mechanism the recommendation depends on.","wouldChangeRecommendation":"If the ledger contained a source confirming the target system actually has gated-rollout tooling and a reversible/tested rollback mechanism, this objection would be retired; absent that, Option B is not demonstrably executable and Option C (defer) becomes the safer choice.","evidenceIds":["ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3","ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"]}
+
+## Assumptions
+
+- entry_aaaaaaaaaaaaaaaaaaaaaaaaaa: The system under change technically supports incremental/gated rollout (feature flags, canary, or percentage ramp).
+- entry_aaaaaaaaaaaaaaaaaaaaaaaaaa: The load-test concern in Option C reflects a genuine capacity risk, not a formality.
+- entry_bbbbbbbbbbbbbbbbbbbbbbbbbb: A staged rollout can be aborted/rolled back between stages without corrupting state.
+- entry_bbbbbbbbbbbbbbbbbbbbbbbbbb: Load/capacity is the main open risk implied by Option C.
+
+## Risks
+
+- entry_aaaaaaaaaaaaaaaaaaaaaaaaaa: Issue provides no context on what is being shipped, so any recommendation is provisional.
+- entry_aaaaaaaaaaaaaaaaaaaaaaaaaa: Staged rollout may not surface load ceilings if the ramp never reaches peak traffic.
+- entry_aaaaaaaaaaaaaaaaaaaaaaaaaa: If rollback is not automated, even a staged rollout can cause a partial outage.
+- entry_bbbbbbbbbbbbbbbbbbbbbbbbbb: Staged rollout without defined stage gates and thresholds degrades into an unmonitored ship-immediately.
+- entry_bbbbbbbbbbbbbbbbbbbbbbbbbb: No rollback mechanism means early stages can already cause irreversible harm.
+- entry_bbbbbbbbbbbbbbbbbbbbbbbbbb: If the real risk is correctness rather than load, incremental exposure still ships defects to real users.
+- {"canonicalPositionId":"issue_option_2","axis":"evidence","objection":"The case for Option B rests on load-bearing capability claims (staged-supported, rollback-feasible), but every cited item is issue text that merely lists the option. ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3 and ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2 both resolve to issue:L3 and attest only that a staged rollout is offered as a choice; nothing in the ledger attests to feature flags, canary, percentage-ramp tooling, or a tested rollback path in the target environment. The evidence does not support the mechanism the recommendation depends on.","wouldChangeRecommendation":"If the ledger contained a source confirming the target system actually has gated-rollout tooling and a reversible/tested rollback mechanism, this objection would be retired; absent that, Option B is not demonstrably executable and Option C (defer) becomes the safer choice.","evidenceIds":["ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3","ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"]}
+- {"canonicalPositionId":"issue_option_2","axis":"framing","objection":"The framing assumes load/capacity is the operative risk that staged exposure can safely retire, but the only support is that Option C mentions load tests (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3, both issue:L4). Nothing rules out correctness or data-integrity as the dominant risk. If it is, incremental exposure still ships defects to real users, so framing staging as 'gather the load signal safely' misdescribes the risk being managed.","wouldChangeRecommendation":"Evidence identifying the actual dominant risk (e.g., confirming load/capacity is primary rather than correctness/data-integrity) would resolve this; if correctness dominates, the recommendation should shift toward Option C rather than staged exposure.","evidenceIds":["ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4","ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3"]}
+
+## What Would Change The Recommendation
+
+- Evidence that no canary/flag mechanism exists would push me toward Option C.
+- A load model showing the change stays well within headroom would make Option A defensible.
+- A hard deadline or contractual ship date could reweigh the tradeoff toward Option A.
+- Evidence that no clean rollback/flagging exists would push me toward Defer pending load tests.
+- Existing load-test coverage showing capacity is proven would make Ship immediately acceptable.
+- Evidence the change is trivial/reversible with negligible blast radius would weaken the need for staging.
+- {"canonicalPositionId":"issue_option_2","challenge":"The load-bearing 'staged-supported' assumption treats Option B as executable, but every cited item is issue text merely listing the option (issue:L3). Nothing in the ledger confirms the target system actually has feature flags, canary, or percentage-ramp tooling. If that mechanism is absent, 'Run a staged rollout' is not a real choice and the recommendation collapses.","evidenceIds":["ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3","ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"]}
+- {"canonicalPositionId":"issue_option_2","challenge":"The recommendation's risk advantage rests on 'rollback-feasible' (abort between stages without state corruption), yet the cited evidence only establishes that a staged rollout is one of the offered options (issue:L3). There is no evidence of a tested rollback path or reversible deploy. Absent that, early stages can already cause irreversible harm and the staged path is not safer than deferring.","evidenceIds":["ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2","ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1"]}
+
+## Position Groups
+
+### issue_option_2
+
+- Supporters: entry_aaaaaaaaaaaaaaaaaaaaaaaaaa, entry_bbbbbbbbbbbbbbbbbbbbbbbbbb
+- Evidence: ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1, ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2, ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3, ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3
+- Assumptions: entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:staged-supported, entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:load-concern-real, entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:rollback-feasible, entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:load-is-primary-risk
+- Steelmans: Given a forced choice among exactly three mutually exclusive options (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1) and no supplied evidence on blast radius, load profile, or rollback path, Option B is the dominant choice on decision-theoretic grounds rather than on any unverified capability claim. Option A ships immediately to the full population with no staged safeguard, which both voices identify as the maximum-exposure, highest-risk option (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1). Option C retires a single named risk by blocking all delivery, treating load as the gating concern (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3). A staged rollout is offered as a first-class option that bounds risk while still delivering and surfaces incremental signal (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2), so it strictly dominates A on exposure and dominates C on progress under the same information vacuum. Crucially, the recommendation is provisional and self-gating: it is explicitly conditioned on first confirming the rollout mechanism and a tested rollback path before the first stage, and on defining the load metric, thresholds, and abort criteria that convert a breach into exactly the load evidence Option C sought. Framed this way, selecting Option B commits only to the safest reversible next step under uncertainty, not to an unverified assertion that staging tooling or clean rollback already exist.
+- Objections: The case for Option B rests on load-bearing capability claims (staged-supported, rollback-feasible), but every cited item is issue text that merely lists the option. ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3 and ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2 both resolve to issue:L3 and attest only that a staged rollout is offered as a choice; nothing in the ledger attests to feature flags, canary, percentage-ramp tooling, or a tested rollback path in the target environment. The evidence does not support the mechanism the recommendation depends on.; The framing assumes load/capacity is the operative risk that staged exposure can safely retire, but the only support is that Option C mentions load tests (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3, both issue:L4). Nothing rules out correctness or data-integrity as the dominant risk. If it is, incremental exposure still ships defects to real users, so framing staging as 'gather the load signal safely' misdescribes the risk being managed.; The recommendation claims Option B strictly dominates A on exposure and C on progress, but that dominance holds only if the staged mechanism exists and rollback is clean. Since ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2 (issue:L3) establishes only that staging is offered, not that early stages are reversible, the 'safer than deferring' inference is unfounded: an irreversible early stage can cause the same harm as shipping (ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1, issue:L2). The dominance argument smuggles in unproven premises.
+- Opposition: None
+
+## Phase Findings
+
+### Critique
+- {"canonicalPositionId":"issue_option_2","challenge":"The load-bearing 'staged-supported' assumption treats Option B as executable, but every cited item is issue text merely listing the option (issue:L3). Nothing in the ledger confirms the target system actually has feature flags, canary, or percentage-ramp tooling. If that mechanism is absent, 'Run a staged rollout' is not a real choice and the recommendation collapses.","evidenceIds":["ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3","ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"]}
+- {"canonicalPositionId":"issue_option_2","challenge":"The recommendation's risk advantage rests on 'rollback-feasible' (abort between stages without state corruption), yet the cited evidence only establishes that a staged rollout is one of the offered options (issue:L3). There is no evidence of a tested rollback path or reversible deploy. Absent that, early stages can already cause irreversible harm and the staged path is not safer than deferring.","evidenceIds":["ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2","ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1"]}
+- {"canonicalPositionId":"issue_option_2","challenge":"Both voices assume load/capacity is the operative risk that staged exposure can retire, but the only support is that Option C mentions load tests (issue:L4). Nothing rules out correctness or data-integrity as the dominant risk. If it is, incremental exposure still ships defects to real users, so the 'gather the load signal safely' rationale is unfounded.","evidenceIds":["ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4","ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3"]}
+- {"assumptionId":"entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:staged-supported","status":"unverified","rationale":"Load-bearing claim that the system supports incremental/gated rollout. The cited evidence is entirely issue text describing the three options; none of it attests to actual deployment tooling, feature flags, or canary capability in the target environment. No source confirms or contradicts it.","evidenceIds":["ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1","ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2","ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3","ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4"]}
+- {"assumptionId":"entry_aaaaaaaaaaaaaaaaaaaaaaaaaa:load-concern-real","status":"unverified","rationale":"The cited issue-text evidence only notes that Option C defers pending load tests; it does not establish whether the capacity concern is genuine or a formality. No traffic delta or headroom data is present, so the claim is neither supported nor refuted.","evidenceIds":["ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4"]}
+- {"assumptionId":"entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:rollback-feasible","status":"unverified","rationale":"Load-bearing claim that stages can be aborted/rolled back without corrupting state. The cited evidence merely records that a staged rollout is an offered option (issue:L3); there is no reference to a flag, reversible deploy mechanism, or tested rollback path in the frozen context.","evidenceIds":["ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1","ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2","ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3"]}
+- {"assumptionId":"entry_bbbbbbbbbbbbbbbbbbbbbbbbbb:load-is-primary-risk","status":"unverified","rationale":"The cited evidence establishes only that Option C treats load as its gating risk (issue:L4). Nothing in the ledger confirms load is the main open risk versus correctness or data-integrity concerns, and the issue supplies no context on what is being shipped. Unresolved by available sources.","evidenceIds":["ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3"]}
+
+### Steelman
+- {"canonicalPositionId":"issue_option_2","improvedCase":"Given a forced choice among exactly three mutually exclusive options (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1) and no supplied evidence on blast radius, load profile, or rollback path, Option B is the dominant choice on decision-theoretic grounds rather than on any unverified capability claim. Option A ships immediately to the full population with no staged safeguard, which both voices identify as the maximum-exposure, highest-risk option (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1). Option C retires a single named risk by blocking all delivery, treating load as the gating concern (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3). A staged rollout is offered as a first-class option that bounds risk while still delivering and surfaces incremental signal (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2), so it strictly dominates A on exposure and dominates C on progress under the same information vacuum. Crucially, the recommendation is provisional and self-gating: it is explicitly conditioned on first confirming the rollout mechanism and a tested rollback path before the first stage, and on defining the load metric, thresholds, and abort criteria that convert a breach into exactly the load evidence Option C sought. Framed this way, selecting Option B commits only to the safest reversible next step under uncertainty, not to an unverified assertion that staging tooling or clean rollback already exist.","evidenceIds":["ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1","ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2","ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3","ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4","ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1","ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2","ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3"],"concededRisks":["The load-bearing claim that the target system supports incremental/gated rollout (feature flags, canary, or percentage ramp) is unverified; every cited item is issue text listing the option, and no source attests to actual tooling. If that mechanism is absent, Option B is not executable and Option C becomes the safer choice.","The load-bearing claim that stages can be aborted/rolled back without corrupting state is unverified; there is no evidence of a reversible deploy or tested rollback path. Without it, early stages can cause irreversible harm and staging loses its risk advantage over deferral.","It is unverified whether load/capacity is the operative risk; if correctness or data-integrity dominates, incremental exposure still ships defects to real users, so staged exposure does not retire the true risk.","The issue supplies no context on what is being shipped, so the recommendation is provisional and could be overturned by evidence of a hard deadline, proven capacity headroom, or a negligible/trivial blast radius."]}
+
+### Adversary
+- {"canonicalPositionId":"issue_option_2","axis":"evidence","objection":"The case for Option B rests on load-bearing capability claims (staged-supported, rollback-feasible), but every cited item is issue text that merely lists the option. ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3 and ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2 both resolve to issue:L3 and attest only that a staged rollout is offered as a choice; nothing in the ledger attests to feature flags, canary, percentage-ramp tooling, or a tested rollback path in the target environment. The evidence does not support the mechanism the recommendation depends on.","wouldChangeRecommendation":"If the ledger contained a source confirming the target system actually has gated-rollout tooling and a reversible/tested rollback mechanism, this objection would be retired; absent that, Option B is not demonstrably executable and Option C (defer) becomes the safer choice.","evidenceIds":["ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3","ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"]}
+- {"canonicalPositionId":"issue_option_2","axis":"framing","objection":"The framing assumes load/capacity is the operative risk that staged exposure can safely retire, but the only support is that Option C mentions load tests (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3, both issue:L4). Nothing rules out correctness or data-integrity as the dominant risk. If it is, incremental exposure still ships defects to real users, so framing staging as 'gather the load signal safely' misdescribes the risk being managed.","wouldChangeRecommendation":"Evidence identifying the actual dominant risk (e.g., confirming load/capacity is primary rather than correctness/data-integrity) would resolve this; if correctness dominates, the recommendation should shift toward Option C rather than staged exposure.","evidenceIds":["ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4","ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3"]}
+- {"canonicalPositionId":"issue_option_2","axis":"recommendation_logic","objection":"The recommendation claims Option B strictly dominates A on exposure and C on progress, but that dominance holds only if the staged mechanism exists and rollback is clean. Since ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2 (issue:L3) establishes only that staging is offered, not that early stages are reversible, the 'safer than deferring' inference is unfounded: an irreversible early stage can cause the same harm as shipping (ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1, issue:L2). The dominance argument smuggles in unproven premises.","wouldChangeRecommendation":"Confirming a tested rollback path that lets stages abort without state corruption would restore the dominance logic; without it, Option B carries the same downside as Option A for the exposed cohort and the recommendation is not justified over Option C.","evidenceIds":["ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1","ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2"]}
+
+## Next Action
+
+Verify: Confirm deployment tooling supports canary or flagged rollout in the target environment.
+
+## Diagnostics
+
+- same-route council: outputs are correlated; readiness is capped at conditional
+- initial_prompt_hash: entry_aaaaaaaaaaaaaaaaaaaaaaaaaa=ff369e033713402d73071a7310eef711d227878f451be9f3ba6148e994bee8f3 position_catalog=a378957ed0f80e2d99019b86b1773cad5ff695b0beee431af878fa36900e5153
+- initial_prompt_hash: entry_bbbbbbbbbbbbbbbbbbbbbbbbbb=2d91b61994c2b5d050cc662037ea4e8077b819f0b9e8fe93c1f7b06b76832d4e position_catalog=a378957ed0f80e2d99019b86b1773cad5ff695b0beee431af878fa36900e5153
+- phase_lane_plan: initial_analysis concurrency=1 batches=2 lanes=[provider-invoke:claude:subscription(width=1,members=2)]
+- critique_prompt_hash: entry_bbbbbbbbbbbbbbbbbbbbbbbbbb=8f56b80211ed50240305bc50b792795335f4e424567b1d6646ca3764d9b5720a assumption_catalog=d86e0690a2bbb32de258a80c7152e5887d946df883056553f1d6f1acf27df635
+- phase_lane_plan: critique concurrency=1 batches=1 lanes=[provider-invoke:claude:subscription(width=1,members=1)]
+- steelman fallback: entry_aaaaaaaaaaaaaaaaaaaaaaaaaa
+- phase_lane_plan: steelman concurrency=1 batches=1 lanes=[provider-invoke:claude:subscription(width=1,members=1)]
+- adversary fallback: entry_bbbbbbbbbbbbbbbbbbbbbbbbbb
+- phase_lane_plan: adversary concurrency=1 batches=1 lanes=[provider-invoke:claude:subscription(width=1,members=1)]
+- route_correlation: single_route; readiness capped at conditional
+- material_dissent: unresolved
+- resolved_model: v1:provider-invoke:claude:adapter-default=unknown (adapter_default_unreported)
+- worst_case_provider_calls: 10

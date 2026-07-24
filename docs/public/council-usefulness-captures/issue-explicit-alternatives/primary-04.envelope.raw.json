@@ -1,0 +1,39 @@
+{
+  "ok": true,
+  "status": "ok",
+  "provider": "claude",
+  "model": "",
+  "structured": {
+    "memberId": "entry_aaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "steelmans": [
+      {
+        "canonicalPositionId": "issue_option_2",
+        "improvedCase": "Given a forced choice among exactly three mutually exclusive options (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1) and no supplied evidence on blast radius, load profile, or rollback path, Option B is the dominant choice on decision-theoretic grounds rather than on any unverified capability claim. Option A ships immediately to the full population with no staged safeguard, which both voices identify as the maximum-exposure, highest-risk option (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1). Option C retires a single named risk by blocking all delivery, treating load as the gating concern (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3). A staged rollout is offered as a first-class option that bounds risk while still delivering and surfaces incremental signal (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2), so it strictly dominates A on exposure and dominates C on progress under the same information vacuum. Crucially, the recommendation is provisional and self-gating: it is explicitly conditioned on first confirming the rollout mechanism and a tested rollback path before the first stage, and on defining the load metric, thresholds, and abort criteria that convert a breach into exactly the load evidence Option C sought. Framed this way, selecting Option B commits only to the safest reversible next step under uncertainty, not to an unverified assertion that staging tooling or clean rollback already exist.",
+        "evidenceIds": [
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3",
+          "ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2",
+          "ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3"
+        ],
+        "concededRisks": [
+          "The load-bearing claim that the target system supports incremental/gated rollout (feature flags, canary, or percentage ramp) is unverified; every cited item is issue text listing the option, and no source attests to actual tooling. If that mechanism is absent, Option B is not executable and Option C becomes the safer choice.",
+          "The load-bearing claim that stages can be aborted/rolled back without corrupting state is unverified; there is no evidence of a reversible deploy or tested rollback path. Without it, early stages can cause irreversible harm and staging loses its risk advantage over deferral.",
+          "It is unverified whether load/capacity is the operative risk; if correctness or data-integrity dominates, incremental exposure still ships defects to real users, so staged exposure does not retire the true risk.",
+          "The issue supplies no context on what is being shipped, so the recommendation is provisional and could be overturned by evidence of a hard deadline, proven capacity headroom, or a negligible/trivial blast radius."
+        ]
+      }
+    ]
+  },
+  "text": "{\"memberId\":\"entry_aaaaaaaaaaaaaaaaaaaaaaaaaa\",\"steelmans\":[{\"canonicalPositionId\":\"issue_option_2\",\"improvedCase\":\"Given a forced choice among exactly three mutually exclusive options (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1) and no supplied evidence on blast radius, load profile, or rollback path, Option B is the dominant choice on decision-theoretic grounds rather than on any unverified capability claim. Option A ships immediately to the full population with no staged safeguard, which both voices identify as the maximum-exposure, highest-risk option (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1). Option C retires a single named risk by blocking all delivery, treating load as the gating concern (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3). A staged rollout is offered as a first-class option that bounds risk while still delivering and surfaces incremental signal (ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3, ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2), so it strictly dominates A on exposure and dominates C on progress under the same information vacuum. Crucially, the recommendation is provisional and self-gating: it is explicitly conditioned on first confirming the rollout mechanism and a tested rollback path before the first stage, and on defining the load metric, thresholds, and abort criteria that convert a breach into exactly the load evidence Option C sought. Framed this way, selecting Option B commits only to the safest reversible next step under uncertainty, not to an unverified assertion that staging tooling or clean rollback already exist.\",\"evidenceIds\":[\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_1\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_2\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_3\",\"ev_initial_entry_aaaaaaaaaaaaaaaaaaaaaaaaaa_4\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_1\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_2\",\"ev_initial_entry_bbbbbbbbbbbbbbbbbbbbbbbbbb_3\"],\"concededRisks\":[\"The load-bearing claim that the target system supports incremental/gated rollout (feature flags, canary, or percentage ramp) is unverified; every cited item is issue text listing the option, and no source attests to actual tooling. If that mechanism is absent, Option B is not executable and Option C becomes the safer choice.\",\"The load-bearing claim that stages can be aborted/rolled back without corrupting state is unverified; there is no evidence of a reversible deploy or tested rollback path. Without it, early stages can cause irreversible harm and staging loses its risk advantage over deferral.\",\"It is unverified whether load/capacity is the operative risk; if correctness or data-integrity dominates, incremental exposure still ships defects to real users, so staged exposure does not retire the true risk.\",\"The issue supplies no context on what is being shipped, so the recommendation is provisional and could be overturned by evidence of a hard deadline, proven capacity headroom, or a negligible/trivial blast radius.\"]}]}",
+  "error": null,
+  "meta": {
+    "parsed": "schema",
+    "timed_out": false,
+    "attempts": 1,
+    "tokens": 1555,
+    "cost_usd": 0.15034
+  }
+}

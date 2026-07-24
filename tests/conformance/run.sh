@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Provider conformance runner.  ./run.sh [claude|codex|all]   (default: all)
+# Provider conformance runner.  ./run.sh [unit|claude|codex|council|hermetic|all]
 #
 # Build-order gate: these must pass before any orchestration is built on the
 # provider layer. Exits non-zero if any test fails.
@@ -31,6 +31,22 @@ case "$which" in
   codex)
     # shellcheck source=tests/conformance/codex.sh
     source "$TESTDIR/codex.sh"; printf '\n[codex]\n'; codex_suite ;;
+  council)
+    # shellcheck source=tests/conformance/council.sh
+    source "$TESTDIR/council.sh"; printf '\n[council]\n'; council_suite ;;
+  hermetic)
+    # shellcheck source=tests/conformance/unit.sh
+    source "$TESTDIR/unit.sh"
+    # shellcheck source=tests/conformance/claude.sh
+    source "$TESTDIR/claude.sh"
+    # shellcheck source=tests/conformance/codex.sh
+    source "$TESTDIR/codex.sh"
+    # shellcheck source=tests/conformance/council.sh
+    source "$TESTDIR/council.sh"
+    printf '\n[unit]\n'; unit_suite
+    printf '\n[claude fake]\n'; claude_fake_suite
+    printf '\n[codex fake]\n'; codex_fake_suite
+    printf '\n[council]\n'; council_suite ;;
   all)
     # shellcheck source=tests/conformance/unit.sh
     source "$TESTDIR/unit.sh"
@@ -38,11 +54,14 @@ case "$which" in
     source "$TESTDIR/claude.sh"
     # shellcheck source=tests/conformance/codex.sh
     source "$TESTDIR/codex.sh"
+    # shellcheck source=tests/conformance/council.sh
+    source "$TESTDIR/council.sh"
     printf '\n[unit]\n';   unit_suite
     printf '\n[claude]\n'; claude_suite
-    printf '\n[codex]\n';  codex_suite ;;
+    printf '\n[codex]\n';  codex_suite
+    printf '\n[council]\n'; council_suite ;;
   *)
-    echo "usage: run.sh [unit|claude|codex|all]" >&2; exit 2 ;;
+    echo "usage: run.sh [unit|claude|codex|council|hermetic|all]" >&2; exit 2 ;;
 esac
 
 summary

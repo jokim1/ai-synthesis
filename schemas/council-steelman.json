@@ -1,0 +1,22 @@
+{
+  "type": "object",
+  "properties": {
+    "memberId": { "type": "string" },
+    "steelmans": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "canonicalPositionId": { "type": "string" },
+          "improvedCase": { "type": "string" },
+          "evidenceIds": { "type": "array", "items": { "type": "string" } },
+          "concededRisks": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["canonicalPositionId", "improvedCase", "evidenceIds", "concededRisks"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["memberId", "steelmans"],
+  "additionalProperties": false
+}

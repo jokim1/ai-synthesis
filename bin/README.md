@@ -12,10 +12,15 @@ No SDK, no framework — "the skill file is the orchestrator."
 
 ## Entrypoints
 
-### `bin/provider-probe <claude|codex>`
+### `bin/provider-probe <claude|codex> [--auth <auto|subscription|apikey>]`
 Cheap "can this backend run?" check — binary present + auth resolvable. **No model
 call, no cost.** Emits the envelope with `structured = {available, authed, …}`;
 `ok = available && authed`.
+
+`--auth` is backward compatible and defaults to `auto`. Council route discovery
+uses `bin/provider-probe claude --auth subscription` so Claude council routes
+require a first-party Claude login and do not treat Anthropic API keys as
+subscription auth.
 
 ### `bin/provider-invoke <claude|codex> [options]`
 Run one role call. Always emits the envelope on stdout. Invocation *outcomes*
@@ -104,7 +109,7 @@ before emission, so a backend CLI that echoes a key in an error can't leak it.
 ## Conformance tests (the build-order gate)
 
 ```
-tests/conformance/run.sh [unit|claude|codex|all]   # default all; exits non-zero on any failure
+tests/conformance/run.sh [unit|claude|codex|council|hermetic|all]
 ```
 
 Five categories per adapter — **probe, smoke, structured-output, timeout,
@@ -112,8 +117,9 @@ malformed-output**. probe/smoke/structured run live; timeout + the error/retry
 branches use hermetic fake binaries (deterministic, free) plus offline fixtures
 for the tolerant parser. The `unit` suite pins the substrate regressions surfaced
 by code review (falsy-payload survival, timeout fallback, echoed-schema defense,
-arg-validation, effort mapping). These must stay green before orchestration is
-built on top. Current: **85 tests** (unit + claude + codex), all passing.
+arg-validation, effort mapping). The `council` suite covers the portable command
+with fakes, while `hermetic` combines all no-cost suites. The default `all`
+target also runs the live Claude and Codex sections when available.
 
 ## Layout
 
@@ -134,5 +140,12 @@ tests/conformance/     # assert.sh · fakes.sh · run.sh · unit.sh · {claude,c
 
 **Status:** host Claude (headless) + Codex done and conformance-green. Next external
 adapter per the spec: DeepSeek via NVIDIA-free (pure curl) — needs `$NVIDIA_API_KEY`.
-Orchestration (roles, grounded round flow, synthesis) is the next phase and was
-gated on this layer.
+The portable council adds a fake-only `hermetic` target for clean checkout gates:
+
+```
+tests/conformance/run.sh hermetic
+```
+
+It exercises `bin/council`, `bin/council-route-probe`, JSON roster authoring,
+read-only roster-file execution, remembered roster persistence, and council
+report writing without provider CLIs, auth, or paid model calls.

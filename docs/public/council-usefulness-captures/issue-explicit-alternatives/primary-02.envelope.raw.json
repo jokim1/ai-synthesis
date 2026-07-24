@@ -1,0 +1,66 @@
+{
+  "ok": true,
+  "status": "ok",
+  "provider": "claude",
+  "model": "",
+  "structured": {
+    "ok": true,
+    "member_id": "entry_bbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "role": "risk-critic",
+    "position_key": "issue_option_2",
+    "recommendation": "Run a staged rollout. The issue names three options but supplies no evidence about capacity, load behavior, or blast radius. From a risk standpoint, shipping immediately (issue:L2) exposes the full population to an untested change with no rollback signal, while deferring entirely (issue:L4) stalls delivery and only defensible if load is the sole material risk — which is unstated. A staged rollout (issue:L3) is the risk-minimizing middle path: it limits blast radius, produces real-world load signal incrementally, and preserves an abort point. Pair it with explicit stage gates (error-rate/latency thresholds) and a rollback plan; if a stage breaches thresholds, that is the load evidence Option C wanted, gathered under controlled exposure.",
+    "evidence": [
+      {
+        "claim": "Ship immediately exposes the full population with no staged safeguard, the highest-risk option.",
+        "source_type": "issue_text",
+        "locator": "issue:L2-L2"
+      },
+      {
+        "claim": "A staged rollout is offered as an option and limits blast radius while surfacing incremental signal.",
+        "source_type": "issue_text",
+        "locator": "issue:L3-L3"
+      },
+      {
+        "claim": "Defer pending load tests treats load as the gating risk but blocks delivery entirely.",
+        "source_type": "issue_text",
+        "locator": "issue:L4-L4"
+      }
+    ],
+    "assumptions": [
+      {
+        "assumption_key": "rollback_feasible",
+        "statement": "A staged rollout can be aborted/rolled back between stages without corrupting state.",
+        "load_bearing": true,
+        "if_false_then": "If rollback is not clean, staged rollout loses its risk advantage and Defer pending load tests becomes the safer choice.",
+        "how_to_verify": "Confirm the change is behind a flag or reversible deploy mechanism with a tested rollback path."
+      },
+      {
+        "assumption_key": "load_is_primary_risk",
+        "statement": "Load/capacity is the main open risk implied by Option C.",
+        "load_bearing": false,
+        "if_false_then": "If correctness or data-integrity is the dominant risk, staged exposure still risks harm and stronger pre-release testing is needed.",
+        "how_to_verify": "Ask the issue author what risk the load tests were meant to retire."
+      }
+    ],
+    "risks": [
+      "Staged rollout without defined stage gates and thresholds degrades into an unmonitored ship-immediately.",
+      "No rollback mechanism means early stages can already cause irreversible harm.",
+      "If the real risk is correctness rather than load, incremental exposure still ships defects to real users."
+    ],
+    "what_would_change_my_view": [
+      "Evidence that no clean rollback/flagging exists would push me toward Defer pending load tests.",
+      "Existing load-test coverage showing capacity is proven would make Ship immediately acceptable.",
+      "Evidence the change is trivial/reversible with negligible blast radius would weaken the need for staging."
+    ],
+    "next_action": "Ask the issue author which risk the load tests were meant to retire and whether a flagged, rollback-capable staged deploy is available; define concrete stage gates (error-rate and latency thresholds) before the first stage."
+  },
+  "text": "{\"ok\":true,\"member_id\":\"entry_bbbbbbbbbbbbbbbbbbbbbbbbbb\",\"role\":\"risk-critic\",\"position_key\":\"issue_option_2\",\"recommendation\":\"Run a staged rollout. The issue names three options but supplies no evidence about capacity, load behavior, or blast radius. From a risk standpoint, shipping immediately (issue:L2) exposes the full population to an untested change with no rollback signal, while deferring entirely (issue:L4) stalls delivery and only defensible if load is the sole material risk — which is unstated. A staged rollout (issue:L3) is the risk-minimizing middle path: it limits blast radius, produces real-world load signal incrementally, and preserves an abort point. Pair it with explicit stage gates (error-rate/latency thresholds) and a rollback plan; if a stage breaches thresholds, that is the load evidence Option C wanted, gathered under controlled exposure.\",\"evidence\":[{\"claim\":\"Ship immediately exposes the full population with no staged safeguard, the highest-risk option.\",\"source_type\":\"issue_text\",\"locator\":\"issue:L2-L2\"},{\"claim\":\"A staged rollout is offered as an option and limits blast radius while surfacing incremental signal.\",\"source_type\":\"issue_text\",\"locator\":\"issue:L3-L3\"},{\"claim\":\"Defer pending load tests treats load as the gating risk but blocks delivery entirely.\",\"source_type\":\"issue_text\",\"locator\":\"issue:L4-L4\"}],\"assumptions\":[{\"assumption_key\":\"rollback_feasible\",\"statement\":\"A staged rollout can be aborted/rolled back between stages without corrupting state.\",\"load_bearing\":true,\"if_false_then\":\"If rollback is not clean, staged rollout loses its risk advantage and Defer pending load tests becomes the safer choice.\",\"how_to_verify\":\"Confirm the change is behind a flag or reversible deploy mechanism with a tested rollback path.\"},{\"assumption_key\":\"load_is_primary_risk\",\"statement\":\"Load/capacity is the main open risk implied by Option C.\",\"load_bearing\":false,\"if_false_then\":\"If correctness or data-integrity is the dominant risk, staged exposure still risks harm and stronger pre-release testing is needed.\",\"how_to_verify\":\"Ask the issue author what risk the load tests were meant to retire.\"}],\"risks\":[\"Staged rollout without defined stage gates and thresholds degrades into an unmonitored ship-immediately.\",\"No rollback mechanism means early stages can already cause irreversible harm.\",\"If the real risk is correctness rather than load, incremental exposure still ships defects to real users.\"],\"what_would_change_my_view\":[\"Evidence that no clean rollback/flagging exists would push me toward Defer pending load tests.\",\"Existing load-test coverage showing capacity is proven would make Ship immediately acceptable.\",\"Evidence the change is trivial/reversible with negligible blast radius would weaken the need for staging.\"],\"next_action\":\"Ask the issue author which risk the load tests were meant to retire and whether a flagged, rollback-capable staged deploy is available; define concrete stage gates (error-rate and latency thresholds) before the first stage.\"}",
+  "error": null,
+  "meta": {
+    "parsed": "schema",
+    "timed_out": false,
+    "attempts": 1,
+    "tokens": 1642,
+    "cost_usd": 0.05180800000000001
+  }
+}

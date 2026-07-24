@@ -21,6 +21,29 @@ _claude_session_logged_in() {
   printf '%s' "$status" | jq -e '.loggedIn == true' >/dev/null 2>&1
 }
 
+_claude_unset_anthropic_credentials() {
+  unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN ANTHROPIC_BEARER_TOKEN \
+        ANTHROPIC_CONSOLE_API_KEY ANTHROPIC_CONSOLE_AUTH_TOKEN 2>/dev/null || true
+}
+
+_claude_unset_anthropic_subscription_credentials() {
+  unset ANTHROPIC_API_KEY ANTHROPIC_OAUTH_TOKEN ANTHROPIC_AUTH_TOKEN \
+        ANTHROPIC_BEARER_TOKEN ANTHROPIC_CONSOLE_API_KEY \
+        ANTHROPIC_CONSOLE_AUTH_TOKEN 2>/dev/null || true
+}
+
+_claude_sanitize_subscription_env() {
+  local name
+  _claude_unset_anthropic_subscription_credentials
+  # Council subscription mode starts with an empty ANTHROPIC_* allowlist so
+  # API keys, OAuth tokens, and custom endpoints cannot define billing.
+  while IFS='=' read -r name _; do
+    case "$name" in
+      ANTHROPIC_*) unset "$name" 2>/dev/null || true ;;
+    esac
+  done < <(env)
+}
+
 # Run the claude CLI honoring the auth preference, inside the caller's
 # command-substitution subshell so any unset is scoped to claude only.
 #   apikey       -> keep ANTHROPIC_* (use the API key)
@@ -37,9 +60,10 @@ _claude_exec() {
     subscription) do_unset=true ;;
     *)            if _claude_session_logged_in; then do_unset=true; fi ;;
   esac
-  if [ "$do_unset" = "true" ]; then
-    unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN ANTHROPIC_BEARER_TOKEN \
-          ANTHROPIC_CONSOLE_API_KEY ANTHROPIC_CONSOLE_AUTH_TOKEN 2>/dev/null || true
+  if [ "${AISYNTH_COUNCIL:-}" = "1" ] && [ "$mode" = "subscription" ]; then
+    _claude_sanitize_subscription_env
+  elif [ "$do_unset" = "true" ]; then
+    _claude_unset_anthropic_credentials
   fi
   aisynth_run_with_timeout "${A_TIMEOUT:-300}" "$@"
 }
@@ -55,6 +79,9 @@ adapter_probe() {
     return 0
   fi
 
+  if [ "${AISYNTH_COUNCIL:-}" = "1" ] && [ "${A_AUTH:-auto}" = "subscription" ]; then
+    _claude_sanitize_subscription_env
+  fi
   status="$(aisynth_run_with_timeout 20 "$bin" auth status 2>/dev/null || true)"
   logged_in="$(printf '%s' "$status" | jq -r '.loggedIn // false' 2>/dev/null || echo false)"
   provider="$(printf '%s' "$status" | jq -r '.apiProvider // ""' 2>/dev/null || echo "")"
@@ -64,7 +91,7 @@ adapter_probe() {
   authed=false; method=""
   if [ "$logged_in" = "true" ]; then
     authed=true; method="${auth_method:-session}"
-  elif [ -n "${ANTHROPIC_API_KEY:-}" ]; then
+  elif [ "${A_AUTH:-auto}" != "subscription" ] && [ -n "${ANTHROPIC_API_KEY:-}" ]; then
     authed=true; method="ANTHROPIC_API_KEY"
   fi
 
@@ -80,9 +107,13 @@ adapter_probe() {
       ENV_STRUCTURED="$structured" ENV_TEXT="claude ready (${method}${provider:+/$provider})" \
       aisynth_emit_envelope
   else
+    local auth_error="Claude Code found but not authenticated. Run: claude auth login (or set ANTHROPIC_API_KEY)"
+    if [ "${A_AUTH:-auto}" = "subscription" ]; then
+      auth_error="Claude Code found but no first-party subscription login. Run: claude auth login"
+    fi
     ENV_OK=false ENV_STATUS=auth ENV_PROVIDER=claude \
       ENV_STRUCTURED="$structured" \
-      ENV_ERROR="Claude Code found but not authenticated. Run: claude auth login (or set ANTHROPIC_API_KEY)" \
+      ENV_ERROR="$auth_error" \
       aisynth_emit_envelope
   fi
   return 0

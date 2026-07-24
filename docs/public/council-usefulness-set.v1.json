@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "samples": [
+    {
+      "id": "plan-review",
+      "kind": "plan",
+      "description": "Review a concrete implementation plan with line citations.",
+      "input": "1. Add request validation.\n2. Deploy behind a feature flag.\n3. Roll back on error-rate regression.",
+      "inputSha256": "1edcbaa0ab13d48a8b66834440aa988f9b8b21cf858a3ce5bd17fe805e2ad01f"
+    },
+    {
+      "id": "issue-explicit-alternatives",
+      "kind": "issue",
+      "description": "Choose between explicit alternatives.",
+      "input": "Choose between these options:\n- Option A: Ship immediately\n- Option B: Run a staged rollout\n- Option C: Defer pending load tests",
+      "inputSha256": "e2fd9bd52f6b67cfad5993d04e2059461c566c7918aa8b10c2e313bed0512fa0"
+    },
+    {
+      "id": "issue-freeform",
+      "kind": "issue",
+      "description": "Analyze a free-form issue and preserve disagreement.",
+      "input": "Goal: reduce deployment risk.\nConstraint: preserve delivery speed.\nQuestion: Which rollout policy balances both?",
+      "inputSha256": "84cd5ab1dcf87ef33352a9f7307d358b40c125b2642beb0624767d3792dec5a4"
+    }
+  ]
+}
