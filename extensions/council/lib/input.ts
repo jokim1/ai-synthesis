@@ -77,7 +77,12 @@ export function loadPlanSnapshot(path: string, cwd: string, allowedRoots = [cwd]
   }
   if (!stat.isFile()) throw Object.assign(new Error(`plan path is not a regular file: ${path}`), { exitCode: 2 });
   if (stat.size > 512 * 1024) throw Object.assign(new Error(`plan file exceeds 512 KiB: ${path}`), { exitCode: 2 });
-  const bytes = readFileSync(realpath);
+  let bytes: Buffer;
+  try {
+    bytes = readFileSync(realpath);
+  } catch {
+    throw Object.assign(new Error(`plan file is not readable: ${path}`), { exitCode: 2 });
+  }
   if (bytes.includes(0)) throw Object.assign(new Error(`plan file looks binary: ${path}`), { exitCode: 2 });
   const text = bytes.toString("utf8").replace(/\r\n?/g, "\n");
   return {

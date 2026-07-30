@@ -2,7 +2,7 @@
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { basename, dirname, join, relative } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runCouncil } from "../extensions/council/lib/engine.js";
 import { invokeProvider } from "../extensions/council/lib/executors/provider-invoke.js";
@@ -11,6 +11,7 @@ import { derivePositionCatalog } from "../extensions/council/lib/position-catalo
 import { validateModelJsonValue } from "../extensions/council/lib/validate-json.js";
 import { stableJson } from "../extensions/council/lib/util.js";
 import { evaluateRuns, needsRevision } from "./council-usefulness-derivation.mjs";
+import { assertAuthorizedCaptureEnv, packageRelativeProviderBin } from "./council-usefulness-capture-proof.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const outputRoot = join(root, "docs/public/council-usefulness-captures");
@@ -25,6 +26,8 @@ if (!process.argv.includes("--write") || (sampleFlagIndex >= 0 && !set.samples.s
   console.error("usage: node --import ./node_modules/jiti/lib/jiti-register.mjs scripts/capture-council-usefulness.ts --write [--sample <sample-id>]");
   process.exit(2);
 }
+
+assertAuthorizedCaptureEnv(process.env);
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
@@ -122,8 +125,11 @@ function collector(sampleId, runName) {
       const schemaIndex = replayArgs.indexOf("--schema-file");
       replayArgs[schemaIndex + 1] = relative(root, capture.schemaPath);
       const envelope = JSON.parse(capture.stdout);
+      const providerBin = packageRelativeProviderBin(root, capture.bin);
       calls.push({
+        // Replay argv stays portable; providerBin is the actual spawn path used during capture.
         command: ["bin/provider-invoke", ...replayArgs],
+        providerBin,
         routeId: capture.routeId,
         entryId: capture.entryId,
         effort: capture.effort,

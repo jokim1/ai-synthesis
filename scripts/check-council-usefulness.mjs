@@ -93,6 +93,10 @@ function validateRawCall(call, routeId, sample, label) {
     || optionValue(command, "--schema-file") !== call.schema?.path
     || call.routeId !== routeId
   ) failures.push(`${label}: provider replay command mismatch`);
+  // Capture proof must record the actual binary path used during capture (package-relative).
+  if (call?.providerBin !== "bin/provider-invoke") {
+    failures.push(`${label}: capture proof missing actual package provider binary path`);
+  }
   const promptBytes = readArtifact(call?.prompt, `${label}:prompt`);
   if (
     promptBytes === undefined

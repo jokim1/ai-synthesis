@@ -62,7 +62,8 @@
           "sha256": "8626baf71398443e4981f55daf77cf0974aae8ed58c7a5ae2298b0c202da3e4d"
         },
         "envelopeStatus": "ok",
-        "resolvedModel": ""
+        "resolvedModel": "",
+        "providerBin": "bin/provider-invoke"
       },
       {
         "command": [
@@ -95,7 +96,8 @@
           "sha256": "ad1d912ebcf134e1e5b3ab54b77af0e5ec0a749f19e14756ff3d7ea787647eca"
         },
         "envelopeStatus": "ok",
-        "resolvedModel": ""
+        "resolvedModel": "",
+        "providerBin": "bin/provider-invoke"
       },
       {
         "command": [
@@ -128,7 +130,8 @@
           "sha256": "bb55252e144c5d7cbf085b1797b506bdbfeb6339bc5169e05a49fcb9ef33679a"
         },
         "envelopeStatus": "ok",
-        "resolvedModel": ""
+        "resolvedModel": "",
+        "providerBin": "bin/provider-invoke"
       },
       {
         "command": [
@@ -161,7 +164,8 @@
           "sha256": "6cea59677464874ed8e54ad00ac93b6526a32fd9b5233a012f0129ec0b502dcc"
         },
         "envelopeStatus": "ok",
-        "resolvedModel": ""
+        "resolvedModel": "",
+        "providerBin": "bin/provider-invoke"
       },
       {
         "command": [
@@ -194,7 +198,8 @@
           "sha256": "909a03a38055d28415bcac1f34bfaf0d626ea8f9abb2f22f254dc936a722e375"
         },
         "envelopeStatus": "ok",
-        "resolvedModel": ""
+        "resolvedModel": "",
+        "providerBin": "bin/provider-invoke"
       }
     ]
   },
@@ -232,7 +237,8 @@
           "sha256": "8e00d4cedd3916c367132c882ca5468fdcd8b0a72935c9579dd652291cb546a2"
         },
         "envelopeStatus": "ok",
-        "resolvedModel": ""
+        "resolvedModel": "",
+        "providerBin": "bin/provider-invoke"
       }
     ]
   },
@@ -278,7 +284,8 @@
             "sha256": "ca1253d781ab80a603cb7d1b4f819330d9ada5035895226b43e4f3ecf0fd4353"
           },
           "envelopeStatus": "ok",
-          "resolvedModel": ""
+          "resolvedModel": "",
+          "providerBin": "bin/provider-invoke"
         },
         {
           "command": [
@@ -311,7 +318,8 @@
             "sha256": "ce241c28ef21f3f111e223a4c7e5647785df2201a91fd0d32c12b4cdb0cccb53"
           },
           "envelopeStatus": "ok",
-          "resolvedModel": ""
+          "resolvedModel": "",
+          "providerBin": "bin/provider-invoke"
         },
         {
           "command": [
@@ -344,7 +352,8 @@
             "sha256": "3861bf117c2a522ff35274362893032dfab0327e981ea62270787fe75ea9ce10"
           },
           "envelopeStatus": "ok",
-          "resolvedModel": ""
+          "resolvedModel": "",
+          "providerBin": "bin/provider-invoke"
         },
         {
           "command": [
@@ -377,7 +386,8 @@
             "sha256": "6acbcf556db311c8d70e31e59b166b4df527588e580279983d50a9afe2b6679c"
           },
           "envelopeStatus": "ok",
-          "resolvedModel": ""
+          "resolvedModel": "",
+          "providerBin": "bin/provider-invoke"
         },
         {
           "command": [
@@ -410,7 +420,8 @@
             "sha256": "85f1eb38a51312037c93640f9305d867fa90077e2bd76807858609982213ba99"
           },
           "envelopeStatus": "ok",
-          "resolvedModel": ""
+          "resolvedModel": "",
+          "providerBin": "bin/provider-invoke"
         }
       ],
       "strategy": "structured_disagreement",
@@ -458,7 +469,8 @@
             "sha256": "aaa511cf59857da71b2cb72ae66bbd4e497d49769a2ee4a31cea4599294ca710"
           },
           "envelopeStatus": "ok",
-          "resolvedModel": ""
+          "resolvedModel": "",
+          "providerBin": "bin/provider-invoke"
         },
         {
           "command": [
@@ -491,7 +503,8 @@
             "sha256": "f4fb329fcfc5f579a94d07f679e5abb63ddd620cfba9694ab89ac4a00d3361da"
           },
           "envelopeStatus": "ok",
-          "resolvedModel": ""
+          "resolvedModel": "",
+          "providerBin": "bin/provider-invoke"
         },
         {
           "command": [
@@ -524,7 +537,8 @@
             "sha256": "f3494b69f52579776c8034bfd2d9e3f77cc7ef6d0543015bf4e8564a863f1ea2"
           },
           "envelopeStatus": "ok",
-          "resolvedModel": ""
+          "resolvedModel": "",
+          "providerBin": "bin/provider-invoke"
         },
         {
           "command": [
@@ -557,7 +571,8 @@
             "sha256": "e300731accb55b543cd10ad81a48701afd77752d2127046fb8aff85e553b7ea3"
           },
           "envelopeStatus": "ok",
-          "resolvedModel": ""
+          "resolvedModel": "",
+          "providerBin": "bin/provider-invoke"
         },
         {
           "command": [
@@ -590,7 +605,8 @@
             "sha256": "d6e971a6ea14923588b89b19688a70e1b8a603088c27066eedff1b45387616e5"
           },
           "envelopeStatus": "ok",
-          "resolvedModel": ""
+          "resolvedModel": "",
+          "providerBin": "bin/provider-invoke"
         }
       ],
       "strategy": "deterministic",
