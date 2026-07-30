@@ -12,12 +12,12 @@ export function packageRelativeProviderBin(packageRoot, bin) {
 
 /** Live usefulness captures must not use test-only provider shims or fake routes. */
 export function assertAuthorizedCaptureEnv(env = process.env) {
-  if (env.AISYNTH_COUNCIL_PROVIDER_INVOKE) {
+  if (Object.hasOwn(env, "AISYNTH_COUNCIL_PROVIDER_INVOKE")) {
     throw new Error(
       "AISYNTH_COUNCIL_PROVIDER_INVOKE is set; refuse to capture usefulness evidence with a substituted provider binary"
     );
   }
-  if (env.AISYNTH_COUNCIL_FAKE_ROUTES) {
+  if (Object.hasOwn(env, "AISYNTH_COUNCIL_FAKE_ROUTES")) {
     throw new Error(
       "AISYNTH_COUNCIL_FAKE_ROUTES is set; refuse to capture usefulness evidence with fake routes"
     );

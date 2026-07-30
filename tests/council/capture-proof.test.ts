@@ -26,6 +26,12 @@ describe("council usefulness capture proof", () => {
     expect(() => assertAuthorizedCaptureEnv({ AISYNTH_COUNCIL_FAKE_ROUTES: "1" })).toThrow(
       "AISYNTH_COUNCIL_FAKE_ROUTES"
     );
+    expect(() => assertAuthorizedCaptureEnv({ AISYNTH_COUNCIL_PROVIDER_INVOKE: "" })).toThrow(
+      "AISYNTH_COUNCIL_PROVIDER_INVOKE"
+    );
+    expect(() => assertAuthorizedCaptureEnv({ AISYNTH_COUNCIL_FAKE_ROUTES: "" })).toThrow(
+      "AISYNTH_COUNCIL_FAKE_ROUTES"
+    );
     expect(() => assertAuthorizedCaptureEnv({})).not.toThrow();
   });
 });
