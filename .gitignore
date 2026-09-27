@@ -16,3 +16,6 @@ __pycache__/
 
 # Node dependencies for the portable council package baseline.
 node_modules/
+
+# Project-local secrets: bin/lib/common.sh reads repo-root .env.local when NVIDIA_API_KEY is unset.
+/.env.local

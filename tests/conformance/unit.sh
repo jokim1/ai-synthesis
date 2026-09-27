@@ -36,6 +36,37 @@ unit_suite() {
   out="$(_emit ENV_OK=false ENV_STATUS=auth ENV_PROVIDER=codex ENV_TEXT='leaked sk-abcdefghij0123456789KLMN here')"
   assert_eq   "sk- token shape masked" "false" "$(printf '%s' "$out" | jq -r '.text | contains("sk-abcdefghij")')"
 
+  section "common.sh — NVIDIA_API_KEY: exported value wins, unset falls back to repo .env.local"
+  local envroot envfile fixture_lib marker loaded inherited leaked
+  envroot="$(mktemp -d "${TMPDIR:-/tmp}/aisynth-env-XXXXXX")"
+  fixture_lib="$envroot/bin/lib/common.sh"
+  envfile="$envroot/.env.local"
+  marker="$envroot/executed"
+  mkdir -p "$envroot/bin/lib"
+  cp "$LIB/common.sh" "$fixture_lib"
+  # shellcheck disable=SC2016 # This line is literal .env.local fixture content.
+  printf '%s\n' \
+    'OPENAI_API_KEY=unrelatedvalue456' \
+    'printf executed > "$AISYNTH_TEST_MARKER"' \
+    'NVIDIA_API_KEY=filevalue123' > "$envfile"
+  loaded="$(env -u NVIDIA_API_KEY -u OPENAI_API_KEY AISYNTH_TEST_MARKER="$marker" bash -c "source '$fixture_lib'; printf '%s' \"\${NVIDIA_API_KEY:-}\"")"
+  assert_eq "unset env -> value loaded from .env.local" "filevalue123" "$loaded"
+  inherited="$(env -u NVIDIA_API_KEY bash -c "source '$fixture_lib'; bash -c 'printf \"%s\" \"\${NVIDIA_API_KEY:-}\"'")"
+  assert_eq "file-loaded value is absent from child environment" "" "$inherited"
+  inherited="$(env NVIDIA_API_KEY= bash -c "source '$fixture_lib'; bash -c 'printf \"%s\" \"\${NVIDIA_API_KEY:-}\"'")"
+  assert_eq "empty exported value does not export file fallback" "" "$inherited"
+  leaked="$(env -u NVIDIA_API_KEY -u OPENAI_API_KEY AISYNTH_TEST_MARKER="$marker" bash -c "source '$fixture_lib'; printf '%s' \"\${OPENAI_API_KEY:-}\"")"
+  assert_eq "unrelated .env.local key is not loaded" "" "$leaked"
+  assert_eq ".env.local shell statements are not executed" "false" "$([ -e "$marker" ] && echo true || echo false)"
+  loaded="$(env NVIDIA_API_KEY=envvalue999 bash -c "source '$fixture_lib'; printf '%s' \"\${NVIDIA_API_KEY:-}\"")"
+  assert_eq "exported value wins over file" "envvalue999" "$loaded"
+  loaded="$(env -u NVIDIA_API_KEY bash -c "source '$fixture_lib'; printf 'key=filevalue123' | aisynth_redact")"
+  assert_true "file-loaded value redacted like an env secret" "$(printf '%s' "$loaded" | grep -qF '***REDACTED***' && echo true || echo false)"
+  rm -f "$envfile"
+  loaded="$(env -u NVIDIA_API_KEY bash -c "source '$fixture_lib'; printf '%s' \"\${NVIDIA_API_KEY:-}\"")"
+  assert_eq "no file -> stays unset" "" "$loaded"
+  rm -rf "$envroot"
+
   section "run_timeout.py — wall-clock bound on hosts without coreutils timeout"
   python3 "$LIB/run_timeout.py" 1 sleep 5 >/dev/null 2>&1; rc=$?
   assert_eq "sleep 5 under 1s bound -> 124" "124" "$rc"

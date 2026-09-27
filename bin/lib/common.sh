@@ -28,6 +28,29 @@ aisynth_log() {
 # that echoes a key in an error message would otherwise leak it via text/error.
 AISYNTH_SECRET_VARS="ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN ANTHROPIC_BEARER_TOKEN ANTHROPIC_CONSOLE_API_KEY ANTHROPIC_CONSOLE_AUTH_TOKEN OPENAI_API_KEY CODEX_API_KEY NVIDIA_API_KEY DEEPSEEK_API_KEY"
 
+# Project-local fallback for NVIDIA_API_KEY: an exported value always wins;
+# when unset, the layer reads only its assignment from the gitignored repo-root
+# .env.local. Loaded once at source time so adapters and the redactor below all
+# see the same value.
+if [ -z "${NVIDIA_API_KEY:-}" ]; then
+  unset NVIDIA_API_KEY
+  AISYNTH_ENV_FILE="$(cd "$AISYNTH_BIN_DIR/.." && pwd)/.env.local"
+  if [ -f "$AISYNTH_ENV_FILE" ]; then
+    while IFS= read -r AISYNTH_ENV_LINE || [ -n "$AISYNTH_ENV_LINE" ]; do
+      case "$AISYNTH_ENV_LINE" in
+        NVIDIA_API_KEY=*)
+          NVIDIA_API_KEY="${AISYNTH_ENV_LINE#NVIDIA_API_KEY=}"
+          case "$NVIDIA_API_KEY" in
+            \"*\") NVIDIA_API_KEY="${NVIDIA_API_KEY#\"}"; NVIDIA_API_KEY="${NVIDIA_API_KEY%\"}" ;;
+            \'*\') NVIDIA_API_KEY="${NVIDIA_API_KEY#\'}"; NVIDIA_API_KEY="${NVIDIA_API_KEY%\'}" ;;
+          esac
+          ;;
+      esac
+    done < "$AISYNTH_ENV_FILE"
+  fi
+  unset AISYNTH_ENV_FILE AISYNTH_ENV_LINE
+fi
+
 aisynth_redact() {
   # Echo stdin with known secret values + common token shapes masked. Defends the
   # "secrets never leave the process" rule against a CLI that prints a key.
