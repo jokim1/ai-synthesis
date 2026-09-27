@@ -36,6 +36,28 @@ unit_suite() {
   out="$(_emit ENV_OK=false ENV_STATUS=auth ENV_PROVIDER=codex ENV_TEXT='leaked sk-abcdefghij0123456789KLMN here')"
   assert_eq   "sk- token shape masked" "false" "$(printf '%s' "$out" | jq -r '.text | contains("sk-abcdefghij")')"
 
+  section "common.sh — NVIDIA_API_KEY: exported value wins, unset falls back to repo .env.local"
+  # The suite temporarily authors/clears the gitignored repo-root .env.local,
+  # backing up and restoring any pre-existing operator file.
+  local envfile="$ROOT/.env.local" envbak="" preexist="no" loaded
+  if [ -e "$envfile" ]; then
+    preexist="yes"
+    envbak="$(mktemp "${TMPDIR:-/tmp}/aisynth-envbak-XXXXXX")"
+    cp "$envfile" "$envbak"
+  fi
+  printf 'NVIDIA_API_KEY=filevalue123\n' > "$envfile"
+  loaded="$(env -u NVIDIA_API_KEY bash -c "source '$LIB/common.sh'; printf '%s' \"\${NVIDIA_API_KEY:-}\"")"
+  assert_eq "unset env -> value loaded from .env.local" "filevalue123" "$loaded"
+  loaded="$(env NVIDIA_API_KEY=envvalue999 bash -c "source '$LIB/common.sh'; printf '%s' \"\${NVIDIA_API_KEY:-}\"")"
+  assert_eq "exported value wins over file" "envvalue999" "$loaded"
+  loaded="$(env -u NVIDIA_API_KEY bash -c "source '$LIB/common.sh'; printf 'key=filevalue123' | aisynth_redact")"
+  assert_true "file-loaded value redacted like an env secret" "$(printf '%s' "$loaded" | grep -qF '***REDACTED***' && echo true || echo false)"
+  rm -f "$envfile"
+  if [ "$preexist" = "yes" ]; then cp -p "$envbak" "$envfile"; fi
+  rm -f "$envbak"
+  loaded="$(env -u NVIDIA_API_KEY bash -c "source '$LIB/common.sh'; printf '%s' \"\${NVIDIA_API_KEY:-}\"")"
+  assert_eq "no file -> stays unset" "" "$loaded"
+
   section "run_timeout.py — wall-clock bound on hosts without coreutils timeout"
   python3 "$LIB/run_timeout.py" 1 sleep 5 >/dev/null 2>&1; rc=$?
   assert_eq "sleep 5 under 1s bound -> 124" "124" "$rc"
