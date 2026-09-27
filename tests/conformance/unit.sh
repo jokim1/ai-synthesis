@@ -44,6 +44,7 @@ unit_suite() {
   marker="$envroot/executed"
   mkdir -p "$envroot/bin/lib"
   cp "$LIB/common.sh" "$fixture_lib"
+  # shellcheck disable=SC2016 # This line is literal .env.local fixture content.
   printf '%s\n' \
     'OPENAI_API_KEY=unrelatedvalue456' \
     'printf executed > "$AISYNTH_TEST_MARKER"' \
