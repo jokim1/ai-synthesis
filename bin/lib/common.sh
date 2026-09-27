@@ -33,6 +33,7 @@ AISYNTH_SECRET_VARS="ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN ANTHROPIC_BEARER_TOK
 # .env.local. Loaded once at source time so adapters and the redactor below all
 # see the same value.
 if [ -z "${NVIDIA_API_KEY:-}" ]; then
+  unset NVIDIA_API_KEY
   AISYNTH_ENV_FILE="$(cd "$AISYNTH_BIN_DIR/.." && pwd)/.env.local"
   if [ -f "$AISYNTH_ENV_FILE" ]; then
     while IFS= read -r AISYNTH_ENV_LINE || [ -n "$AISYNTH_ENV_LINE" ]; do
@@ -43,7 +44,6 @@ if [ -z "${NVIDIA_API_KEY:-}" ]; then
             \"*\") NVIDIA_API_KEY="${NVIDIA_API_KEY#\"}"; NVIDIA_API_KEY="${NVIDIA_API_KEY%\"}" ;;
             \'*\') NVIDIA_API_KEY="${NVIDIA_API_KEY#\'}"; NVIDIA_API_KEY="${NVIDIA_API_KEY%\'}" ;;
           esac
-          export NVIDIA_API_KEY
           ;;
       esac
     done < "$AISYNTH_ENV_FILE"
