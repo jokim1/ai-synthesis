@@ -141,7 +141,8 @@ tests/conformance/     # assert.sh · fakes.sh · run.sh · unit.sh · {claude,c
 **Status:** host Claude (headless) + Codex done and conformance-green. Next external
 adapter per the spec: DeepSeek via NVIDIA-free (pure curl) — needs `$NVIDIA_API_KEY`
 (exported in the environment, or the gitignored repo-root `.env.local`, which
-`bin/lib/common.sh` reads only when the variable is unset).
+`bin/lib/common.sh` reads only for an `NVIDIA_API_KEY=` assignment when the
+variable is unset).
 The portable council adds a fake-only `hermetic` target for clean checkout gates:
 
 ```

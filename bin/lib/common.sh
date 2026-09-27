@@ -29,17 +29,26 @@ aisynth_log() {
 AISYNTH_SECRET_VARS="ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN ANTHROPIC_BEARER_TOKEN ANTHROPIC_CONSOLE_API_KEY ANTHROPIC_CONSOLE_AUTH_TOKEN OPENAI_API_KEY CODEX_API_KEY NVIDIA_API_KEY DEEPSEEK_API_KEY"
 
 # Project-local fallback for NVIDIA_API_KEY: an exported value always wins;
-# when unset, the layer sources the gitignored repo-root .env.local (set -a so
-# the value reaches child processes). Loaded once at source time so adapters
-# and the redactor below all see the same value.
+# when unset, the layer reads only its assignment from the gitignored repo-root
+# .env.local. Loaded once at source time so adapters and the redactor below all
+# see the same value.
 if [ -z "${NVIDIA_API_KEY:-}" ]; then
   AISYNTH_ENV_FILE="$(cd "$AISYNTH_BIN_DIR/.." && pwd)/.env.local"
   if [ -f "$AISYNTH_ENV_FILE" ]; then
-    set -a
-    . "$AISYNTH_ENV_FILE"
-    set +a
+    while IFS= read -r AISYNTH_ENV_LINE || [ -n "$AISYNTH_ENV_LINE" ]; do
+      case "$AISYNTH_ENV_LINE" in
+        NVIDIA_API_KEY=*)
+          NVIDIA_API_KEY="${AISYNTH_ENV_LINE#NVIDIA_API_KEY=}"
+          case "$NVIDIA_API_KEY" in
+            \"*\") NVIDIA_API_KEY="${NVIDIA_API_KEY#\"}"; NVIDIA_API_KEY="${NVIDIA_API_KEY%\"}" ;;
+            \'*\') NVIDIA_API_KEY="${NVIDIA_API_KEY#\'}"; NVIDIA_API_KEY="${NVIDIA_API_KEY%\'}" ;;
+          esac
+          export NVIDIA_API_KEY
+          ;;
+      esac
+    done < "$AISYNTH_ENV_FILE"
   fi
-  unset AISYNTH_ENV_FILE
+  unset AISYNTH_ENV_FILE AISYNTH_ENV_LINE
 fi
 
 aisynth_redact() {
